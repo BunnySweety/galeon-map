@@ -1,109 +1,239 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    
-    <!-- Primary Meta Tags -->
-    <title>Galeon Map</title>
-    <meta name="title" content="Galeon Map">
-    <meta name="description" content="Interactive hospital map showing deployment status across different regions">
-    <meta name="theme-color" content="#007bff" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#2b2b2b" media="(prefers-color-scheme: dark)">
-    <meta name="color-scheme" content="light dark">
-
-    <!-- Icons -->
-    <link rel="icon" href="./assets/favicon.ico" sizes="any">
-    <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
-    <link rel="manifest" href="./site.webmanifest">
-
-    <!-- App specific icons -->
-    <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="./assets/favicon-16x16.png">
-    <link rel="mask-icon" href="./assets/safari-pinned-tab.svg" color="#007bff">
-    <meta name="msapplication-TileColor" content="#007bff">
-    <meta name="msapplication-config" content="./browserconfig.xml">
-
-    <!-- Prefetch & Preconnect -->
-    <link rel="dns-prefetch" href="https://unpkg.com">
-    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-    <link rel="preconnect" href="https://unpkg.com" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-
-    <!-- Preload -->
-    <link rel="preload" as="style" href="./css/style.css">
-    <link rel="preload" as="script" href="./js/main.js" crossorigin="anonymous">
-
-    <!-- Styles -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-          crossorigin="anonymous">
-    <link rel="stylesheet" 
-          href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css"
-          integrity="sha512-mQ77VzAakzdpWdgfL/lM1ksNy89uFgibRQANsNneSTMD/bj0Y/8+94XMwYhnbzx8eki2hrbPpDm0vD0CiT2lcg=="
-          crossorigin="anonymous">
-    <link rel="stylesheet" href="./css/style.css">
-
-    <!-- Scripts -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-            crossorigin="anonymous" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"
-            integrity="sha512-OFs3W4DIZ5ZkrDhBFtsCP6JXtMEDGmhl0QPlmWYBJay40TT1n3gt2Xuw8Pf/iezgW9CdabjkNChRqozl/YADmg=="
-            crossorigin="anonymous" defer></script>
-
-    <!-- PWA Meta Tags -->
-    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Interactive map of Galeon hospitals with real-time filtering and clustering capabilities">
+    <meta name="theme-color" content="#ffffff">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Hospital Map">
+    <meta name="format-detection" content="telephone=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="robots" content="index, follow">
+
+    <title>Galeon Map</title>
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="./assets/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./assets/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Preconnect -->
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
+    <link rel="preconnect" href="https://basemaps.cartocdn.com" crossorigin>
+
+    <!-- Preload Critical Assets -->
+    <link rel="preload" href="/fonts/your-main-font.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" as="style" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="preload" as="script" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+    <link rel="preload" as="script" href="./js/main.js" type="module">
+
+    <!-- DNS Prefetch -->
+    <link rel="dns-prefetch" href="https://unpkg.com">
+    <link rel="dns-prefetch" href="https://tile.openstreetmap.org">
+    <link rel="dns-prefetch" href="https://basemaps.cartocdn.com">
+
+    <!-- Critical CSS -->
+    <style>
+        /* Essential variables */
+        :root {
+            --status-deployed-color: #4CAF50;
+            --status-inprogress-color: #FFA500;
+            --status-signed-color: #2196F3;
+            --background-color-light: #f9f9f9;
+            --text-color-light: #1f1f1f;
+            --control-background-light: #ffffff;
+            --control-border-light: #ddd;
+        }
+    
+        /* Critical basic styles */
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color-light);
+            color: var(--text-color-light);
+        }
+    
+        /* Map - critical element */
+        #map {
+            height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+            width: 100vw;
+            position: fixed;
+            top: env(safe-area-inset-top);
+            left: 0;
+            z-index: 1;
+        }
+    
+        /* Loader - review for the first rendering */
+        #initial-loader {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+    
+        #initial-loader::after {
+            content: "";
+            display: block;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            animation: spin 1s linear infinite;
+        }
+    
+        /* Loader animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    
+        /* Critical system messages */
+        .error-message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 10000;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            display: none;
+        }
+    
+        .info-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 15px 20px;
+            border-radius: 5px;
+            z-index: 1000;
+            display: none;
+        }
+    
+        /* Main controls - necessary for first rendering */
+        .controls {
+            position: absolute;
+            top: 1rem;
+            left: 4rem;
+            z-index: 1000;
+            background: var(--control-background-light);
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+    
+        #hamburger,
+        #legend-toggle,
+        #theme-toggle {
+            position: fixed;
+            z-index: 1000;
+            border-radius: 50%;
+            width: 2.5rem;
+            height: 2.5rem;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+    
+        #hamburger { top: 1.25rem; left: 1rem; }
+        #legend-toggle { bottom: 2.75rem; left: 1rem; }
+        #theme-toggle { top: 1rem; right: 1rem; }
+    
+        /* Dark mode essentiel */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #2b2b2b;
+                color: #f1f1f1;
+            }
+    
+            #initial-loader {
+                background: rgba(43, 43, 43, 0.9);
+            }
+        }
+    </style>
+
+    <!-- Non-critical CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+          crossorigin="">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css">
+    <link rel="stylesheet" href="./css/style.css">
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Interactive map of Galeon hospitals">
+    <meta property="og:description" content="Interactive hospital map with real-time filtering and clustering capabilities">
+    <meta property="og:image" content="./assets/og-image.jpg">
+    <meta property="og:url" content="https://bunnysweety.github.io/galeon-map/">
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Interactive map of Galeon hospitals">
+    <meta name="twitter:description" content="Interactive hospital map with real-time filtering and clustering capabilities">
+    <meta name="twitter:image" content="./assets/twitter-image.jpg">
+
+    <!-- Scripts -->
+    <script type="module" src="./js/main.js" defer></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
+            crossorigin="" 
+            defer></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js" defer></script>
+
+    <!-- PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./js/sw.js');
+        }
+    </script>
 </head>
 <body>
-    <!-- Error message -->
+    <!-- Noscript -->
+    <noscript>
+        <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                    text-align: center; background: white; padding: 20px; border-radius: 8px; 
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 9999;">
+            JavaScript is required to view this map.
+        </div>
+    </noscript>
+
+    <!-- Error Message -->
     <div id="error-message" class="error-message" style="display: none;" role="alert"></div>
 
-    <!-- Map container -->
+    <!-- Map Container -->
     <div id="map" role="application" aria-label="Interactive hospital map"></div>
 
-    <!-- Loading indicator -->
+    <!-- Loading Indicator -->
     <div id="initial-loader" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000;"></div>
 
-    <!-- No results message -->
+    <!-- No Results Message -->
     <div id="no-hospitals-message" class="info-message" style="display: none;" role="status">
         <span data-translate="noHospitalsMessage">No hospitals match the current filters.</span>
     </div>
 
-    <!-- Primary controls -->
+    <!-- Controls Panel -->
     <div id="controls" class="controls" role="complementary" aria-label="Map controls">
-        <!-- Language selector -->
-        <select id="language-select" aria-label="Select language">
-            <option value="en">English</option>
-            <option value="fr">Français</option>
-            <option value="es">Español</option>
-            <option value="zh">中文</option>
-            <option value="ar">العربية</option>
-            <option value="hi">हिन्दी</option>
-            <option value="bn">বাংলা</option>
-            <option value="pt">Português</option>
-            <option value="ru">Русский</option>
-            <option value="ja">日本語</option>
-            <option value="de">Deutsch</option>
-            <option value="ko">한국어</option>
-            <option value="vi">Tiếng Việt</option>
-            <option value="tr">Türkçe</option>
-            <option value="fa">فارسی</option>
-            <option value="ur">اردو</option>
-            <option value="it">Italiano</option>
-            <option value="ta">தமிழ்</option>
-            <option value="pl">Polski</option>
-            <option value="nl">Nederlands</option>
-        </select>
-
-        <!-- Continent selector -->
-        <select id="continent-select" aria-label="Select continent">
+        <div class="language-select">
+            English Français Español 中文 العربية हिन्दी বাংলা Português Русский 日本語 Deutsch 한국어 
+            Tiếng Việt Türkçe فارسی اردو Italiano தமிழ் Polski Nederlands
+        </div>
+        
+        <select id="continent-select">
             <option value="">All Continents</option>
             <option value="Europe">Europe</option>
             <option value="North America">North America</option>
@@ -113,41 +243,35 @@
             <option value="Oceania">Oceania</option>
         </select>
 
-        <!-- Search filters -->
-        <input type="text" id="country-filter" placeholder="Enter country..." aria-label="Filter by country">
-        <input type="text" id="city-filter" placeholder="Enter city..." aria-label="Filter by city">
-        <input type="text" id="hospital-search" placeholder="Search hospital..." aria-label="Search hospitals">
-
-        <!-- Status tags -->
         <div class="status-tags-container" role="group" aria-label="Status filters">
             <span class="status-tag status-deployed" 
-                  status="Deployed" 
-                  original-status="Deployed" 
-                  data-translate="deployed" 
-                  role="button" 
-                  tabindex="0" 
+                  status="Deployed"
+                  original-status="Deployed"
+                  data-translate="deployed"
+                  role="button"
+                  tabindex="0"
                   aria-pressed="false">Deployed</span>
-            <span class="status-tag status-in-progress" 
-                  status="In Progress" 
-                  original-status="In Progress" 
-                  data-translate="inProgress" 
-                  role="button" 
-                  tabindex="0" 
+            <span class="status-tag status-in-progress"
+                  status="In Progress"
+                  original-status="In Progress"
+                  data-translate="inProgress"
+                  role="button"
+                  tabindex="0"
                   aria-pressed="false">In Progress</span>
-            <span class="status-tag status-signed" 
-                  status="Signed" 
-                  original-status="Signed" 
-                  data-translate="signed" 
-                  role="button" 
-                  tabindex="0" 
+            <span class="status-tag status-signed"
+                  status="Signed"
+                  original-status="Signed"
+                  data-translate="signed"
+                  role="button"
+                  tabindex="0"
                   aria-pressed="false">Signed</span>
         </div>
     </div>
 
-    <!-- Control buttons -->
+    <!-- Control Buttons -->
     <button id="hamburger-menu" class="control-button" aria-label="Toggle menu">☰</button>
-    <button id="legend-toggle" class="control-button" aria-label="Toggle legend">📋</button>
-    <button id="theme-toggle" class="control-button" aria-label="Toggle dark mode">🌙</button>
+    <button id="clipboard" class="control-button" aria-label="Copy">📋</button>
+    <button id="theme-toggle" class="control-button" aria-label="Toggle theme">🌙</button>
 
     <!-- Legend -->
     <div class="legend-container" role="complementary" aria-label="Map legend">
@@ -165,48 +289,35 @@
         </div>
     </div>
 
-    <!-- Chart container -->
+    <!-- Chart Container -->
     <div class="chart-container" role="complementary" aria-label="Status statistics">
-        <!-- Template for gauge wrapper -->
-        <template id="gauge-wrapper-template">
-            <div class="gauge-wrapper">
-                <div class="gauge" role="progressbar" aria-valuemin="0" aria-valuemax="100"></div>
-                <div class="gauge-value" aria-live="polite"></div>
-                <div class="gauge-percentage"></div>
-                <div class="gauge-label"></div>
-            </div>
-        </template>
+        <div class="gauge-wrapper">
+            <div class="gauge" role="progressbar" aria-valuemin="0" aria-valuemax="100"></div>
+            <div class="gauge-value" aria-live="polite"></div>
+            <div class="gauge-percentage"></div>
+            <div class="gauge-label"></div>
+        </div>
 
-        <!-- Template for gauge SVG -->
-        <template id="gauge-template">
-            <svg viewBox="0 0 36 36">
-                <path class="gauge-background" 
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" 
-                      fill="none" 
-                      stroke="#eee" 
-                      stroke-width="3" />
-                <path class="gauge-value" 
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" 
-                      fill="none" 
-                      stroke-width="3" 
-                      stroke-dasharray="0, 100" />
-            </svg>
-        </template>
+        <!-- SVG for gauge -->
+        <svg viewbox="0 0 36 36">
+            <path class="gauge-background" 
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" 
+                  fill="none" 
+                  stroke="#eee" 
+                  stroke-width="3" />
+            <path class="gauge-value" 
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" 
+                  fill="none" 
+                  stroke-width="3" 
+                  stroke-dasharray="0, 100" />
+        </svg>
     </div>
 
-    <!-- JavaScript disabled notice -->
-    <noscript>
-        <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-                    text-align: center; background: white; padding: 20px; border-radius: 8px; 
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 9999;">
-            JavaScript is required to view this map.
-        </div>
-    </noscript>
-
-    <!-- Application scripts -->
-    <script type="module" src="./js/translations.js"></script>
-    <script type="module" src="./js/hospitals.js"></script>
-    <script type="module" src="./js/gauge.js"></script>
-    <script type="module" src="./js/main.js"></script>
+    <!-- JavaScript Required Message -->
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                text-align: center; background: white; padding: 20px; border-radius: 8px; 
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 9999;">
+        JavaScript is required to view this map.
+    </div>
 </body>
 </html>
