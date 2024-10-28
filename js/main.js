@@ -616,6 +616,13 @@ class MapManager {
     }
 
     setupEventListeners() {
+        if (!this.mapManager?.map) {
+            console.warn('Map not initialized');
+            return;
+        }
+
+        // Window events
+        window.addEventListener('resize', this.boundEventHandlers.resize, { passive: true });
         this.map.on('click', this.handleMapClick);
         this.map.on('zoomend', Utils.throttle(this.handleZoomEnd, 250));
         this.map.on('moveend', Utils.throttle(this.handleMoveEnd, 250));

@@ -34,15 +34,21 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 
     <!-- Preload -->
-    <link rel="preload" as="style" href="./css/style.css">
-    <link rel="preload" as="script" href="./js/main.js">
+    <link rel="preload"
+      as="style"
+      href="./css/style.css">
+    <link rel="preload" 
+      as="script" 
+      href="./js/main.js" 
+      crossorigin="anonymous">
 
     <!-- Styles -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
           crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css"
-          integrity="sha512-mR/oOw1TUCKsdtNA9KLxqZvZ7zzr7r3jxC2O705ADJ6UhS4XL3lgs3y6c12bUU8xl5LUZ/Mt5XWsDRUF8yYxg=="
+    <link rel="stylesheet" 
+          href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css"
+          integrity="sha512-9dLCxvq6FIBVTcZO+EFyNJ8P/KTYI5pXHMvyVVPyE44/XhHh53M15p4iFIBa8okxWLp8qrfLmVGm/LraAYLbQ=="
           crossorigin="anonymous">
     <link rel="stylesheet" href="./css/style.css">
 
@@ -55,6 +61,7 @@
             crossorigin="anonymous" defer></script>
 
     <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Hospital Map">
@@ -75,7 +82,7 @@
     </div>
 
     <!-- Primary controls -->
-    <div class="controls" role="complementary" aria-label="Map controls">
+    <div id="controls" class="controls" role="complementary" aria-label="Map controls">
         <!-- Language selector -->
         <select id="language-select" aria-label="Select language">
             <option value="en">English</option>
@@ -143,7 +150,7 @@
     </div>
 
     <!-- Control buttons -->
-    <button id="hamburger" class="control-button" aria-label="Toggle menu">☰</button>
+    <button id="hamburger-menu" class="control-button" aria-label="Toggle menu">☰</button>
     <button id="legend-toggle" class="control-button" aria-label="Toggle legend">📋</button>
     <button id="theme-toggle" class="control-button" aria-label="Toggle dark mode">🌙</button>
 
