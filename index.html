@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Galeon Hospitals Map</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Favicon for different devices and browsers -->
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="favicon/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="favicon/android-chrome-512x512.png">
+    <link rel="apple-touch-icon" href="favicon/apple-touch-icon.png">
+    <link rel="manifest" href="favicon/site.webmanifest">
+</head>
+
+<body>
+    <div id="error-message" class="error-message" style="display: none;" role="alert"></div>
+
+    <div id="map" role="application" aria-label="Interactive hospital map"></div>
+    
+    <div id="no-hospitals-message" class="info-message" style="display: none;" role="status">
+        <i class="fas fa-info-circle"></i>
+        <span data-translate="noHospitalsMessage">No hospitals match the current filters.</span>
+    </div>
+    
+    <button id="hamburger" aria-label="Toggle menu">☰</button>
+    
+    <div class="legend-container" role="complementary" aria-label="Map legend">
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: var(--status-deployed-color)"></div>
+            <span class="legend-text" data-translate="legendDeployed">Deployed</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: var(--status-inprogress-color)"></div>
+            <span class="legend-text" data-translate="legendInProgress">In Progress</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: var(--status-signed-color)"></div>
+            <span class="legend-text" data-translate="legendSigned">Signed</span>
+        </div>
+    </div>
+    
+    <div class="controls" role="complementary" aria-label="Map controls">
+        <select id="language-select" aria-label="Select language">
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+            <option value="es">Español</option>
+            <option value="zh">中文</option>
+            <option value="ar">العربية</option>
+            <option value="hi">हिन्दी</option>
+            <option value="bn">বাংলা</option>
+            <option value="pt">Português</option>
+            <option value="ru">Русский</option>
+            <option value="ja">日本語</option>
+            <option value="de">Deutsch</option>
+            <option value="ko">한국어</option>
+            <option value="vi">Tiếng Việt</option>
+            <option value="tr">Türkçe</option>
+            <option value="fa">فارسی</option>
+            <option value="ur">اردو</option>
+            <option value="it">Italiano</option>
+            <option value="ta">தமிழ்</option>
+            <option value="pl">Polski</option>
+            <option value="nl">Nederlands</option>
+        </select>
+    
+        <select id="continent-select" aria-label="Select continent">
+            <option value="" data-translate="continent">Continent</option>
+            <option value="Europe">Europe</option>
+            <option value="North America">North America</option>
+            <option value="South America">South America</option>
+            <option value="Asia">Asia</option>
+            <option value="Africa">Africa</option>
+            <option value="Oceania">Oceania</option>
+        </select>
+    
+        <input type="text" id="country-filter" placeholder="Enter country..." data-translate="enterCountry" aria-label="Filter by country">
+        <input type="text" id="city-filter" placeholder="Enter city..." data-translate="enterCity" aria-label="Filter by city">
+        <input type="text" id="hospital-search" placeholder="Search hospital..." data-translate="searchHospital" aria-label="Search hospitals">
+    
+        <div class="status-tags-container" role="group" aria-label="Status filters">
+            <span class="status-tag status-deployed" data-status="Deployed" data-original-status="Deployed" data-translate="deployed" role="button" tabindex="0" aria-pressed="false"></span>
+            <span class="status-tag status-in-progress" data-status="In Progress" data-original-status="In Progress" data-translate="inProgress" role="button" tabindex="0" aria-pressed="false"></span>
+            <span class="status-tag status-signed" data-status="Signed" data-original-status="Signed" data-translate="signed" role="button" tabindex="0" aria-pressed="false"></span>
+        </div>
+    </div>
+    
+    <button id="legend-toggle" aria-label="Toggle legend">📋</button>
+    <button id="theme-toggle" aria-label="Toggle dark mode"><i class="fas fa-moon"></i></button>
+    
+    <div class="chart-container" role="complementary" aria-label="Status statistics">
+        <div class="gauge-wrapper">
+            <div id="deployed-progress" class="gauge" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                <svg viewbox="0 0 36 36">
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#eee" stroke-width="3" />
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#4CAF50" stroke-width="3" stroke-dasharray="0, 100" />
+                </svg>
+                <div class="gauge-value"></div>
+            </div>
+            <div class="gauge-percentage"></div>
+            <div class="gauge-label" data-translate="gaugesDeployed">Deployed</div>
+        </div>
+    
+        <div class="gauge-wrapper">
+            <div id="in-progress-progress" class="gauge" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                <svg viewbox="0 0 36 36">
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#eee" stroke-width="3" />
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#FFA500" stroke-width="3" stroke-dasharray="0, 100" />
+                </svg>
+                <div class="gauge-value"></div>
+            </div>
+            <div class="gauge-percentage"></div>
+            <div class="gauge-label" data-translate="gaugesInProgress">In Progress</div>
+        </div>
+    
+        <div class="gauge-wrapper">
+            <div id="signed-progress" class="gauge" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                <svg viewbox="0 0 36 36">
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#eee" stroke-width="3" />
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#2196F3" stroke-width="3" stroke-dasharray="0, 100" />
+                </svg>
+                <div class="gauge-value"></div>
+            </div>
+            <div class="gauge-percentage"></div>
+            <div class="gauge-label" data-translate="gaugesSigned">Signed</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+    <script src="js/translations.js"></script>
+    <script src="js/hospitals.js"></script>
+    <script src="js/main.js" type="module"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js" defer></script>
+</body>
+</html>
