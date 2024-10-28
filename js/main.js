@@ -940,18 +940,29 @@ class MapManager {
  */
 class UIManager {
     constructor(mapManager) {
+        if (!mapManager) {
+            throw new Error('MapManager is required');
+        }
         this.mapManager = mapManager;
-        this.elements = {};
+        
+        // Initialize bound handlers first
         this.boundEventHandlers = {
-            resize: Utils.debounce(this.handleResize.bind(this), CONFIG.UI.ANIMATION.DEBOUNCE_DELAY),
-            orientationchange: this.handleOrientationChange.bind(this),
-            escape: this.handleEscapeKey.bind(this),
+            handleResize: this.handleResize.bind(this),
+            handleOrientationChange: this.handleOrientationChange.bind(this),
+            handleEscapeKey: this.handleEscapeKey.bind(this),
             updateMarkers: Utils.debounce(this.updateFilters.bind(this), 300),
             clicks: {},
             keydowns: {}
         };
         
         this.init();
+    }
+
+    setupEventListeners() {
+        // Window events
+        window.addEventListener('resize', this.boundEventHandlers.handleResize);
+        window.addEventListener('orientationchange', this.boundEventHandlers.handleOrientationChange);
+        window.addEventListener('keydown', this.boundEventHandlers.handleEscapeKey);
     }
 
     init() {
