@@ -1,5 +1,12 @@
+/**
+ * Hospital data
+ * @module hospitals
+ */
+'use strict';
+
 const hospitals = [
     {
+        id: "1",
         name: "Centre Hospitalier de Châlon-sur-Saône",
         lat: 46.7795,
         lon: 4.8527,
@@ -9,6 +16,7 @@ const hospitals = [
         imageUrl: "https://i.ibb.co/HYs7nHY/b-timent-moderne-dh-pital.webp"
     },
     {
+        id: "2",
         name: "Centre Hospitalier de Toulon",
         lat: 43.1242,
         lon: 5.928,
@@ -18,6 +26,7 @@ const hospitals = [
         imageUrl: "https://i.ibb.co/HYs7nHY/b-timent-moderne-dh-pital.webp"
     },
     {
+        id: "3",
         name: "Centre Hospitalier de Hyères",
         lat: 43.1175,
         lon: 6.1284,
@@ -27,6 +36,7 @@ const hospitals = [
         imageUrl: "https://i.ibb.co/HYs7nHY/b-timent-moderne-dh-pital.webp"
     },
     {
+        id: "4",
         name: "Centre Hospitalier Universitaire de Caen Normandie",
         lat: 49.1829,
         lon: -0.3707,
@@ -36,6 +46,7 @@ const hospitals = [
         imageUrl: "https://i.ibb.co/HYs7nHY/b-timent-moderne-dh-pital.webp"
     },
     {
+        id: "5",
         name: "Centre Hospitalier Sud Francilien, Corbeil-Essonnes",
         lat: 48.6139,
         lon: 2.4749,
@@ -45,6 +56,7 @@ const hospitals = [
         imageUrl: "https://i.ibb.co/HYs7nHY/b-timent-moderne-dh-pital.webp"
     },
     {
+        id: "6",
         name: "Groupe Hospitalier Nord-Essonne, Longjumeau",
         lat: 48.6953,
         lon: 2.2999,
@@ -54,6 +66,7 @@ const hospitals = [
         imageUrl: "https://i.ibb.co/HYs7nHY/b-timent-moderne-dh-pital.webp"
     },
     {
+        id: "7",
         name: "Groupe Hospitalier Nord-Essonne, Orsay",
         lat: 48.697,
         lon: 2.1873,
@@ -63,6 +76,7 @@ const hospitals = [
         imageUrl: "https://i.ibb.co/HYs7nHY/b-timent-moderne-dh-pital.webp"
     },
     {
+        id: "8",
         name: "Centre Hospitalier Jean Leclaire Sarlat, Sarlat-la-Canéda",
         lat: 44.8904,
         lon: 1.2161,
@@ -72,6 +86,7 @@ const hospitals = [
         imageUrl: "https://i.ibb.co/HYs7nHY/b-timent-moderne-dh-pital.webp"
     },
     {
+        id: "9",
         name: "Centre Hospitalier Samuel Pozzi, Bergerac",
         lat: 44.8532,
         lon: 0.4845,
@@ -81,6 +96,7 @@ const hospitals = [
         imageUrl: "https://i.ibb.co/HYs7nHY/b-timent-moderne-dh-pital.webp"
     },
     {
+        id: "10",
         name: "Centre Hospitalier de Périgueux",
         lat: 45.1853,
         lon: 0.7186,
@@ -90,6 +106,7 @@ const hospitals = [
         imageUrl: "https://i.ibb.co/HYs7nHY/b-timent-moderne-dh-pital.webp"
     },
     {
+        id: "11",
         name: "Les Bluets, Paris",
         lat: 48.8499,
         lon: 2.3912,
@@ -99,6 +116,7 @@ const hospitals = [
         imageUrl: "https://i.ibb.co/HYs7nHY/b-timent-moderne-dh-pital.webp"
     },
     {
+        id: "12",
         name: "Centre Hospitalier Universitaire de Rouen Normandie",
         lat: 49.4432,
         lon: 1.0993,
@@ -108,6 +126,7 @@ const hospitals = [
         imageUrl: "https://i.ibb.co/HYs7nHY/b-timent-moderne-dh-pital.webp"
     },
     {
+        id: "13",
         name: "Centre Hospitalier d'Arpajon",
         lat: 48.5913,
         lon: 2.2423,
@@ -117,6 +136,7 @@ const hospitals = [
         imageUrl: "https://i.ibb.co/HYs7nHY/b-timent-moderne-dh-pital.webp"
     },
     {
+        id: "14",
         name: "Hôpital Sainte-Foy-la-Grande",
         lat: 44.8441,
         lon: 0.2091,
@@ -126,6 +146,7 @@ const hospitals = [
         imageUrl: "https://i.ibb.co/HYs7nHY/b-timent-moderne-dh-pital.webp"
     },
     {
+        id: "15",
         name: "Centre Hospitalier de Montceau",
         lat: 46.6756,
         lon: 4.3663,
@@ -135,3 +156,9 @@ const hospitals = [
         imageUrl: "https://i.ibb.co/HYs7nHY/b-timent-moderne-dh-pital.webp"        
     }
 ];
+
+// Ensure hospitals are globally available
+window.hospitals = hospitals;
+
+// Export for module usage
+export { hospitals };

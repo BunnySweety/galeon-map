@@ -1,6 +1,6 @@
 /**
  * @fileoverview Interactive hospital map application with filtering and clustering capabilities
- * @author Claude Assistant
+ * @author BunnySweety
  * @version 1.0.0
  */
 
@@ -14,7 +14,6 @@
  * @property {string} address - Full address
  * @property {string} imageUrl - Hospital image URL
  * @property {string} website - Hospital website URL
- * @property {number} totalPatients - Total number of patients
  */
 
 /**
@@ -50,7 +49,7 @@ const CONFIG = {
             SIGNED: '#2196F3'
         },
         IMAGE: {
-            DEFAULT: 'images/default-hospital.png',
+            DEFAULT: './assets/images/placeholder.jpg',
             STATES: {
                 LOADING: 'loading',
                 SUCCESS: 'success',
@@ -62,25 +61,62 @@ const CONFIG = {
             WEIGHT: 1,
             OPACITY: 1,
             FILL_OPACITY: 0.8
+        },
+        ANIMATION: {
+            DURATION: 300,
+            DEBOUNCE_DELAY: 250,
+            CLUSTER_ANIMATION: 200
         }
     },
     MAP: {
-        DEFAULT_CENTER: [50, 10],
-        DEFAULT_ZOOM: 4,
+        DEFAULT_CENTER: [46.603354, 1.888334], // France center
+        DEFAULT_ZOOM: 6,
         MAX_ZOOM: 18,
+        MIN_ZOOM: 3,
         CLUSTER: {
             MAX_RADIUS: 50,
             SPIDER_ON_MAX_ZOOM: true,
-            SHOW_COVERAGE: false
+            SHOW_COVERAGE: false,
+            DISABLE_CLUSTERING_AT_ZOOM: 19,
+            ANIMATE: true
+        },
+        BOUNDS_PADDING: [50, 50],
+        TILE_LAYER: {
+            LIGHT: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+            DARK: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            ATTRIBUTION: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }
     },
     STORAGE: {
-        PREFERENCES_KEY: 'hospitalMapPreferences'
+        PREFERENCES_KEY: 'hospitalMapPreferences',
+        VERSION: '1.0.0',
+        MAX_AGE: 30 * 24 * 60 * 60 * 1000 // 30 days
+    },
+    REGIONS: {
+        EUROPE: { lat: [35, 71], lon: [-25, 40] },
+        AFRICA: { lat: [-35, 37], lon: [-20, 60] },
+        ASIA: { lat: [-10, 55], lon: [25, 180] },
+        OCEANIA: { lat: [-50, 0], lon: [110, 180] },
+        NORTH_AMERICA: { lat: [15, 72], lon: [-170, -40] },
+        SOUTH_AMERICA: { lat: [-57, 15], lon: [-110, -35] }
+    },
+    ERROR_MESSAGES: {
+        INIT_FAILED: 'Failed to initialize application. Please refresh the page.',
+        DATA_LOAD_FAILED: 'Failed to load data. Please check your connection.',
+        GEOLOCATION_DENIED: 'Location access denied. Please enable location services.',
+        INVALID_DATA: 'Invalid data received. Please contact support.'
     }
 };
 
 /**
- * Application state management store
+ * Import required modules
+ */
+import { GaugeManager } from './gauge.js';
+import { translations } from './translations.js';
+import { hospitals } from './hospitals.js';
+
+/**
+ * Global application store
  * @class Store
  */
 class Store {
@@ -91,6 +127,8 @@ class Store {
     constructor(initialState = {}) {
         this.state = initialState;
         this.listeners = new Set();
+        this.history = [];
+        this.maxHistoryLength = 10;
     }
 
     /**
@@ -104,11 +142,36 @@ class Store {
     /**
      * Updates store state
      * @param {Object} newState - Partial state update
+     * @param {boolean} [recordHistory=true] - Whether to record in history
      * @fires Store#stateChange
      */
-    setState(newState) {
+    setState(newState, recordHistory = true) {
+        if (recordHistory) {
+            this.history.push({ ...this.state });
+            if (this.history.length > this.maxHistoryLength) {
+                this.history.shift();
+            }
+        }
+
+        const oldState = { ...this.state };
         this.state = { ...this.state, ...newState };
-        this.notify();
+        
+        // Notify listeners only if state actually changed
+        if (JSON.stringify(oldState) !== JSON.stringify(this.state)) {
+            this.notify();
+        }
+    }
+
+    /**
+     * Undo last state change
+     * @returns {boolean} Whether undo was successful
+     */
+    undo() {
+        if (this.history.length === 0) return false;
+        
+        const previousState = this.history.pop();
+        this.setState(previousState, false);
+        return true;
     }
 
     /**
@@ -126,24 +189,52 @@ class Store {
      * @private
      */
     notify() {
-        this.listeners.forEach(listener => listener(this.state));
+        this.listeners.forEach(listener => {
+            try {
+                listener(this.state);
+            } catch (error) {
+                console.error('Error in store listener:', error);
+            }
+        });
+    }
+
+    /**
+     * Resets store to initial state
+     */
+    reset() {
+        this.history = [];
+        this.setState(this.initialState, false);
     }
 }
 
 /**
- * Global application store instance
+ * Global store instance
  * @type {Store}
  */
-const appStore = new Store({
+const store = new Store({
     map: null,
     markers: new Map(),
     markerClusterGroup: null,
     activeStatus: [],
     language: CONFIG.UI.DEFAULT_LANGUAGE,
-    darkMode: false,
-    translations: {},
+    darkMode: window.matchMedia('(prefers-color-scheme: dark)').matches,
+    translations: translations,
     isInitialized: false,
-    hospitals: []
+    hospitals: hospitals,
+    filters: {
+        continent: '',
+        country: '',
+        city: '',
+        searchTerm: '',
+        statuses: []
+    },
+    ui: {
+        controlsVisible: false,
+        legendVisible: true,
+        selectedHospital: null,
+        loading: false,
+        error: null
+    }
 });
 
 /**
@@ -159,209 +250,430 @@ const Utils = {
      */
     debounce(fn, wait) {
         let timeout;
-        return function (...args) {
+        return function(...args) {
             clearTimeout(timeout);
             timeout = setTimeout(() => fn.apply(this, args), wait);
         };
     },
 
     /**
-     * Loads JSON data
-     * @async
-     * @param {string} url - URL to fetch from
-     * @returns {Promise<Object>} Parsed JSON data
-     * @throws {Error} Network or parsing error
+     * Throttles a function
+     * @param {Function} fn - Function to throttle
+     * @param {number} limit - Throttle limit in milliseconds
+     * @returns {Function} Throttled function
      */
-    async loadJSON(url) {
-        try {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return await response.json();
-        } catch (error) {
-            console.error('Error loading JSON:', error);
-            throw error;
-        }
+    throttle(fn, limit) {
+        let inThrottle;
+        return function(...args) {
+            if (!inThrottle) {
+                fn.apply(this, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        };
     },
 
     /**
-     * Determines continent from coordinates
+     * Deep clones an object
+     * @param {Object} obj - Object to clone
+     * @returns {Object} Cloned object
+     */
+    deepClone(obj) {
+        if (obj === null || typeof obj !== 'object') return obj;
+        if (obj instanceof Date) return new Date(obj);
+        if (obj instanceof Array) return obj.map(item => Utils.deepClone(item));
+        if (obj instanceof Object) {
+            return Object.fromEntries(
+                Object.entries(obj).map(([key, value]) => [key, Utils.deepClone(value)])
+            );
+        }
+        return obj;
+    },
+
+    /**
+     * Formats a number with thousand separators
+     * @param {number} num - Number to format
+     * @returns {string} Formatted number
+     */
+    formatNumber(num) {
+        return new Intl.NumberFormat().format(num);
+    },
+
+    /**
+     * Gets continent from coordinates
      * @param {number} lat - Latitude
      * @param {number} lon - Longitude
      * @returns {string} Continent name
      */
     getContinent(lat, lon) {
-        const regions = {
-            Europe: { lat: [35, 71], lon: [-25, 40] },
-            Africa: { lat: [-35, 37], lon: [-20, 60] },
-            Asia: { lat: [-10, 55], lon: [25, 180] },
-            Oceania: { lat: [-50, 0], lon: [110, 180] },
-            'North America': { lat: [15, 72], lon: [-170, -40] },
-            'South America': { lat: [-57, 15], lon: [-110, -35] }
-        };
-
-        for (const [name, bounds] of Object.entries(regions)) {
+        for (const [name, bounds] of Object.entries(CONFIG.REGIONS)) {
             if (lat >= bounds.lat[0] && lat <= bounds.lat[1] &&
                 lon >= bounds.lon[0] && lon <= bounds.lon[1]) {
-                return name;
+                return name.replace('_', ' ');
             }
         }
         return 'Unknown';
     },
 
     /**
-     * Parses and extracts address components
-     * @param {string} address - Full address string
-     * @returns {Object} Parsed address components
+     * Extracts address components
+     * @param {string} address - Full address
+     * @returns {Object} Address components
      */
     parseAddress(address) {
         if (!address?.trim()) {
-            return { street: '', city: '', state: '', country: '', postalCode: '' };
+            return {
+                street: '',
+                city: '',
+                state: '',
+                country: '',
+                postalCode: ''
+            };
         }
 
-        const parts = address.trim().split(',').map(part => part.trim());
-        const result = {
-            country: parts.pop() || '',
-            city: parts.pop() || '',
-            street: parts.join(', ')
-        };
-
+        const parts = address.split(',').map(part => part.trim());
+        
         // Extract postal code if present
-        const postalMatch = result.city.match(/\b[A-Z0-9]{5,10}\b/i);
-        if (postalMatch) {
-            result.postalCode = postalMatch[0];
-            result.city = result.city.replace(postalMatch[0], '').trim();
-        }
+        const postalMatch = parts.join(' ').match(/\b[A-Z0-9]{4,10}\b/i);
+        const postalCode = postalMatch ? postalMatch[0] : '';
 
-        return result;
+        return {
+            country: parts[parts.length - 1] || '',
+            state: parts[parts.length - 2] || '',
+            city: parts[parts.length - 3] || '',
+            street: parts.slice(0, -3).join(', '),
+            postalCode
+        };
     },
 
     /**
-     * Saves user preferences to localStorage
-     * @param {UserPreferences} preferences - User preferences to save
+     * Validates coordinates
+     * @param {number} lat - Latitude
+     * @param {number} lon - Longitude
+     * @returns {boolean} Whether coordinates are valid
+     */
+    validateCoordinates(lat, lon) {
+        return !isNaN(lat) && !isNaN(lon) &&
+               lat >= -90 && lat <= 90 &&
+               lon >= -180 && lon <= 180;
+    },
+
+    /**
+     * Saves user preferences
+     * @param {UserPreferences} preferences - Preferences to save
      */
     savePreferences(preferences) {
         try {
-            localStorage.setItem(
-                CONFIG.STORAGE.PREFERENCES_KEY,
-                JSON.stringify(preferences)
-            );
+            const data = {
+                ...preferences,
+                timestamp: Date.now(),
+                version: CONFIG.STORAGE.VERSION
+            };
+            localStorage.setItem(CONFIG.STORAGE.PREFERENCES_KEY, JSON.stringify(data));
         } catch (error) {
             console.error('Error saving preferences:', error);
         }
     },
 
     /**
-     * Loads user preferences from localStorage
+     * Loads user preferences
      * @returns {UserPreferences|null} Saved preferences or null
      */
     loadPreferences() {
         try {
             const saved = localStorage.getItem(CONFIG.STORAGE.PREFERENCES_KEY);
-            return saved ? JSON.parse(saved) : null;
+            if (!saved) return null;
+
+            const data = JSON.parse(saved);
+            const age = Date.now() - (data.timestamp || 0);
+
+            // Clear if data is too old or version mismatch
+            if (age > CONFIG.STORAGE.MAX_AGE || data.version !== CONFIG.STORAGE.VERSION) {
+                localStorage.removeItem(CONFIG.STORAGE.PREFERENCES_KEY);
+                return null;
+            }
+
+            return data;
         } catch (error) {
             console.error('Error loading preferences:', error);
             return null;
         }
+    },
+
+    /**
+     * Shows error message
+     * @param {string} message - Error message
+     * @param {number} [duration] - Message duration in ms
+     */
+    showError(message, duration = 5000) {
+        const errorElement = document.getElementById('error-message');
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            if (duration > 0) {
+                setTimeout(() => {
+                    errorElement.style.display = 'none';
+                }, duration);
+            }
+        }
+    },
+
+    /**
+     * Gets user's location
+     * @returns {Promise<GeolocationPosition>} User's position
+     */
+    async getCurrentPosition() {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error('Geolocation is not supported'));
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+            });
+        });
+    },
+
+    /**
+     * Calculates distance between coordinates
+     * @param {number} lat1 - First latitude
+     * @param {number} lon1 - First longitude
+     * @param {number} lat2 - Second latitude
+     * @param {number} lon2 - Second longitude
+     * @returns {number} Distance in kilometers
+     */
+    calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Earth's radius in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
     }
 };
 
 /**
- * Manages map markers and clustering
+ * Analytics Manager
+ * @class AnalyticsManager
+ */
+class AnalyticsManager {
+    static trackEvent(category, action, label = null, value = null) {
+        // Implement your analytics tracking here
+        console.log('Analytics:', { category, action, label, value });
+    }
+
+    static trackError(error, context = '') {
+        // Implement error tracking
+        console.error('Error:', context, error);
+    }
+
+    static trackTiming(category, variable, time) {
+        // Implement performance tracking
+        console.log('Timing:', { category, variable, time });
+    }
+}
+
+/**
+ * Performance Monitor
+ * @class PerformanceMonitor
+ */
+class PerformanceMonitor {
+    static measures = new Map();
+
+    static startMeasure(name) {
+        this.measures.set(name, performance.now());
+    }
+
+    static endMeasure(name) {
+        const start = this.measures.get(name);
+        if (start) {
+            const duration = performance.now() - start;
+            this.measures.delete(name);
+            AnalyticsManager.trackTiming('Performance', name, duration);
+            return duration;
+        }
+        return null;
+    }
+
+    static async measureAsync(name, fn) {
+        this.startMeasure(name);
+        try {
+            const result = await fn();
+            return result;
+        } finally {
+            this.endMeasure(name);
+        }
+    }
+}
+
+/**
+ * Error Handler
+ * @class ErrorHandler
+ */
+class ErrorHandler {
+    static handle(error, context = '') {
+        AnalyticsManager.trackError(error, context);
+        Utils.showError(error.message);
+    }
+
+    static async wrapAsync(fn) {
+        try {
+            return await fn();
+        } catch (error) {
+            this.handle(error);
+            throw error;
+        }
+    }
+}
+
+/**
+ * Map Manager
  * @class MapManager
  */
 class MapManager {
-    /**
-     * Creates a new MapManager instance
-     * @param {string} containerId - Map container element ID
-     */
     constructor(containerId = 'map') {
         this.containerId = containerId;
         this.map = null;
         this.markerClusterGroup = null;
         this.markers = new Map();
+
+        // Bind methods
+        this.handleMapClick = this.handleMapClick.bind(this);
+        this.handleZoomEnd = this.handleZoomEnd.bind(this);
+        this.handleMoveEnd = this.handleMoveEnd.bind(this);
     }
 
-    /**
-     * Initializes the map
-     * @returns {L.Map} Initialized map instance
-     */
     init() {
         if (this.map) return this.map;
 
-        const { DEFAULT_CENTER, DEFAULT_ZOOM, MAX_ZOOM } = CONFIG.MAP;
-        const isMobile = window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT;
+        PerformanceMonitor.startMeasure('mapInit');
 
         this.map = L.map(this.containerId, {
-            center: DEFAULT_CENTER,
-            zoom: DEFAULT_ZOOM,
-            maxZoom: MAX_ZOOM,
-            zoomControl: !isMobile,
+            center: CONFIG.MAP.DEFAULT_CENTER,
+            zoom: CONFIG.MAP.DEFAULT_ZOOM,
+            maxZoom: CONFIG.MAP.MAX_ZOOM,
+            minZoom: CONFIG.MAP.MIN_ZOOM,
+            zoomControl: window.innerWidth > CONFIG.UI.MOBILE_BREAKPOINT,
             scrollWheelZoom: true,
             dragging: true,
-            tap: true,
-            attributionControl: false
+            tap: true
         });
 
         this.setupPanes();
         this.setupMarkerCluster();
         this.updateTileLayer();
+        this.setupEventListeners();
 
-        appStore.setState({ map: this.map });
+        store.setState({ map: this.map });
+        
+        PerformanceMonitor.endMeasure('mapInit');
         return this.map;
     }
 
-    /**
-     * Sets up map panes
-     * @private
-     */
     setupPanes() {
-        this.map.createPane('borderPane').style.zIndex = 400;
         this.map.createPane('markerPane').style.zIndex = 450;
+        this.map.createPane('popupPane').style.zIndex = 500;
+        this.map.createPane('tooltipPane').style.zIndex = 550;
     }
 
-    /**
-     * Sets up marker clustering
-     * @private
-     */
     setupMarkerCluster() {
-        const { CLUSTER } = CONFIG.MAP;
         this.markerClusterGroup = L.markerClusterGroup({
-            maxClusterRadius: CLUSTER.MAX_RADIUS,
-            spiderfyOnMaxZoom: CLUSTER.SPIDER_ON_MAX_ZOOM,
-            showCoverageOnHover: CLUSTER.SHOW_COVERAGE,
-            zoomToBoundsOnClick: true
+            maxClusterRadius: CONFIG.MAP.CLUSTER.MAX_RADIUS,
+            spiderfyOnMaxZoom: CONFIG.MAP.CLUSTER.SPIDER_ON_MAX_ZOOM,
+            showCoverageOnHover: CONFIG.MAP.CLUSTER.SHOW_COVERAGE,
+            zoomToBoundsOnClick: true,
+            removeOutsideVisibleBounds: true,
+            animate: CONFIG.MAP.CLUSTER.ANIMATE,
+            animateAddingMarkers: true,
+            disableClusteringAtZoom: CONFIG.MAP.CLUSTER.DISABLE_CLUSTERING_AT_ZOOM,
+            chunkedLoading: true,
+            chunkInterval: 200,
+            chunkDelay: 50,
+            iconCreateFunction: this.createClusterIcon.bind(this)
         });
 
         this.map.addLayer(this.markerClusterGroup);
-        appStore.setState({ markerClusterGroup: this.markerClusterGroup });
+        store.setState({ markerClusterGroup: this.markerClusterGroup });
     }
 
-    /**
-     * Updates map tile layer based on theme
-     */
+    createClusterIcon(cluster) {
+        const count = cluster.getChildCount();
+        let size = 'small';
+        
+        if (count > 100) size = 'large';
+        else if (count > 10) size = 'medium';
+
+        return L.divIcon({
+            html: `<div class="cluster-icon cluster-${size}">${count}</div>`,
+            className: `marker-cluster marker-cluster-${size}`,
+            iconSize: L.point(40, 40)
+        });
+    }
+
+    setupEventListeners() {
+        this.map.on('click', this.handleMapClick);
+        this.map.on('zoomend', Utils.throttle(this.handleZoomEnd, 250));
+        this.map.on('moveend', Utils.throttle(this.handleMoveEnd, 250));
+        
+        this.markerClusterGroup.on('clusterclick', (e) => {
+            AnalyticsManager.trackEvent('Map', 'ClusterClick', `Size: ${e.layer.getChildCount()}`);
+        });
+
+        this.markerClusterGroup.on('animationend', () => {
+            PerformanceMonitor.endMeasure('clusterAnimation');
+        });
+    }
+
+    handleMapClick(e) {
+        const { ui } = store.getState();
+        if (ui.controlsVisible && window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
+            store.setState({
+                ui: { ...ui, controlsVisible: false }
+            });
+        }
+        AnalyticsManager.trackEvent('Map', 'Click', `${e.latlng.lat},${e.latlng.lng}`);
+    }
+
+    handleZoomEnd() {
+        const zoom = this.map.getZoom();
+        AnalyticsManager.trackEvent('Map', 'Zoom', `Level: ${zoom}`);
+        store.setState({ currentZoom: zoom });
+    }
+
+    handleMoveEnd() {
+        const center = this.map.getCenter();
+        AnalyticsManager.trackEvent('Map', 'Move', `${center.lat},${center.lng}`);
+        this.updateVisibleMarkers();
+    }
+
     updateTileLayer() {
-        const { darkMode } = appStore.getState();
+        const { darkMode } = store.getState();
+        
         if (this.map.currentTileLayer) {
             this.map.removeLayer(this.map.currentTileLayer);
         }
 
-        const tileUrl = darkMode
-            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-            : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+        const tileUrl = darkMode ? CONFIG.MAP.TILE_LAYER.DARK : CONFIG.MAP.TILE_LAYER.LIGHT;
 
         this.map.currentTileLayer = L.tileLayer(tileUrl, {
-            maxZoom: CONFIG.MAP.MAX_ZOOM
+            maxZoom: CONFIG.MAP.MAX_ZOOM,
+            attribution: CONFIG.MAP.TILE_LAYER.ATTRIBUTION,
+            tileSize: 256,
+            updateWhenIdle: true,
+            updateWhenZooming: false,
+            keepBuffer: 2
         }).addTo(this.map);
     }
 
-    /**
-     * Adds hospital markers to the map
-     * @async
-     * @param {Hospital[]} hospitals - Array of hospital data
-     * @param {number} chunkSize - Size of each processing chunk
-     */
-    async addMarkers(hospitals, chunkSize = 5) {
+    async addMarkers(hospitals, chunkSize = 10) {
         if (!hospitals?.length) return;
+
+        PerformanceMonitor.startMeasure('addMarkers');
 
         this.markerClusterGroup.clearLayers();
         this.markers.clear();
@@ -373,211 +685,150 @@ class MapManager {
         for (const chunk of chunks) {
             await this.processMarkerChunk(chunk);
         }
+
+        PerformanceMonitor.endMeasure('addMarkers');
     }
 
-    /**
-     * Processes a chunk of markers
-     * @private
-     * @param {Hospital[]} chunk - Array of hospital data to process
-     * @returns {Promise<void>}
-     */
-    processMarkerChunk(chunk) {
+    async processMarkerChunk(chunk) {
         return new Promise(resolve => {
             requestAnimationFrame(() => {
-                chunk.forEach(hospital => {
+                const markers = chunk.map(hospital => {
+                    if (!Utils.validateCoordinates(hospital.lat, hospital.lon)) {
+                        console.warn(`Invalid coordinates for hospital ${hospital.id}`);
+                        return null;
+                    }
+                    
                     const marker = this.createMarker(hospital);
                     this.markers.set(hospital.id, marker);
-                    this.markerClusterGroup.addLayer(marker);
-                });
+                    return marker;
+                }).filter(Boolean);
+
+                this.markerClusterGroup.addLayers(markers);
                 resolve();
             });
         });
     }
 
-    /**
-     * Creates a marker for a hospital
-     * @private
-     * @param {Hospital} hospital - Hospital data
-     * @returns {L.CircleMarker} Leaflet marker instance
-     */
     createMarker(hospital) {
-        const { MARKER } = CONFIG.UI;
         const marker = L.circleMarker([hospital.lat, hospital.lon], {
-            pane: 'markerPane',
-            radius: MARKER.RADIUS,
-            fillColor: CONFIG.UI.COLORS[hospital.status.toUpperCase()],
-            color: "#fff",
-            weight: MARKER.WEIGHT,
-            opacity: MARKER.OPACITY,
-            fillOpacity: MARKER.FILL_OPACITY
+            radius: CONFIG.UI.MARKER.RADIUS,
+            fillColor: CONFIG.UI.COLORS[hospital.status.toUpperCase().replace(/\s+/g, '_')],
+            color: "#ffffff",
+            weight: CONFIG.UI.MARKER.WEIGHT,
+            opacity: CONFIG.UI.MARKER.OPACITY,
+            fillOpacity: CONFIG.UI.MARKER.FILL_OPACITY,
+            pane: 'markerPane'
         });
 
         marker.hospitalData = hospital;
         this.bindPopupToMarker(marker);
+        this.bindTooltipToMarker(marker);
+
+        marker.on('click', () => {
+            AnalyticsManager.trackEvent('Marker', 'Click', hospital.name);
+        });
 
         return marker;
     }
 
-    /**
-     * Binds popup to marker
-     * @private
-     * @param {L.CircleMarker} marker - Marker to bind popup to
-     */
     bindPopupToMarker(marker) {
-        const popup = new PopupManager(marker.hospitalData).createPopup();
-        marker.bindPopup(popup, {
-            autoPan: false,
+        const popup = L.popup({
+            maxWidth: 300,
+            minWidth: 200,
+            className: 'hospital-popup',
+            offset: [0, -5],
+            autoPan: true,
+            autoPanPadding: [50, 50],
             closeButton: true,
             closeOnClick: false
         });
 
-        marker.on('click', (e) => {
-            L.DomEvent.stopPropagation(e);
-            this.closeAllPopupsExcept(marker);
-            marker.openPopup();
+        marker.bindPopup(() => {
+            const content = this.generatePopupContent(marker.hospitalData);
+            popup.setContent(content);
+            return popup;
         });
 
         marker.on('popupopen', () => {
-            PopupManager.initializePopupImage(marker.getPopup().getElement());
+            this.initializePopupImage(marker.getPopup().getElement());
+            AnalyticsManager.trackEvent('Popup', 'Open', marker.hospitalData.name);
         });
     }
 
-    /**
-     * Closes all popups except for specified marker
-     * @param {L.CircleMarker} excludeMarker - Marker to keep open
-     */
-    closeAllPopupsExcept(excludeMarker) {
-        this.markerClusterGroup.eachLayer(layer => {
-            if (layer instanceof L.Marker && layer !== excludeMarker) {
-                layer.closePopup();
-            }
+    bindTooltipToMarker(marker) {
+        marker.bindTooltip(marker.hospitalData.name, {
+            permanent: false,
+            direction: 'top',
+            offset: [0, -10],
+            opacity: 0.9,
+            className: 'hospital-tooltip'
         });
     }
 
-    /**
-     * Updates marker visibility based on filters
-     * @param {MapFilters} filters - Current filter settings
-     * @returns {Object} Bounds and visible marker count
-     */
-    updateMarkersVisibility(filters) {
-        const bounds = L.latLngBounds();
-        let visibleCount = 0;
+    generatePopupContent(hospital) {
+        const { translations, language } = store.getState();
+        const currentTranslations = translations[language] || translations[CONFIG.UI.DEFAULT_LANGUAGE];
 
-        this.markers.forEach(marker => {
-            const visible = this.markerMatchesFilters(marker.hospitalData, filters);
-            if (visible) {
-                bounds.extend(marker.getLatLng());
-                visibleCount++;
-                this.markerClusterGroup.addLayer(marker);
-            } else {
-                this.markerClusterGroup.removeLayer(marker);
-            }
-        });
-
-        return { bounds, visibleCount };
-    }
-
-    /**
-       * Checks if hospital matches current filters (continued)
-       * @private
-       * @param {Hospital} hospital - Hospital to check
-       * @param {MapFilters} filters - Current filters
-       * @returns {boolean} Whether hospital matches filters
-       */
-    markerMatchesFilters(hospital, filters) {
-        const { activeStatus, searchTerm, continent, country, city } = filters;
         const address = Utils.parseAddress(hospital.address);
+        const distance = this.calculateDistanceToUserLocation(hospital);
 
-        if (activeStatus.length && !activeStatus.includes(hospital.status)) return false;
-        if (searchTerm && !hospital.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-        if (continent && Utils.getContinent(hospital.lat, hospital.lon) !== continent) return false;
-        if (country && !address.country.toLowerCase().includes(country.toLowerCase())) return false;
-        if (city && !address.city.toLowerCase().includes(city.toLowerCase())) return false;
-
-        return true;
-    }
-}
-
-/**
- * Manages popup content and behavior
- * @class PopupManager
- */
-class PopupManager {
-    /**
-     * Creates a new PopupManager instance
-     * @param {Hospital} hospitalData - Hospital data for popup
-     */
-    constructor(hospitalData) {
-        this.hospital = hospitalData;
-    }
-
-    /**
-     * Creates a Leaflet popup for the hospital
-     * @returns {L.Popup} Configured popup instance
-     */
-    createPopup() {
-        const { translations } = appStore.getState();
-        return L.popup().setContent(this.generatePopupContent(translations));
-    }
-
-    /**
-     * Generates HTML content for popup
-     * @private
-     * @param {Object} translations - Current language translations
-     * @returns {string} Popup HTML content
-     */
-    generatePopupContent(translations) {
         return `
-      <div class="popup-content">
-        <h3 class="popup-title">${this.hospital.name}</h3>
-        <div class="popup-image-wrapper">
-          <img 
-            src="${CONFIG.UI.IMAGE.DEFAULT}"
-            data-src="${this.hospital.imageUrl}" 
-            alt="${this.hospital.name}"
-            class="popup-image"
-            data-loading-state="${CONFIG.UI.IMAGE.STATES.LOADING}"
-          />
-        </div>
-        <div class="popup-address">
-          <strong>${translations.address || 'Address'}:</strong><br>
-          ${this.hospital.address}
-        </div>
-        <a href="${this.hospital.website}" 
-           target="_blank" 
-           rel="noopener noreferrer" 
-           class="popup-link">
-          ${translations.visitWebsite || 'Visit Website'}
-        </a>
-        <div class="popup-status">
-          <span>${translations.status || 'Status'}:</span>
-          ${this.generateStatusTag()}
-        </div>
-      </div>
-    `;
+            <div class="popup-content">
+                <h3 class="popup-title">${hospital.name}</h3>
+                <div class="popup-image-wrapper">
+                    <img 
+                        src="${CONFIG.UI.IMAGE.DEFAULT}"
+                        data-src="${hospital.imageUrl}" 
+                        alt="${hospital.name}"
+                        class="popup-image"
+                        data-loading-state="${CONFIG.UI.IMAGE.STATES.LOADING}"
+                    />
+                </div>
+                <div class="popup-address">
+                    <strong>${currentTranslations.address || 'Address'}:</strong><br>
+                    ${address.street}<br>
+                    ${address.city}${address.postalCode ? ` (${address.postalCode})` : ''}<br>
+                    ${address.country}
+                    ${distance ? `<br><small>Distance: ${distance} km</small>` : ''}
+                </div>
+                <a href="${hospital.website}" 
+                   target="_blank" 
+                   rel="noopener noreferrer" 
+                   class="popup-link"
+                   onclick="AnalyticsManager.trackEvent('Link', 'Click', 'Website: ${hospital.name}')">
+                    ${currentTranslations.visitWebsite || 'Visit Website'}
+                </a>
+                <div class="popup-status">
+                    <span>${currentTranslations.status || 'Status'}:</span>
+                    <span class="status-tag status-${hospital.status.toLowerCase().replace(/\s+/g, '-')} active">
+                        ${hospital.status}
+                    </span>
+                </div>
+                <div class="popup-actions">
+                    <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${hospital.lat},${hospital.lon}')" 
+                            class="directions-button">
+                        Get Directions
+                    </button>
+                </div>
+            </div>
+        `;
     }
 
-    /**
-     * Generates HTML for status tag
-     * @private
-     * @returns {string} Status tag HTML
-     */
-    generateStatusTag() {
-        const statusClass = this.hospital.status.toLowerCase().replace(/\s+/g, "-");
-        return `
-      <span class="status-tag status-${statusClass} active" 
-            data-status="${this.hospital.status}">
-        ${this.hospital.status}
-      </span>
-    `;
+    calculateDistanceToUserLocation(hospital) {
+        const { userLocation } = store.getState();
+        if (!userLocation) return null;
+
+        const distance = Utils.calculateDistance(
+            userLocation.lat,
+            userLocation.lng,
+            hospital.lat,
+            hospital.lon
+        );
+
+        return Math.round(distance * 10) / 10; // Round to 1 decimal place
     }
 
-    /**
-     * Initializes and loads popup image
-     * @static
-     * @param {HTMLElement} popupElement - Popup DOM element
-     */
-    static initializePopupImage(popupElement) {
+    initializePopupImage(popupElement) {
         if (!popupElement) return;
 
         const img = popupElement.querySelector('.popup-image');
@@ -587,12 +838,13 @@ class PopupManager {
         if (loadingState === CONFIG.UI.IMAGE.STATES.SUCCESS) return;
 
         const imageLoader = new Image();
-
+        
         imageLoader.onload = () => {
             requestAnimationFrame(() => {
                 if (img.parentElement) {
                     img.src = img.dataset.src;
                     img.setAttribute('data-loading-state', CONFIG.UI.IMAGE.STATES.SUCCESS);
+                    AnalyticsManager.trackEvent('Image', 'Load', 'Success');
                 }
             });
         };
@@ -602,6 +854,7 @@ class PopupManager {
                 if (img.parentElement) {
                     img.src = CONFIG.UI.IMAGE.DEFAULT;
                     img.setAttribute('data-loading-state', CONFIG.UI.IMAGE.STATES.ERROR);
+                    AnalyticsManager.trackEvent('Image', 'Load', 'Error');
                 }
             });
         };
@@ -611,37 +864,98 @@ class PopupManager {
             imageLoader.src = img.dataset.src;
         }
     }
+
+    updateVisibleMarkers() {
+        const bounds = this.map.getBounds();
+        const visibleMarkers = [];
+
+        this.markers.forEach(marker => {
+            if (bounds.contains(marker.getLatLng())) {
+                visibleMarkers.push(marker.hospitalData);
+            }
+        });
+
+        store.setState({ visibleHospitals: visibleMarkers });
+        AnalyticsManager.trackEvent('Map', 'VisibleMarkers', `Count: ${visibleMarkers.length}`);
+    }
+
+    fitMarkersInView(markers = null) {
+        const markerArray = markers || Array.from(this.markers.values());
+        if (markerArray.length === 0) return;
+
+        const bounds = L.latLngBounds(markerArray.map(m => m.getLatLng()));
+        this.map.fitBounds(bounds, {
+            padding: CONFIG.MAP.BOUNDS_PADDING,
+            maxZoom: this.map.getZoom()
+        });
+    }
+
+    getUserLocation() {
+        return ErrorHandler.wrapAsync(async () => {
+            const position = await Utils.getCurrentPosition();
+            const { latitude: lat, longitude: lng } = position.coords;
+            
+            store.setState({ userLocation: { lat, lng } });
+            
+            // Add user marker if not exists
+            if (!this.userMarker) {
+                this.userMarker = L.marker([lat, lng], {
+                    icon: L.divIcon({
+                        className: 'user-location-marker',
+                        html: '<div class="pulse"></div>'
+                    })
+                }).addTo(this.map);
+            } else {
+                this.userMarker.setLatLng([lat, lng]);
+            }
+
+            this.map.setView([lat, lng], CONFIG.MAP.DEFAULT_ZOOM);
+            AnalyticsManager.trackEvent('Location', 'Get', 'Success');
+        });
+    }
+
+    destroy() {
+        if (this.map) {
+            this.map.off('click', this.handleMapClick);
+            this.map.off('zoomend', this.handleZoomEnd);
+            this.map.off('moveend', this.handleMoveEnd);
+            this.map.remove();
+        }
+
+        this.markers.clear();
+        this.markerClusterGroup = null;
+        this.map = null;
+    }
 }
 
 /**
- * Manages user interface elements and interactions
- * @class UIManager
+ * UI Manager class
  */
 class UIManager {
-    /**
-     * Creates a new UIManager instance
-     * @param {MapManager} mapManager - Reference to MapManager instance
-     */
     constructor(mapManager) {
         this.mapManager = mapManager;
         this.elements = {};
-        this.debouncedUpdateMarkers = Utils.debounce(this.updateMarkers.bind(this), 150);
+        this.boundEventHandlers = {
+            resize: Utils.debounce(this.handleResize.bind(this), CONFIG.UI.ANIMATION.DEBOUNCE_DELAY),
+            orientationchange: this.handleOrientationChange.bind(this),
+            escape: this.handleEscapeKey.bind(this),
+            updateMarkers: Utils.debounce(this.updateFilters.bind(this), 300),
+            clicks: {},
+            keydowns: {}
+        };
+        
+        this.init();
     }
 
-    /**
-     * Initializes UI elements and event listeners
-     */
     init() {
         this.initElements();
-        this.initEventListeners();
+        this.setupEventListeners();
         this.loadUserPreferences();
         this.setupAccessibility();
+        this.setupThemeDetection();
+        this.setupResizeObserver();
     }
 
-    /**
-     * Initializes DOM element references
-     * @private
-     */
     initElements() {
         const elements = [
             'language-select',
@@ -651,7 +965,10 @@ class UIManager {
             'hospital-search',
             'theme-toggle',
             'legend-toggle',
-            'hamburger-menu'
+            'hamburger-menu',
+            'controls',
+            'error-message',
+            'no-hospitals-message'
         ];
 
         elements.forEach(id => {
@@ -662,80 +979,243 @@ class UIManager {
         });
     }
 
-    /**
-     * Sets up event listeners for UI elements
-     * @private
-     */
-    initEventListeners() {
+    setupEventListeners() {
         // Window events
-        const windowEvents = {
-            'resize': Utils.debounce(this.handleResize.bind(this), 250),
-            'orientationchange': this.handleOrientationChange.bind(this)
-        };
+        window.addEventListener('resize', this.boundEventHandlers.resize, { passive: true });
+        window.addEventListener('orientationchange', this.boundEventHandlers.orientationchange, { passive: true });
+        window.addEventListener('keydown', this.boundEventHandlers.escape);
 
-        Object.entries(windowEvents).forEach(([event, handler]) => {
-            window.addEventListener(event, handler);
+        // Theme detection
+        window.matchMedia('(prefers-color-scheme: dark)').addListener(e => {
+            if (!Utils.loadPreferences()?.darkMode) {
+                this.setDarkMode(e.matches);
+            }
         });
 
-        // Element events
+        // Language selector
         if (this.elements['language-select']) {
-            this.elements['language-select'].addEventListener('change', this.handleLanguageChange.bind(this));
+            const languageHandler = this.handleLanguageChange.bind(this);
+            this.elements['language-select'].addEventListener('change', languageHandler);
+            this.boundEventHandlers.clicks['language-select'] = languageHandler;
         }
 
+        // Theme toggle
         if (this.elements['theme-toggle']) {
-            this.elements['theme-toggle'].addEventListener('click', this.toggleTheme.bind(this));
+            const themeHandler = this.toggleTheme.bind(this);
+            this.elements['theme-toggle'].addEventListener('click', themeHandler);
+            this.addKeyboardSupport(this.elements['theme-toggle'], themeHandler);
+            this.boundEventHandlers.clicks['theme-toggle'] = themeHandler;
         }
 
-        // Filter events
+        // Legend toggle
+        if (this.elements['legend-toggle']) {
+            const legendHandler = this.toggleLegend.bind(this);
+            this.elements['legend-toggle'].addEventListener('click', legendHandler);
+            this.addKeyboardSupport(this.elements['legend-toggle'], legendHandler);
+            this.boundEventHandlers.clicks['legend-toggle'] = legendHandler;
+        }
+
+        // Hamburger menu
+        if (this.elements['hamburger-menu']) {
+            const menuHandler = this.toggleControls.bind(this);
+            this.elements['hamburger-menu'].addEventListener('click', menuHandler);
+            this.addKeyboardSupport(this.elements['hamburger-menu'], menuHandler);
+            this.boundEventHandlers.clicks['hamburger-menu'] = menuHandler;
+        }
+
+        // Filter inputs
         const filterElements = ['continent-select', 'country-filter', 'city-filter', 'hospital-search'];
         filterElements.forEach(id => {
             if (this.elements[id]) {
-                this.elements[id].addEventListener('input', this.debouncedUpdateMarkers);
+                this.elements[id].addEventListener('input', this.boundEventHandlers.updateMarkers);
+                
+                // Mobile keyboard handling
+                this.elements[id].addEventListener('focus', () => {
+                    if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
+                        document.body.classList.add('keyboard-open');
+                        this.mapManager.map.invalidateSize();
+                    }
+                });
+
+                this.elements[id].addEventListener('blur', () => {
+                    if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
+                        document.body.classList.remove('keyboard-open');
+                        this.mapManager.map.invalidateSize();
+                    }
+                });
+            }
+        });
+
+        // Status filter tags
+        document.querySelectorAll('.status-tag').forEach(tag => {
+            const statusHandler = (e) => this.handleStatusTagClick(e, tag);
+            tag.addEventListener('click', statusHandler);
+            this.addKeyboardSupport(tag, statusHandler);
+            this.boundEventHandlers.clicks[`status-${tag.getAttribute('status')}`] = statusHandler;
+        });
+
+        // Clear filters button
+        const clearFilters = document.getElementById('clear-filters');
+        if (clearFilters) {
+            clearFilters.addEventListener('click', () => this.clearFilters());
+        }
+
+        // User location button
+        const locationButton = document.getElementById('get-location');
+        if (locationButton) {
+            locationButton.addEventListener('click', () => this.mapManager.getUserLocation());
+        }
+    }
+
+    addKeyboardSupport(element, handler) {
+        element.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handler(e);
             }
         });
     }
 
-    /**
-     * Handles window resize events
-     * @private
-     */
+    setupAccessibility() {
+        Object.entries(this.elements).forEach(([key, element]) => {
+            if (!element) return;
+
+            // Add proper ARIA labels
+            const label = key.replace(/([A-Z])/g, ' $1').toLowerCase().trim();
+            element.setAttribute('aria-label', label);
+
+            // Add keyboard navigation
+            if (['theme-toggle', 'legend-toggle', 'hamburger-menu'].includes(key)) {
+                element.setAttribute('role', 'button');
+                element.setAttribute('tabindex', '0');
+            }
+        });
+
+        // Make status tags keyboard accessible
+        document.querySelectorAll('.status-tag').forEach(tag => {
+            tag.setAttribute('role', 'button');
+            tag.setAttribute('tabindex', '0');
+            tag.setAttribute('aria-pressed', 'false');
+        });
+    }
+
+    setupThemeDetection() {
+        const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const savedPreferences = Utils.loadPreferences();
+
+        if (savedPreferences?.darkMode !== undefined) {
+            this.setDarkMode(savedPreferences.darkMode);
+        } else {
+            this.setDarkMode(darkModeMediaQuery.matches);
+        }
+    }
+
+    setupResizeObserver() {
+        if ('ResizeObserver' in window) {
+            this.resizeObserver = new ResizeObserver(Utils.throttle(() => {
+                if (this.mapManager.map) {
+                    this.mapManager.map.invalidateSize();
+                }
+            }, 250));
+
+            const mapContainer = document.getElementById('map');
+            if (mapContainer) {
+                this.resizeObserver.observe(mapContainer);
+            }
+        }
+    }
+
+    handleEscapeKey(e) {
+        if (e.key === 'Escape') {
+            // Close any open popups
+            if (this.mapManager.map) {
+                this.mapManager.map.closePopup();
+            }
+            // Close controls on mobile
+            if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
+                this.hideControls();
+            }
+            // Remove focus
+            document.activeElement?.blur();
+        }
+    }
+
     handleResize() {
         const isMobile = window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT;
         document.body.classList.toggle('mobile-view', isMobile);
+        
         if (this.mapManager.map) {
             this.mapManager.map.invalidateSize();
         }
+        
         this.updateLayout();
+        
+        AnalyticsManager.trackEvent('UI', 'Resize', `Width: ${window.innerWidth}`);
     }
 
-    /**
-     * Updates layout based on current window size
-     * @private
-     */
-    updateLayout() {
-        const isMobile = window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT;
-        const isLandscape = window.innerWidth > window.innerHeight;
-
-        this.adjustControlsPosition(isMobile, isLandscape);
-        this.adjustMapSize(isMobile, isLandscape);
-        this.adjustLegendPosition(isMobile, isLandscape);
+    handleOrientationChange() {
+        setTimeout(() => {
+            this.handleResize();
+        }, 100);
     }
 
-    /**
-     * Updates markers based on current filters
-     * @private
-     */
-    updateMarkers() {
-        const filters = this.getCurrentFilters();
-        const { bounds, visibleCount } = this.mapManager.updateMarkersVisibility(filters);
+    handleStatusTagClick(e, tag) {
+        e.preventDefault();
+        e.stopPropagation();
 
-        this.updateVisibilityMessage(visibleCount);
-        this.updateMapBounds(bounds, visibleCount);
+        const status = tag.getAttribute('status');
+        const { activeStatus } = store.getState();
+        
+        let newActiveStatus;
+        const isActive = tag.classList.contains('active');
 
+        if (isActive) {
+            newActiveStatus = activeStatus.filter(s => s !== status);
+            tag.classList.remove('active');
+        } else {
+            newActiveStatus = [...activeStatus, status];
+            tag.classList.add('active');
+        }
+
+        tag.setAttribute('aria-pressed', (!isActive).toString());
+        
+        store.setState({ activeStatus: newActiveStatus });
+        
         Utils.savePreferences({
             ...Utils.loadPreferences(),
-            ...filters
+            activeStatus: newActiveStatus
         });
+
+        this.updateFilters();
+        AnalyticsManager.trackEvent('Filter', 'StatusToggle', `${status}: ${!isActive}`);
+    }
+
+    /**
+     * Updates all filters and markers
+     * @private
+     */
+    updateFilters() {
+        const filters = this.getCurrentFilters();
+        store.setState({ filters });
+
+        const filteredHospitals = this.filterHospitals(filters);
+        
+        // Update markers visibility
+        this.updateMarkerVisibility(filteredHospitals);
+        
+        // Update gauges
+        GaugeManager.updateAllGauges(filteredHospitals);
+        
+        // Update URL params
+        this.updateURLParams(filters);
+        
+        // Save to preferences
+        Utils.savePreferences({
+            ...Utils.loadPreferences(),
+            filters
+        });
+
+        AnalyticsManager.trackEvent('Filter', 'Update', `Results: ${filteredHospitals.length}`);
     }
 
     /**
@@ -745,7 +1225,7 @@ class UIManager {
      */
     getCurrentFilters() {
         return {
-            activeStatus: appStore.getState().activeStatus,
+            activeStatus: store.getState().activeStatus,
             searchTerm: this.elements['hospital-search']?.value?.toLowerCase() || '',
             continent: this.elements['continent-select']?.value || '',
             country: this.elements['country-filter']?.value?.toLowerCase() || '',
@@ -754,248 +1234,332 @@ class UIManager {
     }
 
     /**
-     * Updates visibility message
+     * Filters hospitals based on current filters
      * @private
-     * @param {number} visibleCount - Number of visible markers
+     * @param {MapFilters} filters - Current filters
+     * @returns {Hospital[]} Filtered hospitals
      */
-    updateVisibilityMessage(visibleCount) {
-        const messageElement = document.getElementById('no-hospitals-message');
-        if (messageElement) {
-            messageElement.style.display = visibleCount === 0 ? 'block' : 'none';
-        }
+    filterHospitals(filters) {
+        const { hospitals } = store.getState();
+        
+        return hospitals.filter(hospital => {
+            // Status filter
+            if (filters.activeStatus.length && !filters.activeStatus.includes(hospital.status)) {
+                return false;
+            }
+
+            // Search term
+            if (filters.searchTerm && !hospital.name.toLowerCase().includes(filters.searchTerm)) {
+                return false;
+            }
+
+            // Location filters
+            const address = Utils.parseAddress(hospital.address);
+            
+            if (filters.continent && 
+                Utils.getContinent(hospital.lat, hospital.lon) !== filters.continent) {
+                return false;
+            }
+            
+            if (filters.country && 
+                !address.country.toLowerCase().includes(filters.country)) {
+                return false;
+            }
+            
+            if (filters.city && 
+                !address.city.toLowerCase().includes(filters.city)) {
+                return false;
+            }
+
+            return true;
+        });
     }
 
     /**
-     * Updates map bounds based on visible markers
+     * Updates marker visibility based on filtered hospitals
      * @private
-     * @param {L.LatLngBounds} bounds - Bounds of visible markers
-     * @param {number} visibleCount - Number of visible markers
+     * @param {Hospital[]} filteredHospitals - Filtered hospitals
      */
-    updateMapBounds(bounds, visibleCount) {
-        if (visibleCount === 0) {
-            this.mapManager.map.setView(CONFIG.MAP.DEFAULT_CENTER, CONFIG.MAP.DEFAULT_ZOOM);
-        } else if (!this.mapManager.map.getBounds().intersects(bounds)) {
-            this.mapManager.map.fitBounds(bounds, {
-                padding: [50, 50],
-                maxZoom: this.mapManager.map.getZoom()
-            });
-        }
-    }
-
-    /**
-   * Updates map bounds based on visible markers
-   * @private
-   * @param {L.LatLngBounds} bounds - Bounds of visible markers
-   * @param {number} visibleCount - Number of visible markers
-   */
-    updateMapBounds(bounds, visibleCount) {
-        if (visibleCount === 0) {
-            this.mapManager.map.setView(CONFIG.MAP.DEFAULT_CENTER, CONFIG.MAP.DEFAULT_ZOOM);
-        } else if (!this.mapManager.map.getBounds().intersects(bounds)) {
-            this.mapManager.map.fitBounds(bounds, {
-                padding: [50, 50],
-                maxZoom: this.mapManager.map.getZoom()
-            });
-        }
-    }
-
-    // INSÉRER ICI LES NOUVELLES MÉTHODES
-
-    /**
-     * Adjusts controls position based on screen size
-     * @private
-     * @param {boolean} isMobile - Whether device is mobile
-     * @param {boolean} isLandscape - Whether device is in landscape mode
-     */
-    adjustControlsPosition(isMobile, isLandscape) {
-        const controls = document.querySelector('.controls');
-        if (!controls) return;
-
-        if (isMobile) {
-            controls.style.left = isLandscape ? '4.5rem' : '3.5rem';
-            controls.style.width = isLandscape ? '300px' : 'calc(100% - 5rem)';
-        } else {
-            controls.style.left = '4rem';
-            controls.style.width = '300px';
-        }
-    }
-
-    /**
-     * Adjusts map container size
-     * @private
-     * @param {boolean} isMobile - Whether device is mobile
-     * @param {boolean} isLandscape - Whether device is in landscape mode
-     */
-    adjustMapSize(isMobile, isLandscape) {
-        const mapContainer = document.getElementById(this.mapManager.containerId);
-        if (!mapContainer) return;
-
-        if (isMobile && isLandscape) {
-            mapContainer.style.height = '100vh';
-            mapContainer.style.width = '100vw';
-        } else {
-            mapContainer.style.height = '';
-            mapContainer.style.width = '';
-        }
-    }
-
-    /**
-     * Adjusts legend position based on screen size
-     * @private
-     * @param {boolean} isMobile - Whether device is mobile
-     * @param {boolean} isLandscape - Whether device is in landscape mode
-     */
-    adjustLegendPosition(isMobile, isLandscape) {
-        const legend = document.querySelector('.legend-container');
-        if (!legend) return;
-
-        if (isMobile) {
-            legend.style.left = isLandscape ? '4.5rem' : '0.625rem';
-            legend.style.bottom = isLandscape ? '1rem' : '10rem';
-        } else {
-            legend.style.left = '4rem';
-            legend.style.bottom = '1rem';
-        }
-    }
-
-    /**
-     * Loads saved user preferences from storage
-     * @private
-     */
-    loadUserPreferences() {
-        const preferences = Utils.loadPreferences();
-        if (!preferences) return;
-
-        const { language, darkMode, activeStatus } = preferences;
-
-        if (language && this.elements['language-select']) {
-            this.elements['language-select'].value = language;
-        }
-
-        if (darkMode !== undefined) {
-            document.body.classList.toggle('dark-mode', darkMode);
-            this.mapManager.updateTileLayer();
-        }
-
-        if (Array.isArray(activeStatus)) {
-            appStore.setState({ activeStatus });
-        }
-    }
-
-    /**
-     * Sets up accessibility features
-     * @private
-     */
-    setupAccessibility() {
-        Object.entries(this.elements).forEach(([key, element]) => {
-            if (!element) return;
-
-            // Add proper ARIA labels
-            const label = key.replace(/([A-Z])/g, ' $1')
-                .toLowerCase()
-                .trim();
-            element.setAttribute('aria-label', label);
-
-            // Add keyboard navigation where appropriate
-            if (['theme-toggle', 'legend-toggle', 'hamburger-menu'].includes(key)) {
-                element.setAttribute('role', 'button');
-                element.setAttribute('tabindex', '0');
-                element.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        element.click();
-                    }
-                });
+    updateMarkerVisibility(filteredHospitals) {
+        const filteredIds = new Set(filteredHospitals.map(h => h.id));
+        
+        this.mapManager.markers.forEach(marker => {
+            const isVisible = filteredIds.has(marker.hospitalData.id);
+            if (isVisible) {
+                this.mapManager.markerClusterGroup.addLayer(marker);
+            } else {
+                this.mapManager.markerClusterGroup.removeLayer(marker);
             }
         });
+
+        // Update no results message
+        const noResults = this.elements['no-hospitals-message'];
+        if (noResults) {
+            noResults.style.display = filteredHospitals.length === 0 ? 'block' : 'none';
+        }
+
+        // Fit markers in view if any visible
+        if (filteredHospitals.length > 0) {
+            this.mapManager.fitMarkersInView(
+                Array.from(this.mapManager.markers.values())
+                    .filter(m => filteredIds.has(m.hospitalData.id))
+            );
+        }
     }
 
     /**
-     * Handles orientation change events
+     * Updates URL parameters based on current filters
      * @private
+     * @param {MapFilters} filters - Current filters
      */
-    handleOrientationChange() {
-        setTimeout(() => {
-            this.handleResize();
-        }, 100); // Small delay to ensure dimensions are updated
-    }
-
-    /**
-     * Handles language change events
-     * @private
-     * @param {Event} event - Change event
-     */
-    handleLanguageChange(event) {
-        const language = event.target.value;
-        appStore.setState({ language });
-        Utils.savePreferences({
-            ...Utils.loadPreferences(),
-            language
+    updateURLParams(filters) {
+        const params = new URLSearchParams(window.location.search);
+        
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value && (typeof value === 'string' || Array.isArray(value))) {
+                params.set(key, Array.isArray(value) ? value.join(',') : value);
+            } else {
+                params.delete(key);
+            }
         });
+
+        const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+        window.history.replaceState({}, '', newUrl);
     }
 
     /**
-     * Toggles theme between light and dark mode
+     * Clears all filters
+     */
+    clearFilters() {
+        // Clear input values
+        ['hospital-search', 'country-filter', 'city-filter'].forEach(id => {
+            if (this.elements[id]) {
+                this.elements[id].value = '';
+            }
+        });
+
+        // Reset selects
+        ['continent-select'].forEach(id => {
+            if (this.elements[id]) {
+                this.elements[id].selectedIndex = 0;
+            }
+        });
+
+        // Clear status filters
+        document.querySelectorAll('.status-tag').forEach(tag => {
+            tag.classList.remove('active');
+            tag.setAttribute('aria-pressed', 'false');
+        });
+
+        store.setState({ activeStatus: [] });
+
+        // Update filters
+        this.updateFilters();
+        AnalyticsManager.trackEvent('Filter', 'Clear');
+    }
+
+    /**
+     * Updates layout based on screen size
      * @private
      */
-    toggleTheme() {
-        const { darkMode } = appStore.getState();
-        const newDarkMode = !darkMode;
+    updateLayout() {
+        const isMobile = window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT;
+        const isLandscape = window.innerWidth > window.innerHeight;
 
-        document.body.classList.toggle('dark-mode', newDarkMode);
-        appStore.setState({ darkMode: newDarkMode });
+        this.adjustControlsPosition(isMobile, isLandscape);
+        this.adjustLegendPosition(isMobile, isLandscape);
+        this.adjustChartPosition(isMobile, isLandscape);
+    }
+
+    /**
+     * Toggles controls visibility
+     * @private
+     */
+    toggleControls() {
+        const controls = this.elements['controls'];
+        const hamburger = this.elements['hamburger-menu'];
+        
+        if (!controls || !hamburger) return;
+
+        const isVisible = controls.classList.contains('visible');
+        controls.classList.toggle('visible');
+        hamburger.classList.toggle('active');
+        hamburger.setAttribute('aria-expanded', (!isVisible).toString());
+
+        AnalyticsManager.trackEvent('UI', 'ToggleControls', isVisible ? 'Hide' : 'Show');
+    }
+
+    /**
+     * Sets dark mode
+     * @param {boolean} enabled - Whether to enable dark mode
+     */
+    setDarkMode(enabled) {
+        document.body.classList.toggle('dark-mode', enabled);
+        store.setState({ darkMode: enabled });
         this.mapManager.updateTileLayer();
 
         Utils.savePreferences({
             ...Utils.loadPreferences(),
-            darkMode: newDarkMode
+            darkMode: enabled
         });
+
+        AnalyticsManager.trackEvent('UI', 'DarkMode', enabled ? 'Enable' : 'Disable');
+    }
+
+    /**
+     * Updates translations
+     * @param {string} language - Language code
+     */
+    updateTranslations(language) {
+        const { translations } = store.getState();
+        const currentTranslations = translations[language] || translations[CONFIG.UI.DEFAULT_LANGUAGE];
+
+        document.querySelectorAll('[data-translate]').forEach(element => {
+            const key = element.getAttribute('data-translate');
+            if (currentTranslations[key]) {
+                if (element.tagName === 'INPUT') {
+                    element.placeholder = currentTranslations[key];
+                } else {
+                    element.textContent = currentTranslations[key];
+                }
+            }
+        });
+
+        document.documentElement.setAttribute('lang', language);
+        AnalyticsManager.trackEvent('UI', 'LanguageChange', language);
+    }
+
+    /**
+     * Cleans up UI manager
+     */
+    destroy() {
+        // Remove window listeners
+        window.removeEventListener('resize', this.boundEventHandlers.resize);
+        window.removeEventListener('orientationchange', this.boundEventHandlers.orientationchange);
+        window.removeEventListener('keydown', this.boundEventHandlers.escape);
+
+        // Remove ResizeObserver
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+        }
+
+        // Clear all elements references
+        this.elements = {};
+        this.boundEventHandlers = {};
     }
 }
 
 /**
- * Initializes the application
- * @async
- * @function
- * @returns {Promise<void>}
+ * Main application initialization
  */
 async function initApplication() {
     try {
-        if (appStore.getState().isInitialized) return;
+        PerformanceMonitor.startMeasure('appInit');
 
+        // Prevent double initialization
+        if (store.getState().isInitialized) return;
+
+        // Show loading state
+        const loader = document.getElementById('initial-loader');
+        if (loader) loader.style.display = 'block';
+
+        // Initialize managers
         const mapManager = new MapManager('map');
         const uiManager = new UIManager(mapManager);
 
+        // Initialize map
         mapManager.init();
-        uiManager.init();
 
-        const [hospitals, translations] = await Promise.all([
-            Utils.loadJSON('/api/hospitals'),
-            Utils.loadJSON('/api/translations')
-        ]);
+        // Initialize gauges
+        GaugeManager.initGauges();
 
-        appStore.setState({
-            hospitals,
-            translations,
-            isInitialized: true
-        });
+        // Load user preferences
+        const preferences = Utils.loadPreferences();
+        if (preferences?.language) {
+            uiManager.updateTranslations(preferences.language);
+        }
 
+        // Add markers to map
         await mapManager.addMarkers(hospitals);
-        uiManager.updateMarkers();
+        
+        // Update gauges
+        GaugeManager.updateAllGauges(hospitals);
+
+        // Apply initial filters from URL
+        await applyInitialFilters(uiManager);
+
+        // Hide loading state
+        if (loader) loader.style.display = 'none';
+
+        // Mark as initialized
+        store.setState({ isInitialized: true });
+
+        PerformanceMonitor.endMeasure('appInit');
+        AnalyticsManager.trackEvent('App', 'Initialize', 'Success');
+
+        console.log('Application initialized successfully');
 
     } catch (error) {
-        console.error('Initialization error:', error);
-        throw new Error('Failed to initialize application');
+        ErrorHandler.handle(error, 'Application Initialization');
+        throw error;
     }
 }
 
-// Export necessary functions and classes
+/**
+ * Applies initial filters from URL parameters
+ * @param {UIManager} uiManager - UI manager instance
+ */
+async function applyInitialFilters(uiManager) {
+    const params = new URLSearchParams(window.location.search);
+    
+    // Apply status filters
+    const statusParam = params.get('activeStatus');
+    if (statusParam) {
+        const statuses = statusParam.split(',');
+        store.setState({ activeStatus: statuses });
+        
+        document.querySelectorAll('.status-tag').forEach(tag => {
+            const status = tag.getAttribute('status');
+            const isActive = statuses.includes(status);
+            tag.classList.toggle('active', isActive);
+            tag.setAttribute('aria-pressed', isActive.toString());
+        });
+    }
+
+    // Apply search term
+    const searchTerm = params.get('searchTerm');
+    if (searchTerm && uiManager.elements['hospital-search']) {
+        uiManager.elements['hospital-search'].value = searchTerm;
+    }
+
+    // Apply location filters
+    ['continent', 'country', 'city'].forEach(param => {
+        const value = params.get(param);
+        if (value && uiManager.elements[`${param}-filter`]) {
+            uiManager.elements[`${param}-filter`].value = value;
+        }
+    });
+
+    // Update filters
+    uiManager.updateFilters();
+}
+
+// Initialize application when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApplication);
+} else {
+    initApplication();
+}
+
+// Export for module usage
 export {
     initApplication,
     MapManager,
-    PopupManager,
     UIManager,
     Utils,
-    appStore,
-    CONFIG
+    store,
+    CONFIG,
+    AnalyticsManager,
+    PerformanceMonitor,
+    ErrorHandler
 };

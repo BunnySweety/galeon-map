@@ -1,3 +1,9 @@
+/**
+ * Translations for the application
+ * @module translations
+ */
+'use strict';
+
 const translations = {
     en: { // English
         continent: "Continent",
@@ -580,3 +586,9 @@ const translations = {
         noHospitalsMessage: "Geen ziekenhuizen voldoen aan de huidige filters."
     }
 };
+
+// Ensure translations are globally available
+window.translations = translations;
+
+// Export for module usage
+export { translations };
