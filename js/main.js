@@ -5,6 +5,13 @@
  */
 
 /**
+ * Import required modules
+ */
+import { GaugeManager } from './gauge.js';
+import { translations } from './translations.js';
+import { hospitals } from './hospitals.js';
+
+/**
  * @typedef {Object} Hospital
  * @property {string} id - Unique hospital identifier
  * @property {string} name - Hospital name
@@ -34,6 +41,85 @@
  * @property {string} country - Selected country
  * @property {string} city - Selected city
  */
+
+/**
+ * Global application store for state management
+ * @class Store
+ */
+class Store {
+    /**
+     * Creates a new Store instance
+     * @param {Object} initialState - Initial store state
+     */
+    constructor(initialState = {}) {
+        this.state = initialState;
+        this.initialState = { ...initialState };
+        this.listeners = new Set();
+        this.history = [];
+        this.maxHistoryLength = 10;
+    }
+
+    /**
+     * Gets current state
+     * @returns {Object} Current state
+     */
+    getState() {
+        return this.state;
+    }
+
+    /**
+     * Updates store state
+     * @param {Object} newState - New state to merge
+     * @param {boolean} [recordHistory=true] - Whether to record in history
+     */
+    setState(newState, recordHistory = true) {
+        if (recordHistory) {
+            this.history.push({ ...this.state });
+            if (this.history.length > this.maxHistoryLength) {
+                this.history.shift();
+            }
+        }
+
+        const oldState = { ...this.state };
+        this.state = { ...this.state, ...newState };
+
+        if (JSON.stringify(oldState) !== JSON.stringify(this.state)) {
+            this.notify();
+        }
+    }
+
+    /**
+     * Subscribes to state changes
+     * @param {Function} listener - Callback function
+     * @returns {Function} Unsubscribe function
+     */
+    subscribe(listener) {
+        this.listeners.add(listener);
+        return () => this.listeners.delete(listener);
+    }
+
+    /**
+     * Notifies all listeners of state change
+     * @private
+     */
+    notify() {
+        this.listeners.forEach(listener => {
+            try {
+                listener(this.state);
+            } catch (error) {
+                console.error('Error in store listener:', error);
+            }
+        });
+    }
+
+    /**
+     * Resets store to initial state
+     */
+    reset() {
+        this.history = [];
+        this.setState(this.initialState, false);
+    }
+}
 
 /**
  * Application configuration constants
@@ -109,107 +195,7 @@ const CONFIG = {
 };
 
 /**
- * Import required modules
- */
-import { GaugeManager } from './gauge.js';
-import { translations } from './translations.js';
-import { hospitals } from './hospitals.js';
-
-/**
- * Global application store
- * @class Store
- */
-class Store {
-    /**
-     * Creates a new Store instance
-     * @param {Object} initialState - Initial store state
-     */
-    constructor(initialState = {}) {
-        this.state = initialState;
-        this.listeners = new Set();
-        this.history = [];
-        this.maxHistoryLength = 10;
-    }
-
-    /**
-     * Gets current state
-     * @returns {Object} Current state
-     */
-    getState() {
-        return this.state;
-    }
-
-    /**
-     * Updates store state
-     * @param {Object} newState - Partial state update
-     * @param {boolean} [recordHistory=true] - Whether to record in history
-     * @fires Store#stateChange
-     */
-    setState(newState, recordHistory = true) {
-        if (recordHistory) {
-            this.history.push({ ...this.state });
-            if (this.history.length > this.maxHistoryLength) {
-                this.history.shift();
-            }
-        }
-
-        const oldState = { ...this.state };
-        this.state = { ...this.state, ...newState };
-        
-        // Notify listeners only if state actually changed
-        if (JSON.stringify(oldState) !== JSON.stringify(this.state)) {
-            this.notify();
-        }
-    }
-
-    /**
-     * Undo last state change
-     * @returns {boolean} Whether undo was successful
-     */
-    undo() {
-        if (this.history.length === 0) return false;
-        
-        const previousState = this.history.pop();
-        this.setState(previousState, false);
-        return true;
-    }
-
-    /**
-     * Subscribes to state changes
-     * @param {Function} listener - Callback function
-     * @returns {Function} Unsubscribe function
-     */
-    subscribe(listener) {
-        this.listeners.add(listener);
-        return () => this.listeners.delete(listener);
-    }
-
-    /**
-     * Notifies all listeners of state change
-     * @private
-     */
-    notify() {
-        this.listeners.forEach(listener => {
-            try {
-                listener(this.state);
-            } catch (error) {
-                console.error('Error in store listener:', error);
-            }
-        });
-    }
-
-    /**
-     * Resets store to initial state
-     */
-    reset() {
-        this.history = [];
-        this.setState(this.initialState, false);
-    }
-}
-
-/**
- * Global store instance
- * @type {Store}
+ * Global store for application state
  */
 const store = new Store({
     map: null,
@@ -237,6 +223,8 @@ const store = new Store({
     }
 });
 
+
+
 /**
  * Utility functions
  * @namespace Utils
@@ -250,7 +238,7 @@ const Utils = {
      */
     debounce(fn, wait) {
         let timeout;
-        return function(...args) {
+        return function (...args) {
             clearTimeout(timeout);
             timeout = setTimeout(() => fn.apply(this, args), wait);
         };
@@ -264,7 +252,7 @@ const Utils = {
      */
     throttle(fn, limit) {
         let inThrottle;
-        return function(...args) {
+        return function (...args) {
             if (!inThrottle) {
                 fn.apply(this, args);
                 inThrottle = true;
@@ -332,7 +320,7 @@ const Utils = {
         }
 
         const parts = address.split(',').map(part => part.trim());
-        
+
         // Extract postal code if present
         const postalMatch = parts.join(' ').match(/\b[A-Z0-9]{4,10}\b/i);
         const postalCode = postalMatch ? postalMatch[0] : '';
@@ -354,8 +342,8 @@ const Utils = {
      */
     validateCoordinates(lat, lon) {
         return !isNaN(lat) && !isNaN(lon) &&
-               lat >= -90 && lat <= 90 &&
-               lon >= -180 && lon <= 180;
+            lat >= -90 && lat <= 90 &&
+            lon >= -180 && lon <= 180;
     },
 
     /**
@@ -387,7 +375,6 @@ const Utils = {
             const data = JSON.parse(saved);
             const age = Date.now() - (data.timestamp || 0);
 
-            // Clear if data is too old or version mismatch
             if (age > CONFIG.STORAGE.MAX_AGE || data.version !== CONFIG.STORAGE.VERSION) {
                 localStorage.removeItem(CONFIG.STORAGE.PREFERENCES_KEY);
                 return null;
@@ -449,17 +436,16 @@ const Utils = {
         const R = 6371; // Earth's radius in km
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-                  Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
     }
 };
 
 /**
  * Analytics Manager
- * @class AnalyticsManager
  */
 class AnalyticsManager {
     static trackEvent(category, action, label = null, value = null) {
@@ -480,7 +466,6 @@ class AnalyticsManager {
 
 /**
  * Performance Monitor
- * @class PerformanceMonitor
  */
 class PerformanceMonitor {
     static measures = new Map();
@@ -513,7 +498,6 @@ class PerformanceMonitor {
 
 /**
  * Error Handler
- * @class ErrorHandler
  */
 class ErrorHandler {
     static handle(error, context = '') {
@@ -533,7 +517,6 @@ class ErrorHandler {
 
 /**
  * Map Manager
- * @class MapManager
  */
 class MapManager {
     constructor(containerId = 'map') {
@@ -541,11 +524,14 @@ class MapManager {
         this.map = null;
         this.markerClusterGroup = null;
         this.markers = new Map();
-
+    
         // Bind methods
-        this.handleMapClick = this.handleMapClick.bind(this);
-        this.handleZoomEnd = this.handleZoomEnd.bind(this);
-        this.handleMoveEnd = this.handleMoveEnd.bind(this);
+        this.boundEventHandlers = {
+            resize: Utils.throttle(() => this.handleResize(), 250),
+            handleMapClick: this.handleMapClick.bind(this),
+            handleZoomEnd: this.handleZoomEnd.bind(this),
+            handleMoveEnd: this.handleMoveEnd.bind(this)
+        };
     }
 
     init() {
@@ -570,7 +556,7 @@ class MapManager {
         this.setupEventListeners();
 
         store.setState({ map: this.map });
-        
+
         PerformanceMonitor.endMeasure('mapInit');
         return this.map;
     }
@@ -604,7 +590,7 @@ class MapManager {
     createClusterIcon(cluster) {
         const count = cluster.getChildCount();
         let size = 'small';
-        
+
         if (count > 100) size = 'large';
         else if (count > 10) size = 'medium';
 
@@ -616,17 +602,15 @@ class MapManager {
     }
 
     setupEventListeners() {
-        if (!this.mapManager?.map) {
-            console.warn('Map not initialized');
-            return;
-        }
-
         // Window events
         window.addEventListener('resize', this.boundEventHandlers.resize, { passive: true });
+
+        // Map events
         this.map.on('click', this.handleMapClick);
         this.map.on('zoomend', Utils.throttle(this.handleZoomEnd, 250));
         this.map.on('moveend', Utils.throttle(this.handleMoveEnd, 250));
-        
+
+        // Cluster events
         this.markerClusterGroup.on('clusterclick', (e) => {
             AnalyticsManager.trackEvent('Map', 'ClusterClick', `Size: ${e.layer.getChildCount()}`);
         });
@@ -660,7 +644,7 @@ class MapManager {
 
     updateTileLayer() {
         const { darkMode } = store.getState();
-        
+
         if (this.map.currentTileLayer) {
             this.map.removeLayer(this.map.currentTileLayer);
         }
@@ -704,7 +688,7 @@ class MapManager {
                         console.warn(`Invalid coordinates for hospital ${hospital.id}`);
                         return null;
                     }
-                    
+
                     const marker = this.createMarker(hospital);
                     this.markers.set(hospital.id, marker);
                     return marker;
@@ -845,7 +829,7 @@ class MapManager {
         if (loadingState === CONFIG.UI.IMAGE.STATES.SUCCESS) return;
 
         const imageLoader = new Image();
-        
+
         imageLoader.onload = () => {
             requestAnimationFrame(() => {
                 if (img.parentElement) {
@@ -901,9 +885,9 @@ class MapManager {
         return ErrorHandler.wrapAsync(async () => {
             const position = await Utils.getCurrentPosition();
             const { latitude: lat, longitude: lng } = position.coords;
-            
+
             store.setState({ userLocation: { lat, lng } });
-            
+
             // Add user marker if not exists
             if (!this.userMarker) {
                 this.userMarker = L.marker([lat, lng], {
@@ -936,7 +920,7 @@ class MapManager {
 }
 
 /**
- * UI Manager class
+ * Class representing the UI Manager
  */
 class UIManager {
     constructor(mapManager) {
@@ -944,34 +928,21 @@ class UIManager {
             throw new Error('MapManager is required');
         }
         this.mapManager = mapManager;
-        
-        // Initialize bound handlers first
+
+        // Initialize elements object
+        this.elements = {};
+
+        // Initialize bound handlers
         this.boundEventHandlers = {
             handleResize: this.handleResize.bind(this),
             handleOrientationChange: this.handleOrientationChange.bind(this),
             handleEscapeKey: this.handleEscapeKey.bind(this),
-            updateMarkers: Utils.debounce(this.updateFilters.bind(this), 300),
+            updateMarkers: Utils.debounce(this.updateFilters.bind(this), CONFIG.UI.ANIMATION.DEBOUNCE_DELAY),
             clicks: {},
             keydowns: {}
         };
-        
+
         this.init();
-    }
-
-    setupEventListeners() {
-        // Window events
-        window.addEventListener('resize', this.boundEventHandlers.handleResize);
-        window.addEventListener('orientationchange', this.boundEventHandlers.handleOrientationChange);
-        window.addEventListener('keydown', this.boundEventHandlers.handleEscapeKey);
-    }
-
-    init() {
-        this.initElements();
-        this.setupEventListeners();
-        this.loadUserPreferences();
-        this.setupAccessibility();
-        this.setupThemeDetection();
-        this.setupResizeObserver();
     }
 
     initElements() {
@@ -989,82 +960,73 @@ class UIManager {
             'no-hospitals-message'
         ];
 
+        this.elements = {};
+
         elements.forEach(id => {
-            this.elements[id] = document.getElementById(id);
-            if (!this.elements[id]) {
+            const element = document.getElementById(id);
+            if (element) {
+                this.elements[id] = element;
+            } else {
                 console.warn(`Element with id '${id}' not found`);
             }
         });
+
+        return this.validateCriticalElements();
+    }
+
+    validateCriticalElements() {
+        const criticalElements = ['map', 'controls'];
+        const missingElements = criticalElements.filter(id => !this.elements[id]);
+
+        if (missingElements.length > 0) {
+            console.error(`Critical elements missing: ${missingElements.join(', ')}`);
+            return false;
+        }
+
+        return true;
     }
 
     setupEventListeners() {
-        // Window events
-        window.addEventListener('resize', this.boundEventHandlers.resize, { passive: true });
-        window.addEventListener('orientationchange', this.boundEventHandlers.orientationchange, { passive: true });
-        window.addEventListener('keydown', this.boundEventHandlers.escape);
+        if (!this.elements) return;
 
-        // Theme detection
-        window.matchMedia('(prefers-color-scheme: dark)').addListener(e => {
-            if (!Utils.loadPreferences()?.darkMode) {
-                this.setDarkMode(e.matches);
+        // Window events
+        window.addEventListener('resize', this.boundEventHandlers.handleResize, { passive: true });
+        window.addEventListener('orientationchange', this.boundEventHandlers.handleOrientationChange, { passive: true });
+        window.addEventListener('keydown', this.boundEventHandlers.handleEscapeKey);
+
+        // Element-specific events
+        Object.entries(this.elements).forEach(([id, element]) => {
+            if (!element) return;
+
+            switch (id) {
+                case 'language-select':
+                    element.addEventListener('change', () => this.handleLanguageChange(element.value));
+                    break;
+                case 'theme-toggle':
+                    element.addEventListener('click', () => this.toggleTheme());
+                    this.addKeyboardSupport(element, () => this.toggleTheme());
+                    break;
+                case 'legend-toggle':
+                    element.addEventListener('click', () => this.toggleLegend());
+                    this.addKeyboardSupport(element, () => this.toggleLegend());
+                    break;
+                case 'hamburger-menu':
+                    element.addEventListener('click', () => this.toggleControls());
+                    this.addKeyboardSupport(element, () => this.toggleControls());
+                    break;
             }
         });
-
-        // Language selector
-        if (this.elements['language-select']) {
-            const languageHandler = this.handleLanguageChange.bind(this);
-            this.elements['language-select'].addEventListener('change', languageHandler);
-            this.boundEventHandlers.clicks['language-select'] = languageHandler;
-        }
-
-        // Theme toggle
-        if (this.elements['theme-toggle']) {
-            const themeHandler = this.toggleTheme.bind(this);
-            this.elements['theme-toggle'].addEventListener('click', themeHandler);
-            this.addKeyboardSupport(this.elements['theme-toggle'], themeHandler);
-            this.boundEventHandlers.clicks['theme-toggle'] = themeHandler;
-        }
-
-        // Legend toggle
-        if (this.elements['legend-toggle']) {
-            const legendHandler = this.toggleLegend.bind(this);
-            this.elements['legend-toggle'].addEventListener('click', legendHandler);
-            this.addKeyboardSupport(this.elements['legend-toggle'], legendHandler);
-            this.boundEventHandlers.clicks['legend-toggle'] = legendHandler;
-        }
-
-        // Hamburger menu
-        if (this.elements['hamburger-menu']) {
-            const menuHandler = this.toggleControls.bind(this);
-            this.elements['hamburger-menu'].addEventListener('click', menuHandler);
-            this.addKeyboardSupport(this.elements['hamburger-menu'], menuHandler);
-            this.boundEventHandlers.clicks['hamburger-menu'] = menuHandler;
-        }
 
         // Filter inputs
-        const filterElements = ['continent-select', 'country-filter', 'city-filter', 'hospital-search'];
-        filterElements.forEach(id => {
-            if (this.elements[id]) {
-                this.elements[id].addEventListener('input', this.boundEventHandlers.updateMarkers);
-                
-                // Mobile keyboard handling
-                this.elements[id].addEventListener('focus', () => {
-                    if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
-                        document.body.classList.add('keyboard-open');
-                        this.mapManager.map.invalidateSize();
-                    }
-                });
-
-                this.elements[id].addEventListener('blur', () => {
-                    if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
-                        document.body.classList.remove('keyboard-open');
-                        this.mapManager.map.invalidateSize();
-                    }
-                });
+        ['continent-select', 'country-filter', 'city-filter', 'hospital-search'].forEach(id => {
+            const element = this.elements[id];
+            if (element) {
+                element.addEventListener('input', this.boundEventHandlers.updateMarkers);
+                this.setupMobileKeyboardHandling(element);
             }
         });
 
-        // Status filter tags
+        // Status tags
         document.querySelectorAll('.status-tag').forEach(tag => {
             const statusHandler = (e) => this.handleStatusTagClick(e, tag);
             tag.addEventListener('click', statusHandler);
@@ -1085,96 +1047,44 @@ class UIManager {
         }
     }
 
-    addKeyboardSupport(element, handler) {
-        element.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handler(e);
+    /**
+     * Main initialization method
+     * @private
+     */
+    init() {
+        try {
+            if (!this.initElements()) {
+                throw new Error('Failed to initialize UI elements');
             }
-        });
-    }
 
-    setupAccessibility() {
-        Object.entries(this.elements).forEach(([key, element]) => {
-            if (!element) return;
+            this.setupEventListeners();
+            this.loadUserPreferences();
+            this.setupAccessibility();
+            this.setupThemeDetection();
+            this.setupResizeObserver();
+            this.updateLayout();
 
-            // Add proper ARIA labels
-            const label = key.replace(/([A-Z])/g, ' $1').toLowerCase().trim();
-            element.setAttribute('aria-label', label);
-
-            // Add keyboard navigation
-            if (['theme-toggle', 'legend-toggle', 'hamburger-menu'].includes(key)) {
-                element.setAttribute('role', 'button');
-                element.setAttribute('tabindex', '0');
-            }
-        });
-
-        // Make status tags keyboard accessible
-        document.querySelectorAll('.status-tag').forEach(tag => {
-            tag.setAttribute('role', 'button');
-            tag.setAttribute('tabindex', '0');
-            tag.setAttribute('aria-pressed', 'false');
-        });
-    }
-
-    setupThemeDetection() {
-        const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        const savedPreferences = Utils.loadPreferences();
-
-        if (savedPreferences?.darkMode !== undefined) {
-            this.setDarkMode(savedPreferences.darkMode);
-        } else {
-            this.setDarkMode(darkModeMediaQuery.matches);
+            AnalyticsManager.trackEvent('UI', 'Initialize', 'Success');
+        } catch (error) {
+            ErrorHandler.handle(error, 'UI Initialization');
+            throw error;
         }
     }
 
-    setupResizeObserver() {
-        if ('ResizeObserver' in window) {
-            this.resizeObserver = new ResizeObserver(Utils.throttle(() => {
-                if (this.mapManager.map) {
-                    this.mapManager.map.invalidateSize();
-                }
-            }, 250));
-
-            const mapContainer = document.getElementById('map');
-            if (mapContainer) {
-                this.resizeObserver.observe(mapContainer);
-            }
-        }
-    }
-
-    handleEscapeKey(e) {
-        if (e.key === 'Escape') {
-            // Close any open popups
-            if (this.mapManager.map) {
-                this.mapManager.map.closePopup();
-            }
-            // Close controls on mobile
+    setupMobileKeyboardHandling(element) {
+        element.addEventListener('focus', () => {
             if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
-                this.hideControls();
+                document.body.classList.add('keyboard-open');
+                this.mapManager.map?.invalidateSize();
             }
-            // Remove focus
-            document.activeElement?.blur();
-        }
-    }
+        });
 
-    handleResize() {
-        const isMobile = window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT;
-        document.body.classList.toggle('mobile-view', isMobile);
-        
-        if (this.mapManager.map) {
-            this.mapManager.map.invalidateSize();
-        }
-        
-        this.updateLayout();
-        
-        AnalyticsManager.trackEvent('UI', 'Resize', `Width: ${window.innerWidth}`);
-    }
-
-    handleOrientationChange() {
-        setTimeout(() => {
-            this.handleResize();
-        }, 100);
+        element.addEventListener('blur', () => {
+            if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
+                document.body.classList.remove('keyboard-open');
+                this.mapManager.map?.invalidateSize();
+            }
+        });
     }
 
     handleStatusTagClick(e, tag) {
@@ -1183,7 +1093,7 @@ class UIManager {
 
         const status = tag.getAttribute('status');
         const { activeStatus } = store.getState();
-        
+
         let newActiveStatus;
         const isActive = tag.classList.contains('active');
 
@@ -1196,9 +1106,9 @@ class UIManager {
         }
 
         tag.setAttribute('aria-pressed', (!isActive).toString());
-        
+
         store.setState({ activeStatus: newActiveStatus });
-        
+
         Utils.savePreferences({
             ...Utils.loadPreferences(),
             activeStatus: newActiveStatus
@@ -1217,17 +1127,11 @@ class UIManager {
         store.setState({ filters });
 
         const filteredHospitals = this.filterHospitals(filters);
-        
-        // Update markers visibility
+
         this.updateMarkerVisibility(filteredHospitals);
-        
-        // Update gauges
         GaugeManager.updateAllGauges(filteredHospitals);
-        
-        // Update URL params
         this.updateURLParams(filters);
-        
-        // Save to preferences
+
         Utils.savePreferences({
             ...Utils.loadPreferences(),
             filters
@@ -1236,11 +1140,6 @@ class UIManager {
         AnalyticsManager.trackEvent('Filter', 'Update', `Results: ${filteredHospitals.length}`);
     }
 
-    /**
-     * Gets current filter values
-     * @private
-     * @returns {MapFilters} Current filter values
-     */
     getCurrentFilters() {
         return {
             activeStatus: store.getState().activeStatus,
@@ -1251,40 +1150,31 @@ class UIManager {
         };
     }
 
-    /**
-     * Filters hospitals based on current filters
-     * @private
-     * @param {MapFilters} filters - Current filters
-     * @returns {Hospital[]} Filtered hospitals
-     */
     filterHospitals(filters) {
         const { hospitals } = store.getState();
-        
+
         return hospitals.filter(hospital => {
-            // Status filter
             if (filters.activeStatus.length && !filters.activeStatus.includes(hospital.status)) {
                 return false;
             }
 
-            // Search term
             if (filters.searchTerm && !hospital.name.toLowerCase().includes(filters.searchTerm)) {
                 return false;
             }
 
-            // Location filters
             const address = Utils.parseAddress(hospital.address);
-            
-            if (filters.continent && 
+
+            if (filters.continent &&
                 Utils.getContinent(hospital.lat, hospital.lon) !== filters.continent) {
                 return false;
             }
-            
-            if (filters.country && 
+
+            if (filters.country &&
                 !address.country.toLowerCase().includes(filters.country)) {
                 return false;
             }
-            
-            if (filters.city && 
+
+            if (filters.city &&
                 !address.city.toLowerCase().includes(filters.city)) {
                 return false;
             }
@@ -1293,14 +1183,9 @@ class UIManager {
         });
     }
 
-    /**
-     * Updates marker visibility based on filtered hospitals
-     * @private
-     * @param {Hospital[]} filteredHospitals - Filtered hospitals
-     */
     updateMarkerVisibility(filteredHospitals) {
         const filteredIds = new Set(filteredHospitals.map(h => h.id));
-        
+
         this.mapManager.markers.forEach(marker => {
             const isVisible = filteredIds.has(marker.hospitalData.id);
             if (isVisible) {
@@ -1310,13 +1195,11 @@ class UIManager {
             }
         });
 
-        // Update no results message
         const noResults = this.elements['no-hospitals-message'];
         if (noResults) {
             noResults.style.display = filteredHospitals.length === 0 ? 'block' : 'none';
         }
 
-        // Fit markers in view if any visible
         if (filteredHospitals.length > 0) {
             this.mapManager.fitMarkersInView(
                 Array.from(this.mapManager.markers.values())
@@ -1325,14 +1208,9 @@ class UIManager {
         }
     }
 
-    /**
-     * Updates URL parameters based on current filters
-     * @private
-     * @param {MapFilters} filters - Current filters
-     */
     updateURLParams(filters) {
         const params = new URLSearchParams(window.location.search);
-        
+
         Object.entries(filters).forEach(([key, value]) => {
             if (value && (typeof value === 'string' || Array.isArray(value))) {
                 params.set(key, Array.isArray(value) ? value.join(',') : value);
@@ -1345,35 +1223,93 @@ class UIManager {
         window.history.replaceState({}, '', newUrl);
     }
 
-    /**
-     * Clears all filters
-     */
     clearFilters() {
-        // Clear input values
         ['hospital-search', 'country-filter', 'city-filter'].forEach(id => {
             if (this.elements[id]) {
                 this.elements[id].value = '';
             }
         });
 
-        // Reset selects
         ['continent-select'].forEach(id => {
             if (this.elements[id]) {
                 this.elements[id].selectedIndex = 0;
             }
         });
 
-        // Clear status filters
         document.querySelectorAll('.status-tag').forEach(tag => {
             tag.classList.remove('active');
             tag.setAttribute('aria-pressed', 'false');
         });
 
         store.setState({ activeStatus: [] });
-
-        // Update filters
         this.updateFilters();
         AnalyticsManager.trackEvent('Filter', 'Clear');
+    }
+
+    /**
+     * Sets up accessibility features
+     * @private
+     */
+    setupAccessibility() {
+        // Add ARIA attributes to elements
+        Object.entries(this.elements).forEach(([id, element]) => {
+            if (!element) return;
+
+            const label = id.replace(/([A-Z])/g, ' $1').toLowerCase();
+            element.setAttribute('aria-label', label);
+
+            if (['theme-toggle', 'legend-toggle', 'hamburger-menu'].includes(id)) {
+                element.setAttribute('role', 'button');
+                element.setAttribute('tabindex', '0');
+            }
+        });
+
+        // Make status tags keyboard accessible
+        document.querySelectorAll('.status-tag').forEach(tag => {
+            tag.setAttribute('role', 'button');
+            tag.setAttribute('tabindex', '0');
+            tag.setAttribute('aria-pressed', 'false');
+        });
+    }
+
+    /**
+     * Sets up theme detection
+     * @private
+     */
+    setupThemeDetection() {
+        const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const savedPreferences = Utils.loadPreferences();
+
+        if (savedPreferences?.darkMode !== undefined) {
+            this.setDarkMode(savedPreferences.darkMode);
+        } else {
+            this.setDarkMode(darkModeMediaQuery.matches);
+        }
+
+        darkModeMediaQuery.addEventListener('change', (e) => {
+            if (!Utils.loadPreferences()?.darkMode) {
+                this.setDarkMode(e.matches);
+            }
+        });
+    }
+
+    /**
+     * Sets up resize observer
+     * @private
+     */
+    setupResizeObserver() {
+        if ('ResizeObserver' in window) {
+            this.resizeObserver = new ResizeObserver(Utils.throttle(() => {
+                if (this.mapManager.map) {
+                    this.mapManager.map.invalidateSize();
+                }
+            }, 250));
+
+            const mapContainer = document.getElementById('map');
+            if (mapContainer) {
+                this.resizeObserver.observe(mapContainer);
+            }
+        }
     }
 
     /**
@@ -1382,29 +1318,71 @@ class UIManager {
      */
     updateLayout() {
         const isMobile = window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT;
-        const isLandscape = window.innerWidth > window.innerHeight;
+        document.body.classList.toggle('mobile-view', isMobile);
 
-        this.adjustControlsPosition(isMobile, isLandscape);
-        this.adjustLegendPosition(isMobile, isLandscape);
-        this.adjustChartPosition(isMobile, isLandscape);
+        if (this.mapManager.map) {
+            this.mapManager.map.invalidateSize();
+        }
     }
 
     /**
-     * Toggles controls visibility
+     * Handles window resize events
      * @private
      */
-    toggleControls() {
-        const controls = this.elements['controls'];
-        const hamburger = this.elements['hamburger-menu'];
-        
-        if (!controls || !hamburger) return;
+    handleResize() {
+        this.updateLayout();
+        AnalyticsManager.trackEvent('UI', 'Resize', `Width: ${window.innerWidth}`);
+    }
 
-        const isVisible = controls.classList.contains('visible');
-        controls.classList.toggle('visible');
-        hamburger.classList.toggle('active');
-        hamburger.setAttribute('aria-expanded', (!isVisible).toString());
+    /**
+     * Handles orientation change events
+     * @private
+     */
+    handleOrientationChange() {
+        setTimeout(() => {
+            this.handleResize();
+        }, 100);
+    }
 
-        AnalyticsManager.trackEvent('UI', 'ToggleControls', isVisible ? 'Hide' : 'Show');
+    /**
+     * Handles escape key events
+     * @private
+     * @param {KeyboardEvent} e - Keyboard event
+     */
+    handleEscapeKey(e) {
+        if (e.key === 'Escape') {
+            if (this.mapManager.map) {
+                this.mapManager.map.closePopup();
+            }
+            if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
+                this.hideControls();
+            }
+            document.activeElement?.blur();
+        }
+    }
+
+    /**
+     * Handles language change
+     * @private
+     * @param {string} language - New language code
+     */
+    handleLanguageChange(language) {
+        this.updateTranslations(language);
+        Utils.savePreferences({
+            ...Utils.loadPreferences(),
+            language
+        });
+        AnalyticsManager.trackEvent('UI', 'LanguageChange', language);
+    }
+
+    /**
+     * Toggles dark mode
+     * @private
+     */
+    toggleTheme() {
+        const { darkMode } = store.getState();
+        this.setDarkMode(!darkMode);
+        AnalyticsManager.trackEvent('UI', 'ThemeToggle', !darkMode ? 'Dark' : 'Light');
     }
 
     /**
@@ -1420,8 +1398,88 @@ class UIManager {
             ...Utils.loadPreferences(),
             darkMode: enabled
         });
+    }
 
-        AnalyticsManager.trackEvent('UI', 'DarkMode', enabled ? 'Enable' : 'Disable');
+    /**
+     * Toggles legend visibility
+     * @private
+     */
+    toggleLegend() {
+        const { legendVisible } = store.getState().ui;
+        store.setState({
+            ui: { ...store.getState().ui, legendVisible: !legendVisible }
+        });
+        AnalyticsManager.trackEvent('UI', 'LegendToggle', !legendVisible ? 'Show' : 'Hide');
+    }
+
+    /**
+     * Toggles controls visibility
+     * @private
+     */
+    toggleControls() {
+        const controls = this.elements['controls'];
+        const hamburger = this.elements['hamburger-menu'];
+
+        if (!controls || !hamburger) return;
+
+        const isVisible = controls.classList.contains('visible');
+        controls.classList.toggle('visible');
+        hamburger.classList.toggle('active');
+        hamburger.setAttribute('aria-expanded', (!isVisible).toString());
+
+        AnalyticsManager.trackEvent('UI', 'ControlsToggle', isVisible ? 'Hide' : 'Show');
+    }
+
+    /**
+     * Hides controls
+     * @private
+     */
+    hideControls() {
+        const controls = this.elements['controls'];
+        const hamburger = this.elements['hamburger-menu'];
+
+        if (controls) {
+            controls.classList.remove('visible');
+        }
+        if (hamburger) {
+            hamburger.classList.remove('active');
+            hamburger.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    /**
+     * Adds keyboard support to element
+     * @private
+     * @param {HTMLElement} element - Element to add keyboard support to
+     * @param {Function} handler - Click handler
+     */
+    addKeyboardSupport(element, handler) {
+        element.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handler(e);
+            }
+        });
+    }
+
+    /**
+     * Loads user preferences
+     * @private
+     */
+    loadUserPreferences() {
+        const preferences = Utils.loadPreferences();
+        if (preferences) {
+            if (preferences.language) {
+                this.updateTranslations(preferences.language);
+            }
+            if (preferences.darkMode !== undefined) {
+                this.setDarkMode(preferences.darkMode);
+            }
+            if (preferences.activeStatus) {
+                store.setState({ activeStatus: preferences.activeStatus });
+                this.applyStatusFilters(preferences.activeStatus);
+            }
+        }
     }
 
     /**
@@ -1444,24 +1502,32 @@ class UIManager {
         });
 
         document.documentElement.setAttribute('lang', language);
-        AnalyticsManager.trackEvent('UI', 'LanguageChange', language);
+        store.setState({ language });
     }
 
     /**
-     * Cleans up UI manager
+     * Applies status filters
+     * @private
+     * @param {string[]} statuses - Status filters to apply
      */
-    destroy() {
-        // Remove window listeners
-        window.removeEventListener('resize', this.boundEventHandlers.resize);
-        window.removeEventListener('orientationchange', this.boundEventHandlers.orientationchange);
-        window.removeEventListener('keydown', this.boundEventHandlers.escape);
+    applyStatusFilters(statuses) {
+        document.querySelectorAll('.status-tag').forEach(tag => {
+            const status = tag.getAttribute('status');
+            const isActive = statuses.includes(status);
+            tag.classList.toggle('active', isActive);
+            tag.setAttribute('aria-pressed', isActive.toString());
+        });
+    }
 
-        // Remove ResizeObserver
+    destroy() {
+        window.removeEventListener('resize', this.boundEventHandlers.handleResize);
+        window.removeEventListener('orientationchange', this.boundEventHandlers.handleOrientationChange);
+        window.removeEventListener('keydown', this.boundEventHandlers.handleEscapeKey);
+
         if (this.resizeObserver) {
             this.resizeObserver.disconnect();
         }
 
-        // Clear all elements references
         this.elements = {};
         this.boundEventHandlers = {};
     }
@@ -1474,42 +1540,28 @@ async function initApplication() {
     try {
         PerformanceMonitor.startMeasure('appInit');
 
-        // Prevent double initialization
         if (store.getState().isInitialized) return;
 
-        // Show loading state
         const loader = document.getElementById('initial-loader');
         if (loader) loader.style.display = 'block';
 
-        // Initialize managers
         const mapManager = new MapManager('map');
         const uiManager = new UIManager(mapManager);
 
-        // Initialize map
         mapManager.init();
-
-        // Initialize gauges
         GaugeManager.initGauges();
 
-        // Load user preferences
         const preferences = Utils.loadPreferences();
         if (preferences?.language) {
             uiManager.updateTranslations(preferences.language);
         }
 
-        // Add markers to map
         await mapManager.addMarkers(hospitals);
-        
-        // Update gauges
         GaugeManager.updateAllGauges(hospitals);
-
-        // Apply initial filters from URL
         await applyInitialFilters(uiManager);
 
-        // Hide loading state
         if (loader) loader.style.display = 'none';
 
-        // Mark as initialized
         store.setState({ isInitialized: true });
 
         PerformanceMonitor.endMeasure('appInit');
@@ -1523,19 +1575,14 @@ async function initApplication() {
     }
 }
 
-/**
- * Applies initial filters from URL parameters
- * @param {UIManager} uiManager - UI manager instance
- */
 async function applyInitialFilters(uiManager) {
     const params = new URLSearchParams(window.location.search);
-    
-    // Apply status filters
+
     const statusParam = params.get('activeStatus');
     if (statusParam) {
         const statuses = statusParam.split(',');
         store.setState({ activeStatus: statuses });
-        
+
         document.querySelectorAll('.status-tag').forEach(tag => {
             const status = tag.getAttribute('status');
             const isActive = statuses.includes(status);
@@ -1544,13 +1591,11 @@ async function applyInitialFilters(uiManager) {
         });
     }
 
-    // Apply search term
     const searchTerm = params.get('searchTerm');
     if (searchTerm && uiManager.elements['hospital-search']) {
         uiManager.elements['hospital-search'].value = searchTerm;
     }
 
-    // Apply location filters
     ['continent', 'country', 'city'].forEach(param => {
         const value = params.get(param);
         if (value && uiManager.elements[`${param}-filter`]) {
@@ -1558,7 +1603,6 @@ async function applyInitialFilters(uiManager) {
         }
     });
 
-    // Update filters
     uiManager.updateFilters();
 }
 
