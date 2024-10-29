@@ -1527,6 +1527,15 @@ class UIManager {
     }
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM Loaded');
+    console.log('Map element:', document.getElementById('map'));
+    console.log('Map element dimensions:', {
+        width: document.getElementById('map').offsetWidth,
+        height: document.getElementById('map').offsetHeight
+    });
+});
+
 /**
  * Main application initialization
  */
