@@ -7,7 +7,6 @@ const urlsToCache = [
     '/assets/favicon-16x16.png',
     '/assets/apple-touch-icon.png',
     '/manifest.json',
-    '/fonts/main-font.woff2',
     '/css/style.css',
     '/js/main.js',
     '/js/gauge.js',
