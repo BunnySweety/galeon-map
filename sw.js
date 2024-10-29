@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hospital-map-v1';
+const CACHE_NAME = 'galeon-map-v1';
 const ASSETS_TO_CACHE = [
     '/',
     './index.html',

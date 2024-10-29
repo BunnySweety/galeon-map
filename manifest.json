@@ -1,7 +1,7 @@
 {
-    "name": "Hospital Map",
+    "name": "Galeon Map",
     "short_name": "HospMap",
-    "description": "Interactive hospital map with real-time filtering and clustering capabilities",
+    "description": "Interactive map of Galeon hospitals with real-time filtering and clustering capabilities",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#ffffff",
