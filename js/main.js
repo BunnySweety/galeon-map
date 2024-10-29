@@ -1541,18 +1541,27 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function initApplication() {
     try {
+        await new Promise(resolve => setTimeout(resolve, 0));
+
         PerformanceMonitor.startMeasure('appInit');
 
         if (store.getState().isInitialized) return;
+
+        const mapElement = document.getElementById('map');
+        const controlsElement = document.getElementById('controls');
+
+        if (!mapElement || !controlsElement) {
+            throw new Error(`Required elements missing: ${!mapElement ? 'map ' : ''}${!controlsElement ? 'controls' : ''}`);
+        }
 
         const loader = document.getElementById('initial-loader');
         if (loader) loader.style.display = 'block';
 
         const mapManager = new MapManager('map');
-        const uiManager = new UIManager(mapManager);
+        await mapManager.init();
 
-        mapManager.init();
-        GaugeManager.initGauges();
+        const uiManager = new UIManager(mapManager);
+        await GaugeManager.initGauges();
 
         const preferences = Utils.loadPreferences();
         if (preferences?.language) {
@@ -1611,9 +1620,19 @@ async function applyInitialFilters(uiManager) {
 
 // Initialize application when DOM is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initApplication);
+    document.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('load', () => {
+            initApplication().catch(error => {
+                console.error('Initialization error:', error);
+            });
+        });
+    });
 } else {
-    initApplication();
+    window.addEventListener('load', () => {
+        initApplication().catch(error => {
+            console.error('Initialization error:', error);
+        });
+    });
 }
 
 // Export for module usage
