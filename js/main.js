@@ -1595,6 +1595,37 @@ async function initApplication() {
     }
 }
 
+async function applyInitialFilters(uiManager) {
+    const params = new URLSearchParams(window.location.search);
+
+    const statusParam = params.get('activeStatus');
+    if (statusParam) {
+        const statuses = statusParam.split(',');
+        store.setState({ activeStatus: statuses });
+
+        document.querySelectorAll('.status-tag').forEach(tag => {
+            const status = tag.getAttribute('status');
+            const isActive = statuses.includes(status);
+            tag.classList.toggle('active', isActive);
+            tag.setAttribute('aria-pressed', isActive.toString());
+        });
+    }
+
+    const searchTerm = params.get('searchTerm');
+    if (searchTerm && uiManager.elements['hospital-search']) {
+        uiManager.elements['hospital-search'].value = searchTerm;
+    }
+
+    ['continent', 'country', 'city'].forEach(param => {
+        const value = params.get(param);
+        if (value && uiManager.elements[`${param}-filter`]) {
+            uiManager.elements[`${param}-filter`].value = value;
+        }
+    });
+
+    uiManager.updateFilters();
+}
+
 // Initialize application when DOM and resources are ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
