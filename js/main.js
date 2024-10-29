@@ -976,12 +976,18 @@ class UIManager {
         // Initialize elements object
         this.elements = {};
 
-        // Initialize bound handlers
+        // Lier explicitement le contexte des méthodes
+        this.handleResize = this.handleResize.bind(this);
+        this.handleOrientationChange = this.handleOrientationChange.bind(this);
+        this.handleEscapeKey = this.handleEscapeKey.bind(this);
+        this.updateFilters = this.updateFilters.bind(this);
+
+        // Initialize bound handlers avec les méthodes liées
         this.boundEventHandlers = {
-            handleResize: this.handleResize.bind(this),
-            handleOrientationChange: this.handleOrientationChange.bind(this),
-            handleEscapeKey: this.handleEscapeKey.bind(this),
-            updateMarkers: Utils.debounce(this.updateFilters.bind(this), CONFIG.UI.ANIMATION.DEBOUNCE_DELAY),
+            handleResize: Utils.throttle(this.handleResize, 250),
+            handleOrientationChange: this.handleOrientationChange,
+            handleEscapeKey: this.handleEscapeKey,
+            updateMarkers: Utils.debounce(this.updateFilters, CONFIG.UI.ANIMATION.DEBOUNCE_DELAY),
             clicks: {},
             keydowns: {}
         };
@@ -990,7 +996,9 @@ class UIManager {
     }
 
     initElements() {
+        console.log('Initializing elements...');
         const elements = [
+            'map',  // Ajouté map à la liste
             'language-select',
             'continent-select',
             'country-filter',
@@ -1010,6 +1018,7 @@ class UIManager {
             const element = document.getElementById(id);
             if (element) {
                 this.elements[id] = element;
+                console.log(`Found element: ${id}`, element);
             } else {
                 console.warn(`Element with id '${id}' not found`);
             }
@@ -1020,7 +1029,7 @@ class UIManager {
 
     validateCriticalElements() {
         const criticalElements = ['map', 'controls'];
-        const missingElements = criticalElements.filter(id => !this.elements[id]);
+        const missingElements = criticalElements.filter(id => !document.getElementById(id));
 
         if (missingElements.length > 0) {
             console.error(`Critical elements missing: ${missingElements.join(', ')}`);
@@ -1585,17 +1594,26 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function initApplication() {
     try {
-        await new Promise(resolve => setTimeout(resolve, 0));
-
+        console.log('Starting application initialization...');
+        
         PerformanceMonitor.startMeasure('appInit');
 
-        if (store.getState().isInitialized) return;
+        if (store.getState().isInitialized) {
+            console.log('Application already initialized');
+            return;
+        }
 
+        // Vérifier la présence des éléments critiques avant de continuer
         const mapElement = document.getElementById('map');
         const controlsElement = document.getElementById('controls');
 
+        console.log('Critical elements check:', {
+            map: !!mapElement,
+            controls: !!controlsElement
+        });
+
         if (!mapElement || !controlsElement) {
-            throw new Error(`Required elements missing: ${!mapElement ? 'map ' : ''}${!controlsElement ? 'controls' : ''}`);
+            throw new Error('Critical elements missing. Please ensure map and controls elements exist in the DOM');
         }
 
         const loader = document.getElementById('initial-loader');
@@ -1605,6 +1623,7 @@ async function initApplication() {
         await mapManager.init();
 
         const uiManager = new UIManager(mapManager);
+
         await GaugeManager.initGauges();
 
         const preferences = Utils.loadPreferences();
@@ -1626,6 +1645,7 @@ async function initApplication() {
         console.log('Application initialized successfully');
 
     } catch (error) {
+        console.error('Initialization error details:', error);
         ErrorHandler.handle(error, 'Application Initialization');
         throw error;
     }
