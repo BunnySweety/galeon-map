@@ -52,6 +52,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
           crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css">
     <link rel="stylesheet" href="./css/style.css">
@@ -123,9 +124,9 @@
         </select>
 
     <!-- Control buttons -->
-    <button id="hamburger-menu">☰</button>
-    <button id="legend-toggle">📋</button>
-    <button id="theme-toggle">🌙</button>
+    <button id="hamburger" aria-label="Toggle menu">☰</button>
+    <button id="legend-toggle" aria-label="Toggle legend">📋</button>
+    <button id="theme-toggle" aria-label="Toggle dark mode"><i class="fas fa-moon"></i></button>
 
     <!-- Legend -->
     <div class="legend-container" role="complementary" aria-label="Map legend">
@@ -170,7 +171,10 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
             crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-    <script type="module" src="./main.js"></script>
+    <script src="js/translations.js"></script>
+    <script src="js/hospitals.js"></script>
+    <script type="module" src="./js/main.js"></script>
 </body>
 </html>
