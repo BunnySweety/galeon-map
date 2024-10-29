@@ -1,93 +1,161 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Essential meta tags -->
+    <!-- Basic meta tags -->
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-
-    <!-- Primary meta tags -->
-    <title>Galeon Map</title>
-    <meta name="description" content="Interactive Galeon Map with real-time filtering and clustering capabilities">
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#2b2b2b" media="(prefers-color-scheme: dark)">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="Interactive hospital map with real-time status tracking">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="format-detection" content="telephone=no">
+    
+    <title>Hospital Map</title>
 
-    <!-- The following headers should be set server-side -->
-    <!--
-    Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://*.openstreetmap.org https://*.cartocdn.com; font-src 'self'; connect-src 'self' https://*.openstreetmap.org https://*.cartocdn.com;
-    X-Content-Type-Options: nosniff
-    Strict-Transport-Security: max-age=31536000; includeSubDomains
-    Permissions-Policy: geolocation=(self), camera=(), microphone=()
-    -->
+    <!-- Favicons and PWA support -->
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+    <link rel="manifest" href="manifest.json">
 
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="Galeon Map">
-    <meta property="og:description" content="Interactive Galeon Map with real-time filtering and clustering capabilities">
-    <meta property="og:image" content="./assets/web-app-manifest-512x512.png">
+    <!-- CDN preconnect for performance -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
 
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Galeon Map">
-    <meta name="twitter:description" content="Interactive Galeon Map with real-time filtering and clustering capabilities">
-    <meta name="twitter:image" content="./assets/web-app-manifest-512x512.png">
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Third-party CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <!-- Application CSS -->
+    <link rel="stylesheet" href="style.css" />
 
-    <!-- PWA -->
-    <link rel="manifest" href="./manifest.json">
+    <!-- Critical inline CSS for initial loading -->
+    <style>
+        .initial-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
 
-    <!-- Favicons and icons -->
-    <link rel="icon" type="image/x-icon" href="./assets/favicon.ico">
-    <link rel="icon" type="image/png" sizes="16x16" href="./assets/favicon-16x16.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32x32.png">
-    <link rel="apple-touch-icon" type="image/png" sizes="180x180" href="./assets/apple-touch-icon.png">
-    <link rel="mask-icon" href="./assets/safari-pinned-tab.svg" color="#5bbad5">
-    <meta name="msapplication-config" content="./assets/browserconfig.xml">
+        .loader-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
 
-    <!-- Resource hints -->
-    <link rel="preconnect" href="https://unpkg.com" crossorigin>
-    <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
-    <link rel="preconnect" href="https://basemaps.cartocdn.com" crossorigin>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
 
-    <!-- Critical stylesheets -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
-          crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css">
-    <link rel="stylesheet" href="./css/style.css">
+        .js-warning {
+            display: none;
+        }
 
-    <!-- Service Worker Registration -->
+        .no-js .js-warning {
+            display: block;
+        }
+
+        .no-js #map,
+        .no-js .controls {
+            display: none;
+        }
+    </style>
+
+    <!-- Preload critical scripts -->
+    <link rel="preload" href="./js/main.js" as="script">
+    <link rel="preload" href="./js/translations.js" as="script">
+    <link rel="preload" href="./js/hospitals.js" as="script">
+    <link rel="preload" href="./js/gauge.js" as="script">
+
+    <!-- Initial configuration and feature detection -->
     <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js')
-                .catch(error => console.error('Service worker registration failed:', error));
+        // JavaScript detection
+        document.documentElement.className = document.documentElement.className.replace('no-js', 'js');
+
+        // Global configuration object
+        window.APP_CONFIG = {
+            DEBUG: false,
+            API_URL: '/api',
+            DEFAULT_LANGUAGE: 'en',
+            MAP_CENTER: [46.603354, 1.888334],
+            MAP_ZOOM: 6,
+            TILE_LAYER: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+            STORAGE_PREFIX: 'hospitalMap_',
+            VERSION: '1.0.0'
+        };
+
+        // Browser feature detection
+        window.FEATURES = {
+            localStorage: (function() {
+                try {
+                    localStorage.setItem('test', 'test');
+                    localStorage.removeItem('test');
+                    return true;
+                } catch(e) {
+                    return false;
+                }
+            })(),
+            geolocation: 'geolocation' in navigator,
+            webGL: (function() {
+                try {
+                    return !!window.WebGLRenderingContext && 
+                           !!document.createElement('canvas').getContext('experimental-webgl');
+                } catch(e) {
+                    return false;
+                }
+            })()
+        };
+
+        // Global error handling
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            console.error('Global error:', {msg, url, lineNo, columnNo, error});
+            return false;
+        };
+
+        // Conditional polyfills
+        if (!Array.prototype.includes) {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/core-js/3.26.1/minified.js"><\/script>');
         }
     </script>
 </head>
-<body>
-    <!-- JavaScript required message -->
-    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-                text-align: center; background: white; padding: 20px; border-radius: 8px; 
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 9999;">
-        JavaScript is required to view this map.
+<body class="no-js">
+    <!-- Initial loader -->
+    <div id="initial-loader" class="initial-loader">
+        <div class="loader-spinner"></div>
     </div>
 
-    <!-- Error message container -->
+    <!-- JavaScript warning -->
+    <div class="js-warning">
+        <p>JavaScript is required to view this map. Please enable JavaScript in your browser settings.</p>
+    </div>
+
+    <!-- Map container -->
+    <div id="map" role="application" aria-label="Interactive Hospital Map"></div>
+
+    <!-- Error and status messages -->
     <div id="error-message" class="error-message" style="display: none;" role="alert"></div>
-
-    <!-- Main map container -->
-    <div id="map" role="application" aria-label="Interactive Galeon Map"></div>
-
-    <!-- Loading indicator -->
-    <div id="initial-loader" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000;"></div>
-
-    <!-- No results message -->
     <div id="no-hospitals-message" class="info-message" style="display: none;" role="status">
         <span data-translate="noHospitalsMessage">No hospitals match the current filters.</span>
     </div>
 
-    <!-- Controls panel with language and filters -->
+    <!-- Map controls -->
     <div id="controls" class="controls" role="complementary" aria-label="Map controls">
         <!-- Language selector -->
         <select id="language-select" aria-label="Select language">
@@ -112,8 +180,9 @@
             <option value="pl">Polski</option>
             <option value="nl">Nederlands</option>
         </select>
-        
-        <select id="continent-select">
+
+        <!-- Continent selector -->
+        <select id="continent-select" aria-label="Select continent">
             <option value="">All Continents</option>
             <option value="Europe">Europe</option>
             <option value="North America">North America</option>
@@ -123,14 +192,30 @@
             <option value="Oceania">Oceania</option>
         </select>
 
-    <input type="text" id="country-filter" placeholder="Enter country..." data-translate="enterCountry" aria-label="Filter by country">
-    <input type="text" id="city-filter" placeholder="Enter city..." data-translate="enterCity" aria-label="Filter by city">
-    <input type="text" id="hospital-search" placeholder="Search hospital..." data-translate="searchHospital" aria-label="Search hospitals">
+        <!-- Filters -->
+        <input type="text" id="country-filter" placeholder="Filter by country" aria-label="Filter by country">
+        <input type="text" id="city-filter" placeholder="Filter by city" aria-label="Filter by city">
+        <input type="text" id="hospital-search" placeholder="Search hospitals" aria-label="Search hospitals">
+
+        <!-- Status filters -->
+        <div class="status-tags-container">
+            <button class="status-tag status-deployed" status="Deployed" role="switch" aria-pressed="false">
+                Deployed
+            </button>
+            <button class="status-tag status-in-progress" status="In Progress" role="switch" aria-pressed="false">
+                In Progress
+            </button>
+            <button class="status-tag status-signed" status="Signed" role="switch" aria-pressed="false">
+                Signed
+            </button>
+        </div>
+    </div>
 
     <!-- Control buttons -->
-    <button id="hamburger-menu" aria-label="Toggle menu">☰</button>
+    <button id="hamburger-menu" aria-label="Toggle menu" aria-expanded="false">☰</button>
     <button id="legend-toggle" aria-label="Toggle legend">📋</button>
-    <button id="theme-toggle" aria-label="Toggle dark mode"><i class="fas fa-moon"></i></button>
+    <button id="theme-toggle" aria-label="Toggle theme">🌙</button>
+    <button id="get-location" aria-label="Get current location">📍</button>
 
     <!-- Legend -->
     <div class="legend-container" role="complementary" aria-label="Map legend">
@@ -148,7 +233,7 @@
         </div>
     </div>
 
-    <!-- Charts and stats -->
+    <!-- Stats container -->
     <div class="chart-container" role="complementary" aria-label="Status statistics">
         <div class="gauge-wrapper">
             <div class="gauge" role="progressbar" aria-valuemin="0" aria-valuemax="100"></div>
@@ -156,29 +241,35 @@
             <div class="gauge-percentage"></div>
             <div class="gauge-label"></div>
         </div>
-
-        <svg viewbox="0 0 36 36">
-            <path class="gauge-background" 
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" 
-                  fill="none" 
-                  stroke="#eee" 
-                  stroke-width="3" />
-            <path class="gauge-value" 
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" 
-                  fill="none" 
-                  stroke-width="3" 
-                  stroke-dasharray="0, 100" />
-        </svg>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-            crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-    <script type="module "src="js/translations.js"></script>
-    <script type="module" src="js/hospitals.js"></script>
+    <!-- Third-party scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+
+    <!-- Application scripts -->
+    <script type="module" src="./js/translations.js"></script>
+    <script type="module" src="./js/hospitals.js"></script>
+    <script type="module" src="./js/gauge.js"></script>
     <script type="module" src="./js/main.js"></script>
+
+    <!-- Legacy browser support -->
+    <script nomodule src="./js/legacy-bundle.js"></script>
+
+    <!-- Service Worker registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(error => {
+                        console.log('ServiceWorker registration failed:', error);
+                    });
+            });
+        }
+    </script>
 </body>
 </html>
