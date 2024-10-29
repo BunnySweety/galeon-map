@@ -13,41 +13,36 @@ import { GaugeManager } from './gauge.js';
 import { translations } from './translations.js';
 import { hospitals } from './hospitals.js';
 
- /**
-  * @typedef {Object} Hospital
-  * @property {string} id - Unique hospital identifier
-  * @property {string} name - Hospital name
-  * @property {number} lat - Latitude
-  * @property {number} lon - Longitude
-  * @property {string} status - Status (Deployed, In Progress, Signed)
-  * @property {string} address - Full address
-  * @property {string} imageUrl - Hospital image URL
-  * @property {string} website - Hospital website URL
-  */
- 
- /**
-  * @typedef {Object} MapFilters
-  * @property {string[]} activeStatus - Active status filters
-  * @property {string} searchTerm - Search query
-  * @property {string} continent - Selected continent
-  * @property {string} country - Country filter
-  * @property {string} city - City filter
-  */
- 
- /**
-  * @typedef {Object} UserPreferences
-  * @property {string} language - User's preferred language
-  * @property {boolean} darkMode - Dark mode setting
-  * @property {string[]} activeStatus - Active status filters
-  * @property {string} continent - Selected continent
-  * @property {string} country - Selected country
-  * @property {string} city - Selected city
-  */
- 
- /**
-  * Global application store for state management
-  * @class Store
-  */
+/**
+ * @typedef {Object} Hospital
+ * @property {string} id - Unique hospital identifier
+ * @property {string} name - Hospital name
+ * @property {number} lat - Latitude
+ * @property {number} lon - Longitude
+ * @property {string} status - Status (Deployed, In Progress, Signed)
+ * @property {string} address - Full address
+ * @property {string} imageUrl - Hospital image URL
+ * @property {string} website - Hospital website URL
+ */
+
+/**
+ * @typedef {Object} MapFilters
+ * @property {string[]} activeStatus - Active status filters
+ * @property {string} searchTerm - Search query
+ * @property {string} continent - Selected continent
+ * @property {string} country - Country filter
+ * @property {string} city - City filter
+ */
+
+/**
+ * @typedef {Object} UserPreferences
+ * @property {string} language - User's preferred language
+ * @property {boolean} darkMode - Dark mode setting
+ * @property {string[]} activeStatus - Active status filters
+ * @property {string} continent - Selected continent
+ * @property {string} country - Selected country
+ * @property {string} city - Selected city
+ */
 
 /**
  * Application configuration constants
@@ -330,7 +325,8 @@ class ErrorHandler {
 }
 
 /**
- * Store for state management
+ * Global application store for state management
+ * @class Store
  */
 class Store {
     constructor(initialState = {}) {
@@ -342,8 +338,8 @@ class Store {
     }
 
     cloneState(obj) {
-        if (obj instanceof L.Map || 
-            obj instanceof L.MarkerClusterGroup || 
+        if (obj instanceof L.Map ||
+            obj instanceof L.MarkerClusterGroup ||
             obj instanceof L.Layer ||
             obj instanceof L.Marker) {
             return obj;
@@ -453,6 +449,502 @@ const store = new Store({
 /**
  * Map Manager
  */
+class MapManager {
+    constructor(containerId = 'map') {
+        this.containerId = containerId;
+        this.map = null;
+        this.markerClusterGroup = null;
+        this.markers = new Map();
+        this.userMarker = null;
+
+        // Bind methods
+        this.handleResize = this.handleResize.bind(this);
+        this.handleMapClick = this.handleMapClick.bind(this);
+        this.handleZoomEnd = this.handleZoomEnd.bind(this);
+        this.handleMoveEnd = this.handleMoveEnd.bind(this);
+        this.createClusterIcon = this.createClusterIcon.bind(this);
+        this.updateVisibleMarkers = this.updateVisibleMarkers.bind(this);
+        this.updateTileLayer = this.updateTileLayer.bind(this);
+    }
+
+    async init() {
+        if (this.map) return this.map;
+
+        PerformanceMonitor.startMeasure('mapInit');
+
+        try {
+            const mapElement = document.getElementById(this.containerId);
+            if (!mapElement) {
+                throw new Error(`Map container with id '${this.containerId}' not found`);
+            }
+
+            this.map = L.map(this.containerId, {
+                center: CONFIG.MAP.DEFAULT_CENTER,
+                zoom: CONFIG.MAP.DEFAULT_ZOOM,
+                maxZoom: CONFIG.MAP.MAX_ZOOM,
+                minZoom: CONFIG.MAP.MIN_ZOOM,
+                zoomControl: window.innerWidth > CONFIG.UI.MOBILE_BREAKPOINT,
+                scrollWheelZoom: true,
+                dragging: true,
+                tap: true
+            });
+
+            await this.setupPanes();
+            await this.setupMarkerCluster();
+            await this.updateTileLayer();
+            this.setupEventListeners();
+
+            store.setState({ map: this.map });
+            
+            PerformanceMonitor.endMeasure('mapInit');
+            return this.map;
+        } catch (error) {
+            ErrorHandler.handle(error, 'Map Initialization');
+            throw error;
+        }
+    }
+
+    setupPanes() {
+        if (!this.map) return;
+
+        this.map.createPane('markerPane').style.zIndex = 450;
+        this.map.createPane('popupPane').style.zIndex = 500;
+        this.map.createPane('tooltipPane').style.zIndex = 550;
+    }
+
+    setupMarkerCluster() {
+        if (!this.map) return;
+
+        this.markerClusterGroup = L.markerClusterGroup({
+            maxClusterRadius: CONFIG.MAP.CLUSTER.MAX_RADIUS,
+            spiderfyOnMaxZoom: CONFIG.MAP.CLUSTER.SPIDER_ON_MAX_ZOOM,
+            showCoverageOnHover: CONFIG.MAP.CLUSTER.SHOW_COVERAGE,
+            zoomToBoundsOnClick: true,
+            removeOutsideVisibleBounds: true,
+            animate: CONFIG.MAP.CLUSTER.ANIMATE,
+            animateAddingMarkers: true,
+            disableClusteringAtZoom: CONFIG.MAP.CLUSTER.DISABLE_CLUSTERING_AT_ZOOM,
+            chunkedLoading: true,
+            chunkInterval: 200,
+            chunkDelay: 50,
+            iconCreateFunction: this.createClusterIcon
+        });
+
+        this.map.addLayer(this.markerClusterGroup);
+        store.setState({ markerClusterGroup: this.markerClusterGroup });
+    }
+
+    setupEventListeners() {
+        if (!this.map) return;
+
+        // Window events
+        window.addEventListener('resize', this.handleResize, { passive: true });
+
+        // Map events
+        this.map.on('click', this.handleMapClick);
+        this.map.on('zoomend', this.handleZoomEnd);
+        this.map.on('moveend', this.handleMoveEnd);
+
+        // Cluster events
+        if (this.markerClusterGroup) {
+            this.markerClusterGroup.on('clusterclick', (e) => {
+                AnalyticsManager.trackEvent('Map', 'ClusterClick', `Size: ${e.layer.getChildCount()}`);
+            });
+
+            this.markerClusterGroup.on('animationend', () => {
+                PerformanceMonitor.endMeasure('clusterAnimation');
+            });
+        }
+    }
+
+    handleMapClick(e) {
+        if (!this.map) return;
+
+        const { ui } = store.getState();
+        if (ui.controlsVisible && window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
+            store.setState({
+                ui: { ...ui, controlsVisible: false }
+            });
+        }
+        AnalyticsManager.trackEvent('Map', 'Click', `${e.latlng.lat},${e.latlng.lng}`);
+    }
+
+    handleZoomEnd() {
+        if (!this.map) return;
+
+        const zoom = this.map.getZoom();
+        AnalyticsManager.trackEvent('Map', 'Zoom', `Level: ${zoom}`);
+        store.setState({ currentZoom: zoom });
+    }
+
+    handleMoveEnd() {
+        if (!this.map) return;
+
+        const center = this.map.getCenter();
+        if (!center) return;
+
+        AnalyticsManager.trackEvent('Map', 'Move', `${center.lat},${center.lng}`);
+        this.updateVisibleMarkers();
+    }
+
+    handleResize() {
+        if (this.map) {
+            this.map.invalidateSize();
+        }
+    }
+
+    createClusterIcon(cluster) {
+        const count = cluster.getChildCount();
+        let size = 'small';
+
+        if (count > 100) size = 'large';
+        else if (count > 10) size = 'medium';
+
+        return L.divIcon({
+            html: `<div class="cluster-icon cluster-${size}">${count}</div>`,
+            className: `marker-cluster marker-cluster-${size}`,
+            iconSize: L.point(40, 40)
+        });
+    }
+
+    async updateTileLayer() {
+        if (!this.map) return;
+
+        const { darkMode } = store.getState();
+
+        if (this.map.currentTileLayer) {
+            this.map.removeLayer(this.map.currentTileLayer);
+        }
+
+        const tileUrl = darkMode ? CONFIG.MAP.TILE_LAYER.DARK : CONFIG.MAP.TILE_LAYER.LIGHT;
+
+        this.map.currentTileLayer = L.tileLayer(tileUrl, {
+            maxZoom: CONFIG.MAP.MAX_ZOOM,
+            attribution: CONFIG.MAP.TILE_LAYER.ATTRIBUTION,
+            tileSize: 256,
+            updateWhenIdle: true,
+            updateWhenZooming: false,
+            keepBuffer: 2
+        }).addTo(this.map);
+    }
+
+    async addMarkers(hospitals, chunkSize = 10) {
+        if (!hospitals?.length || !this.markerClusterGroup) return;
+
+        PerformanceMonitor.startMeasure('addMarkers');
+
+        this.markerClusterGroup.clearLayers();
+        this.markers.clear();
+
+        const chunks = Array(Math.ceil(hospitals.length / chunkSize))
+            .fill()
+            .map((_, i) => hospitals.slice(i * chunkSize, (i + 1) * chunkSize));
+
+        for (const chunk of chunks) {
+            await this.processMarkerChunk(chunk);
+        }
+
+        PerformanceMonitor.endMeasure('addMarkers');
+    }
+
+    async processMarkerChunk(chunk) {
+        return new Promise(resolve => {
+            requestAnimationFrame(() => {
+                const markers = chunk.map(hospital => {
+                    if (!Utils.validateCoordinates(hospital.lat, hospital.lon)) {
+                        console.warn(`Invalid coordinates for hospital ${hospital.id}`);
+                        return null;
+                    }
+
+                    const marker = this.createMarker(hospital);
+                    if (marker) {
+                        this.markers.set(hospital.id, marker);
+                    }
+                    return marker;
+                }).filter(Boolean);
+
+                this.markerClusterGroup?.addLayers(markers);
+                resolve();
+            });
+        });
+    }
+
+    createMarker(hospital) {
+        if (!Utils.validateCoordinates(hospital.lat, hospital.lon)) return null;
+
+        const marker = L.circleMarker([hospital.lat, hospital.lon], {
+            radius: CONFIG.UI.MARKER.RADIUS,
+            fillColor: CONFIG.UI.COLORS[hospital.status.toUpperCase().replace(/\s+/g, '_')],
+            color: "#ffffff",
+            weight: CONFIG.UI.MARKER.WEIGHT,
+            opacity: CONFIG.UI.MARKER.OPACITY,
+            fillOpacity: CONFIG.UI.MARKER.FILL_OPACITY,
+            pane: 'markerPane'
+        });
+
+        marker.hospitalData = hospital;
+        this.bindPopupToMarker(marker);
+        this.bindTooltipToMarker(marker);
+
+        marker.on('click', () => {
+            AnalyticsManager.trackEvent('Marker', 'Click', hospital.name);
+        });
+
+        return marker;
+    }
+
+    bindPopupToMarker(marker) {
+        const popup = L.popup({
+            maxWidth: 300,
+            minWidth: 200,
+            className: 'hospital-popup',
+            offset: [0, -5],
+            autoPan: true,
+            autoPanPadding: [50, 50],
+            closeButton: true,
+            closeOnClick: false
+        });
+
+        marker.bindPopup(() => {
+            const content = this.generatePopupContent(marker.hospitalData);
+            popup.setContent(content);
+            return popup;
+        });
+
+        marker.on('popupopen', () => {
+            this.initializePopupImage(marker.getPopup().getElement());
+            AnalyticsManager.trackEvent('Popup', 'Open', marker.hospitalData.name);
+        });
+    }
+
+    bindTooltipToMarker(marker) {
+        if (!marker?.hospitalData?.name) return;
+
+        marker.bindTooltip(marker.hospitalData.name, {
+            permanent: false,
+            direction: 'top',
+            offset: [0, -10],
+            opacity: 0.9,
+            className: 'hospital-tooltip'
+        });
+    }
+
+    generatePopupContent(hospital) {
+        if (!hospital) return '';
+
+        const { translations, language } = store.getState();
+        const currentTranslations = translations[language] || translations[CONFIG.UI.DEFAULT_LANGUAGE];
+
+        const address = Utils.parseAddress(hospital.address);
+        const distance = this.calculateDistanceToUserLocation(hospital);
+
+        return `
+            <div class="popup-content">
+                <h3 class="popup-title">${hospital.name}</h3>
+                <div class="popup-image-wrapper">
+                    <img 
+                        src="${CONFIG.UI.IMAGE.DEFAULT}"
+                        data-src="${hospital.imageUrl}" 
+                        alt="${hospital.name}"
+                        class="popup-image"
+                        data-loading-state="${CONFIG.UI.IMAGE.STATES.LOADING}"
+                    />
+                </div>
+                <div class="popup-address">
+                    <strong>${currentTranslations.address || 'Address'}:</strong><br>
+                    ${address.street}<br>
+                    ${address.city}${address.postalCode ? ` (${address.postalCode})` : ''}<br>
+                    ${address.country}
+                    ${distance ? `<br><small>Distance: ${distance} km</small>` : ''}
+                </div>
+                <a href="${hospital.website}" 
+                   target="_blank" 
+                   rel="noopener noreferrer" 
+                   class="popup-link">
+                    ${currentTranslations.visitWebsite || 'Visit Website'}
+                </a>
+                <div class="popup-status">
+                    <span>${currentTranslations.status || 'Status'}:</span>
+                    <span class="status-tag status-${hospital.status.toLowerCase().replace(/\s+/g, '-')} active">
+                        ${hospital.status}
+                    </span>
+                </div>
+                <div class="popup-actions">
+                    <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${hospital.lat},${hospital.lon}')" 
+                            class="directions-button">
+                        Get Directions
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    initializePopupImage(popupElement) {
+        if (!popupElement) return;
+
+        const img = popupElement.querySelector('.popup-image');
+        if (!img?.dataset.src) return;
+
+        const loadingState = img.getAttribute('data-loading-state');
+        if (loadingState === CONFIG.UI.IMAGE.STATES.SUCCESS) return;
+
+        const imageLoader = new Image();
+
+        imageLoader.onload = () => {
+            requestAnimationFrame(() => {
+                if (img.parentElement) {
+                    img.src = img.dataset.src;
+                    img.setAttribute('data-loading-state', CONFIG.UI.IMAGE.STATES.SUCCESS);
+                    AnalyticsManager.trackEvent('Image', 'Load', 'Success');
+                }
+            });
+        };
+
+        imageLoader.onerror = () => {
+            requestAnimationFrame(() => {
+                if (img.parentElement) {
+                    img.src = CONFIG.UI.IMAGE.DEFAULT;
+                    img.setAttribute('data-loading-state', CONFIG.UI.IMAGE.STATES.ERROR);
+                    AnalyticsManager.trackEvent('Image', 'Load', 'Error');
+                }
+            });
+        };
+
+        if (loadingState !== CONFIG.UI.IMAGE.STATES.LOADING) {
+            img.setAttribute('data-loading-state', CONFIG.UI.IMAGE.STATES.LOADING);
+            imageLoader.src = img.dataset.src;
+        }
+    }
+
+    calculateDistanceToUserLocation(hospital) {
+        const { userLocation } = store.getState();
+        if (!userLocation || !hospital) return null;
+
+        const distance = Utils.calculateDistance(
+            userLocation.lat,
+            userLocation.lng,
+            hospital.lat,
+            hospital.lon
+        );
+
+        return Math.round(distance * 10) / 10;
+    }
+
+    updateVisibleMarkers() {
+        if (!this.map || !this.markers.size) return;
+
+        const bounds = this.map.getBounds();
+        const visibleMarkers = [];
+
+        this.markers.forEach(marker => {
+            if (bounds.contains(marker.getLatLng())) {
+                visibleMarkers.push(marker.hospitalData);
+            }
+        });
+
+        store.setState({ visibleHospitals: visibleMarkers });
+        AnalyticsManager.trackEvent('Map', 'VisibleMarkers', `Count: ${visibleMarkers.length}`);
+    }
+
+    fitMarkersInView(markers = null) {
+        if (!this.map) return;
+
+        const markerArray = markers || Array.from(this.markers.values());
+        if (markerArray.length === 0) return;
+
+        const bounds = L.latLngBounds(markerArray.map(m => m.getLatLng()));
+        this.map.fitBounds(bounds, {
+            padding: CONFIG.MAP.BOUNDS_PADDING,
+            maxZoom: this.map.getZoom()
+        });
+    }
+
+    async getUserLocation() {
+        try {
+            const position = await Utils.getCurrentPosition();
+            const { latitude: lat, longitude: lng } = position.coords;
+
+            store.setState({ userLocation: { lat, lng } });
+
+            if (!this.map) return;
+
+            // Add or update user marker
+            if (!this.userMarker) {
+                this.userMarker = L.marker([lat, lng], {
+                    icon: L.divIcon({
+                        className: 'user-location-marker',
+                        html: '<div class="pulse"></div>'
+                    })
+                }).addTo(this.map);
+            } else {
+                this.userMarker.setLatLng([lat, lng]);
+            }
+
+            this.map.setView([lat, lng], CONFIG.MAP.DEFAULT_ZOOM);
+            AnalyticsManager.trackEvent('Location', 'Get', 'Success');
+        } catch (error) {
+            ErrorHandler.handle(error, 'Geolocation');
+            throw error;
+        }
+    }
+
+    destroy() {
+        try {
+            // Remove window event listeners
+            window.removeEventListener('resize', this.handleResize);
+
+            if (this.map) {
+                // Remove map event listeners
+                this.map.off('click', this.handleMapClick);
+                this.map.off('zoomend', this.handleZoomEnd);
+                this.map.off('moveend', this.handleMoveEnd);
+
+                // Clean up markers
+                if (this.markerClusterGroup) {
+                    this.markerClusterGroup.clearLayers();
+                    this.map.removeLayer(this.markerClusterGroup);
+                }
+
+                if (this.userMarker) {
+                    this.map.removeLayer(this.userMarker);
+                }
+
+                // Remove tile layer
+                if (this.map.currentTileLayer) {
+                    this.map.removeLayer(this.map.currentTileLayer);
+                }
+
+                // Remove map
+                this.map.remove();
+            }
+
+            // Clear references
+            this.map = null;
+            this.markerClusterGroup = null;
+            this.userMarker = null;
+            this.markers.clear();
+
+            console.log('MapManager cleanup completed successfully');
+        } catch (error) {
+            console.error('Error during MapManager cleanup:', error);
+            ErrorHandler.handle(error, 'MapManager Cleanup');
+        }
+    }
+
+    // Debugging method
+    debug() {
+        return {
+            map: this.map,
+            markers: this.markers,
+            markerClusterGroup: this.markerClusterGroup,
+            userMarker: this.userMarker
+        };
+    }
+}
+
+/**
+ * UI Manager
+ */
 class UIManager {
     constructor(mapManager) {
         if (!mapManager) {
@@ -543,7 +1035,7 @@ class UIManager {
 
         this.handleStatusTagClick = (e, tag) => {
             if (!tag) return;
-            
+
             e.preventDefault();
             e.stopPropagation();
 
@@ -593,7 +1085,7 @@ class UIManager {
 
     async initElements() {
         console.log('Initializing UI elements...');
-        
+
         const elements = [
             'map',
             'language-select',
@@ -960,10 +1452,10 @@ class UIManager {
 
         // Reset store state
         store.setState({ activeStatus: [] });
-        
+
         // Update filters and UI
         this.updateFilters();
-        
+
         // Track event
         AnalyticsManager.trackEvent('Filter', 'Clear');
     }
@@ -1079,7 +1571,7 @@ class UIManager {
 
     async initElements() {
         console.log('Initializing UI elements...');
-        
+
         const elements = [
             'map',
             'language-select',
@@ -1211,7 +1703,7 @@ class UIManager {
 
     handleStatusTagClick(e, tag) {
         if (!tag) return;
-        
+
         e.preventDefault();
         e.stopPropagation();
 
@@ -1264,11 +1756,11 @@ class UIManager {
         if (this.mapManager.map) {
             this.mapManager.map.closePopup();
         }
-        
+
         if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
             this.hideControls();
         }
-        
+
         document.activeElement?.blur();
     }
 
@@ -1305,7 +1797,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initApplication() {
     try {
         console.log('Starting application initialization...');
-        
+
         PerformanceMonitor.startMeasure('appInit');
 
         if (store.getState().isInitialized) {
