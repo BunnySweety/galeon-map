@@ -53,18 +53,46 @@ class Store {
      */
     constructor(initialState = {}) {
         this.state = initialState;
-        this.initialState = { ...initialState };
+        this.initialState = this.cloneState(initialState);
         this.listeners = new Set();
         this.history = [];
         this.maxHistoryLength = 10;
     }
 
     /**
-     * Gets current state
-     * @returns {Object} Current state
+     * Deep clones an object
+     * @param {Object} obj - Object to clone
+     * @returns {Object} Cloned object
      */
-    getState() {
-        return this.state;
+    cloneState(obj) {
+        if (obj instanceof L.Map || 
+            obj instanceof L.MarkerClusterGroup || 
+            obj instanceof L.Layer ||
+            obj instanceof L.Marker) {
+            return obj;
+        }
+
+        if (obj === null || typeof obj !== 'object') {
+            return obj;
+        }
+
+        if (obj instanceof Date) {
+            return new Date(obj);
+        }
+
+        if (obj instanceof Array) {
+            return obj.map(item => this.cloneState(item));
+        }
+
+        if (obj instanceof Map) {
+            return new Map([...obj].map(([key, value]) => [key, this.cloneState(value)]));
+        }
+
+        const cloned = {};
+        for (const [key, value] of Object.entries(obj)) {
+            cloned[key] = this.cloneState(value);
+        }
+        return cloned;
     }
 
     /**
@@ -74,16 +102,24 @@ class Store {
      */
     setState(newState, recordHistory = true) {
         if (recordHistory) {
-            this.history.push({ ...this.state });
+            this.history.push(this.cloneState(this.state));
             if (this.history.length > this.maxHistoryLength) {
                 this.history.shift();
             }
         }
 
-        const oldState = { ...this.state };
+        const oldState = this.cloneState(this.state);
         this.state = { ...this.state, ...newState };
 
-        if (JSON.stringify(oldState) !== JSON.stringify(this.state)) {
+        let hasChanged = false;
+        for (const key in newState) {
+            if (oldState[key] !== this.state[key]) {
+                hasChanged = true;
+                break;
+            }
+        }
+
+        if (hasChanged) {
             this.notify();
         }
     }
