@@ -125,6 +125,14 @@ class Store {
     }
 
     /**
+     * Gets current state
+     * @returns {Object} Current state
+     */
+    getState() {
+        return this.state;
+    }    
+
+    /**
      * Subscribes to state changes
      * @param {Function} listener - Callback function
      * @returns {Function} Unsubscribe function
