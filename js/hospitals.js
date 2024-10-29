@@ -150,7 +150,7 @@ const hospitals = [
         name: "Centre Hospitalier de Montceau",
         lat: 46.6756,
         lon: 4.3663,
-        status: "Signed",
+        status: "Deployed",
         address: "Boulevard du Bois du Verne, 71300 Montceau-les-Mines, France",
         website: "http://www.ch-montceau.fr",
         imageUrl: "https://i.ibb.co/HYs7nHY/b-timent-moderne-dh-pital.webp"        

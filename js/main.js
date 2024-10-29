@@ -1034,12 +1034,6 @@ class UIManager {
             this.boundEventHandlers.clicks[`status-${tag.getAttribute('status')}`] = statusHandler;
         });
 
-        // Clear filters button
-        const clearFilters = document.getElementById('clear-filters');
-        if (clearFilters) {
-            clearFilters.addEventListener('click', () => this.clearFilters());
-        }
-
         // User location button
         const locationButton = document.getElementById('get-location');
         if (locationButton) {
