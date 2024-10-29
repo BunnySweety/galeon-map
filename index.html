@@ -2,208 +2,94 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    
+    <!-- Primary Meta Tags -->
+    <title>Galeon Map</title>
+    <meta name="title" content="Galeon Map">
     <meta name="description" content="Interactive map of Galeon hospitals with real-time filtering and clustering capabilities">
-    <meta name="theme-color" content="#ffffff">
+    <meta name="keywords" content="hospital, map, healthcare, medical facilities">
+    <meta name="author" content="BunnySweety">
+
+    <!-- Security -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' https://unpkg.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:;">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+
+    <!-- PWA -->
+    <meta name="application-name" content="Galeon Map">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#2b2b2b" media="(prefers-color-scheme: dark)">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Galeon Map">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="robots" content="index, follow">
 
-    <title>Galeon Map</title>
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://bunnysweety.github.io/galeon-map/">
+    <meta property="og:title" content="Galeon Map">
+    <meta property="og:description" content="Interactive map of Galeon hospitals with real-time filtering and clustering capabilities">
+    <meta property="og:image" content="https://bunnysweety.github.io/galeon-map/og-image.jpg">
 
-    <!-- Favicons -->
-    <link rel="icon" type="image/x-icon" href="./assets/favicon.ico">
-    <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="./assets/favicon-16x16.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png">
-    <link rel="manifest" href="/manifest.json">
-
-    <!-- Preconnect -->
-    <link rel="preconnect" href="https://unpkg.com">
-    <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
-    <link rel="preconnect" href="https://basemaps.cartocdn.com" crossorigin>
-
-    <!-- Preload Critical Assets -->
-    <link rel="preload" href="/fonts/your-main-font.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" as="style" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="preload" as="script" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
-    <link rel="preload" as="script" href="./js/main.js" type="module">
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://bunnysweety.github.io/galeon-map/">
+    <meta property="twitter:title" content="Galeon Map">
+    <meta property="twitter:description" content="Interactive map of Galeon hospitals with real-time filtering and clustering capabilities">
+    <meta property="twitter:image" content="https://bunnysweety.github.io/galeon-map/twitter-image.jpg">
 
     <!-- DNS Prefetch -->
     <link rel="dns-prefetch" href="https://unpkg.com">
     <link rel="dns-prefetch" href="https://tile.openstreetmap.org">
     <link rel="dns-prefetch" href="https://basemaps.cartocdn.com">
 
-    <!-- Critical CSS -->
-    <style>
-        /* Essential variables */
-        :root {
-            --status-deployed-color: #4CAF50;
-            --status-inprogress-color: #FFA500;
-            --status-signed-color: #2196F3;
-            --background-color-light: #f9f9f9;
-            --text-color-light: #1f1f1f;
-            --control-background-light: #ffffff;
-            --control-border-light: #ddd;
-        }
-    
-        /* Critical basic styles */
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--background-color-light);
-            color: var(--text-color-light);
-        }
-    
-        /* Map - critical element */
-        #map {
-            height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-            width: 100vw;
-            position: fixed;
-            top: env(safe-area-inset-top);
-            left: 0;
-            z-index: 1;
-        }
-    
-        /* Loader - review for the first rendering */
-        #initial-loader {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-    
-        #initial-loader::after {
-            content: "";
-            display: block;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #3498db;
-            animation: spin 1s linear infinite;
-        }
-    
-        /* Loader animation */
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    
-        /* Critical system messages */
-        .error-message {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #f8d7da;
-            color: #721c24;
-            padding: 10px 20px;
-            border-radius: 5px;
-            z-index: 10000;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            display: none;
-        }
-    
-        .info-message {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(255, 255, 255, 0.9);
-            padding: 15px 20px;
-            border-radius: 5px;
-            z-index: 1000;
-            display: none;
-        }
-    
-        /* Main controls - necessary for first rendering */
-        .controls {
-            position: absolute;
-            top: 1rem;
-            left: 4rem;
-            z-index: 1000;
-            background: var(--control-background-light);
-            border-radius: 0.5rem;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        }
-    
-        #hamburger,
-        #legend-toggle,
-        #theme-toggle {
-            position: fixed;
-            z-index: 1000;
-            border-radius: 50%;
-            width: 2.5rem;
-            height: 2.5rem;
-            background: white;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        }
-    
-        #hamburger { top: 1.25rem; left: 1rem; }
-        #legend-toggle { bottom: 2.75rem; left: 1rem; }
-        #theme-toggle { top: 1rem; right: 1rem; }
-    
-        /* Dark mode essentiel */
-        @media (prefers-color-scheme: dark) {
-            body {
-                background-color: #2b2b2b;
-                color: #f1f1f1;
-            }
-    
-            #initial-loader {
-                background: rgba(43, 43, 43, 0.9);
-            }
-        }
-    </style>
+    <!-- Preconnect -->
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
+    <link rel="preconnect" href="https://basemaps.cartocdn.com" crossorigin>
 
-    <!-- Non-critical CSS -->
+    <!-- Preload Critical Assets -->
+    <link rel="preload" href="./css/style.css" as="style">
+    <link rel="preload" href="./js/main.js" as="script" type="module">
+    <link rel="preload" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" as="style" crossorigin>
+    <link rel="preload" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" as="script" crossorigin>
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="./assets/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./assets/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png">
+    <link rel="mask-icon" href="./assets/safari-pinned-tab.svg" color="#5bbad5">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="msapplication-config" content="./assets/browserconfig.xml">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="./manifest.json">
+
+    <!-- Stylesheets -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
-          crossorigin="">
+          crossorigin="anonymous">
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css">
     <link rel="stylesheet" href="./css/style.css">
 
-    <!-- Open Graph / Social Media -->
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="Interactive map of Galeon hospitals">
-    <meta property="og:description" content="Interactive hospital map with real-time filtering and clustering capabilities">
-    <meta property="og:image" content="./assets/og-image.jpg">
-    <meta property="og:url" content="https://bunnysweety.github.io/galeon-map/">
-    
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Interactive map of Galeon hospitals">
-    <meta name="twitter:description" content="Interactive hospital map with real-time filtering and clustering capabilities">
-    <meta name="twitter:image" content="./assets/twitter-image.jpg">
-
-    <!-- Scripts -->
-    <script type="module" src="./js/main.js" defer></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
-            crossorigin="" 
-            defer></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js" defer></script>
-
-    <!-- PWA -->
+    <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./js/sw.js');
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => console.log('ServiceWorker registration successful'))
+                    .catch(err => console.log('ServiceWorker registration failed: ', err));
+            });
         }
     </script>
 </head>
 <body>
-    <!-- Noscript -->
+    <!-- Noscript Message -->
     <noscript>
         <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
                     text-align: center; background: white; padding: 20px; border-radius: 8px; 
@@ -216,7 +102,7 @@
     <div id="error-message" class="error-message" style="display: none;" role="alert"></div>
 
     <!-- Map Container -->
-    <div id="map" role="application" aria-label="Interactive hospital map"></div>
+    <div id="map" role="application" aria-label="Interactive Galeon Map"></div>
 
     <!-- Loading Indicator -->
     <div id="initial-loader" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000;"></div>
@@ -228,7 +114,7 @@
 
     <!-- Controls Panel -->
     <div id="controls" class="controls" role="complementary" aria-label="Map controls">
-        <!-- Language selector -->
+        <!-- Language Selection -->
         <select id="language-select" aria-label="Select language">
             <option value="en">English</option>
             <option value="fr">Français</option>
@@ -251,8 +137,9 @@
             <option value="pl">Polski</option>
             <option value="nl">Nederlands</option>
         </select>
-        
-        <select id="continent-select">
+
+        <!-- Continent Selection -->
+        <select id="continent-select" aria-label="Select continent">
             <option value="">All Continents</option>
             <option value="Europe">Europe</option>
             <option value="North America">North America</option>
@@ -262,6 +149,12 @@
             <option value="Oceania">Oceania</option>
         </select>
 
+        <!-- Filters -->
+        <input type="text" id="country-filter" placeholder="Filter by country" aria-label="Filter by country">
+        <input type="text" id="city-filter" placeholder="Filter by city" aria-label="Filter by city">
+        <input type="text" id="hospital-search" placeholder="Search hospitals" aria-label="Search hospitals">
+
+        <!-- Status Filters -->
         <div class="status-tags-container" role="group" aria-label="Status filters">
             <span class="status-tag status-deployed" 
                   status="Deployed"
@@ -285,11 +178,14 @@
                   tabindex="0"
                   aria-pressed="false">Signed</span>
         </div>
+
+        <button id="clear-filters" class="button">Clear Filters</button>
+        <button id="get-location" class="button">Get My Location</button>
     </div>
 
     <!-- Control Buttons -->
     <button id="hamburger-menu" class="control-button" aria-label="Toggle menu">☰</button>
-    <button id="clipboard" class="control-button" aria-label="Copy">📋</button>
+    <button id="legend-toggle" class="control-button" aria-label="Toggle legend">📋</button>
     <button id="theme-toggle" class="control-button" aria-label="Toggle theme">🌙</button>
 
     <!-- Legend -->
@@ -308,7 +204,7 @@
         </div>
     </div>
 
-    <!-- Chart Container -->
+    <!-- Charts -->
     <div class="chart-container" role="complementary" aria-label="Status statistics">
         <div class="gauge-wrapper">
             <div class="gauge" role="progressbar" aria-valuemin="0" aria-valuemax="100"></div>
@@ -316,8 +212,6 @@
             <div class="gauge-percentage"></div>
             <div class="gauge-label"></div>
         </div>
-
-        <!-- SVG for gauge -->
         <svg viewbox="0 0 36 36">
             <path class="gauge-background" 
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" 
@@ -332,11 +226,11 @@
         </svg>
     </div>
 
-    <!-- JavaScript Required Message -->
-    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-                text-align: center; background: white; padding: 20px; border-radius: 8px; 
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 9999;">
-        JavaScript is required to view this map.
-    </div>
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script type="module" src="./js/main.js"></script>
 </body>
 </html>
