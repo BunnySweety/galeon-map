@@ -84,7 +84,7 @@ body {
    Common Container Styles
    ========================================================================== */
 .controls,
-#hamburger,
+#hamburger-menu,
 #legend-toggle,
 #theme-toggle,
 .legend-container,
@@ -168,7 +168,7 @@ body {
 /* ==========================================================================
    Control Buttons
    ========================================================================== */
-#hamburger,
+#hamburger-menu,
 #legend-toggle,
 #theme-toggle,
 .leaflet-bar a {
@@ -189,11 +189,11 @@ body {
 }
 
 /* Button positions */
-#hamburger { top: 1.25rem; left: 1rem; }
+#hamburger-menu { top: 1.25rem; left: 1rem; }
 #legend-toggle { bottom: 2.75rem; left: 1rem; }
 #theme-toggle { top: 1rem; right: 1rem; }
 
-#hamburger:hover,
+#hamburger-menu:hover,
 #legend-toggle:hover,
 #theme-toggle:hover {
     background-color: var(--hover-background-light);
@@ -541,7 +541,7 @@ body.dark-mode {
 body.dark-mode .controls,
 body.dark-mode .controls select,
 body.dark-mode .controls input,
-body.dark-mode #hamburger,
+body.dark-mode #hamburger-menu,
 body.dark-mode #legend-toggle,
 body.dark-mode #theme-toggle,
 body.dark-mode .legend-container,
@@ -646,7 +646,7 @@ body.dark-mode .controls input:hover {
     }
 
     /* Button sizing */
-    #hamburger,
+    #hamburger-menu,
     #legend-toggle,
     #theme-toggle,
     .leaflet-bar a {
@@ -700,7 +700,7 @@ body.dark-mode .controls input:hover {
         height: 100vw;
     }
 
-    #hamburger,
+    #hamburger-menu,
     #legend-toggle,
     #theme-toggle {
         top: 1.25rem;
@@ -754,7 +754,7 @@ body.dark-mode .controls input:hover {
         gap: 0.375rem;
     }
 
-    #hamburger,
+    #hamburger-menu,
     #legend-toggle,
     #theme-toggle,
     .leaflet-bar a {
