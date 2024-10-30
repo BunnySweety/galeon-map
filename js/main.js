@@ -158,21 +158,46 @@ const Utils = {
             return {
                 street: '',
                 city: '',
-                state: '',
                 country: '',
                 postalCode: ''
             };
         }
 
         const parts = address.split(',').map(part => part.trim());
-        const postalMatch = parts.join(' ').match(/\b[A-Z0-9]{4,10}\b/i);
-        const postalCode = postalMatch ? postalMatch[0] : '';
+
+        const postalPatterns = [
+            /\b[0-9]{5}\b/, // US, FR, DE, etc.
+            /\b[A-Z][0-9][A-Z]\s?[0-9][A-Z][0-9]\b/i, // CA
+            /\b[A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2}\b/i, // UK
+            /\b[0-9]{4}\s?[A-Z]{2}\b/i, // NL
+            /\b[0-9]{4,6}\b/, // JP, CN, KR, etc.
+            /\b[A-Z0-9]{2,4}\s?[0-9]{3,4}\b/i // SG, etc.
+        ];
+
+        let postalCode = '';
+        let city = '';
+        let potentialCityPart = parts[1] || '';
+
+        for (const pattern of postalPatterns) {
+            const match = potentialCityPart.match(pattern);
+            if (match) {
+                postalCode = match[0];
+                city = potentialCityPart.replace(pattern, '').trim();
+                break;
+            }
+        }
+
+        if (!city && potentialCityPart) {
+            city = potentialCityPart;
+        }
+
+        const country = parts[parts.length - 1];
+        const street = parts[0];
 
         return {
-            country: parts[parts.length - 1] || '',
-            state: parts[parts.length - 2] || '',
-            city: parts[parts.length - 3] || '',
-            street: parts.slice(0, -3).join(', '),
+            street,
+            city,
+            country,
             postalCode
         };
     },
@@ -796,19 +821,21 @@ class MapManager {
                 />
             </div>
             <div class="popup-address">
-                <strong>${currentTranslations.address || 'Adresse'}:</strong><br>
-                ${address.street}<br>
-                ${address.city}${address.postalCode ? ` (${address.postalCode})` : ''}<br>
-                ${address.country}
+                <strong>${currentTranslations.address || 'Address'}:</strong>
+                <span class="popup-address-line">${address.street}</span>
+                ${address.postalCode || address.city ?
+                `<span class="popup-address-line">${[address.postalCode, address.city].filter(Boolean).join(' ')}</span>`
+                : ''}
+                <span class="popup-address-line">${address.country}</span>
             </div>
             <a href="${hospital.website}" 
                target="_blank" 
                rel="noopener noreferrer" 
                class="popup-link">
-               ${currentTranslations.visitWebsite || 'Visiter le site Web'}
+               ${currentTranslations.visitWebsite || 'Visit Website'}
             </a>
             <div class="popup-status">
-                <span>${currentTranslations.status || 'Statut'}:</span>
+                <span>${currentTranslations.status || 'Status'}:</span>
                 <span class="status-tag status-${hospital.status.toLowerCase().replace(/\s+/g, '-')} active">
                     ${hospital.status}
                 </span>
