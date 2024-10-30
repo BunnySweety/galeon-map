@@ -59,19 +59,18 @@ class GaugeManager {
         try {
             wrapper.innerHTML = '';
             
-            const container = document.createElement('div');
-            container.style.position = 'relative';
-            container.style.height = '80px';
+            const gaugeContainer = document.createElement('div');
+            gaugeContainer.className = 'gauge-container';
             
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svg.setAttribute('viewBox', '0 0 36 36');
             svg.classList.add('gauge');
+            svg.style.transform = 'rotate(-90deg)';
             svg.style.position = 'absolute';
             svg.style.top = '0';
             svg.style.left = '0';
             svg.style.width = '100%';
             svg.style.height = '100%';
-            svg.style.transform = 'rotate(-90deg)';
 
             const backgroundPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             const valuePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -95,34 +94,26 @@ class GaugeManager {
 
             svg.appendChild(backgroundPath);
             svg.appendChild(valuePath);
-            container.appendChild(svg);
 
             const valueDisplay = document.createElement('div');
             valueDisplay.classList.add('gauge-value');
-            valueDisplay.style.fontSize = '1.5rem';
-            valueDisplay.style.fontWeight = 'bold';
-            valueDisplay.style.marginTop = '30px';
-            valueDisplay.style.textAlign = 'center';
             valueDisplay.textContent = '0';
-            container.appendChild(valueDisplay);
+    
+            gaugeContainer.appendChild(svg);
+            gaugeContainer.appendChild(valueDisplay);
             
             const percentageDisplay = document.createElement('div');
             percentageDisplay.classList.add('gauge-percentage');
-            percentageDisplay.style.fontSize = '0.75rem';
-            percentageDisplay.style.marginTop = '0.5rem';
-            percentageDisplay.style.textAlign = 'center';
             percentageDisplay.textContent = '(0.0%)';
-
+    
             const labelDisplay = document.createElement('div');
             labelDisplay.classList.add('gauge-label');
-            labelDisplay.style.marginTop = '0.5rem';
-            labelDisplay.style.textAlign = 'center';
             labelDisplay.textContent = status;
-
-            wrapper.appendChild(container);
+    
+            wrapper.appendChild(gaugeContainer);
             wrapper.appendChild(percentageDisplay);
             wrapper.appendChild(labelDisplay);
-
+    
             return {
                 wrapper,
                 svg,

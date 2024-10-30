@@ -394,7 +394,6 @@ body {
     min-width: 5rem;
     max-width: 33%;
     position: relative;
-    text-align: center;
     padding: 0 0.625rem;
 }
 
@@ -402,7 +401,6 @@ body {
 .gauge {
     width: 80px;
     height: 80px;
-    margin-bottom: 0.5rem;
 }
 
 /* SVG Path Styles */
@@ -418,24 +416,34 @@ body {
     transition: stroke-dashoffset var(--transition-normal) ease-in-out;
 }
 
+.gauge-container {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin-bottom: 0.5rem;
+}
+
 .gauge-value {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     font-size: 1.5rem;
     font-weight: bold;
     text-align: center;
-    margin-top: 0.5rem;
+    z-index: 2;
 }
 
 .gauge-percentage {
     font-size: 0.75rem;
     text-align: center;
-    margin-top: 0.5rem;
+    margin: 0.5rem 0;
 }
 
 .gauge-label {
     font-size: 0.875rem;
     font-weight: bold;
     text-align: center;
-    margin-top: 0.5rem;
 }
 
 /* Status-specific colors */
