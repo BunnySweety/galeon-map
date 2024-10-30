@@ -1651,8 +1651,6 @@ class UIManager {
     }
 }
 
-export { UIManager };
-
 /**
  * Main application initialization
  */
