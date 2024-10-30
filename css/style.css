@@ -422,6 +422,7 @@ body {
     transform-origin: center;
     font-size: 1.125rem;
     font-weight: bold;
+    line-height: 1.5rem;
     z-index: 2;
     width: 100%;
     text-align: center;
