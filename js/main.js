@@ -524,41 +524,53 @@ class MapManager {
         this.map = null;
         this.markerClusterGroup = null;
         this.markers = new Map();
-    
+        this.userMarker = null;
+
         // Bind methods
-        this.boundEventHandlers = {
-            resize: Utils.throttle(() => this.handleResize(), 250),
-            handleMapClick: this.handleMapClick.bind(this),
-            handleZoomEnd: this.handleZoomEnd.bind(this),
-            handleMoveEnd: this.handleMoveEnd.bind(this)
-        };
+        this.handleResize = this.handleResize.bind(this);
+        this.handleMapClick = this.handleMapClick.bind(this);
+        this.handleZoomEnd = this.handleZoomEnd.bind(this);
+        this.handleMoveEnd = this.handleMoveEnd.bind(this);
+        this.createClusterIcon = this.createClusterIcon.bind(this);
+        this.updateVisibleMarkers = this.updateVisibleMarkers.bind(this);
+        this.updateTileLayer = this.updateTileLayer.bind(this);
     }
 
-    init() {
+    async init() {
         if (this.map) return this.map;
 
         PerformanceMonitor.startMeasure('mapInit');
 
-        this.map = L.map(this.containerId, {
-            center: CONFIG.MAP.DEFAULT_CENTER,
-            zoom: CONFIG.MAP.DEFAULT_ZOOM,
-            maxZoom: CONFIG.MAP.MAX_ZOOM,
-            minZoom: CONFIG.MAP.MIN_ZOOM,
-            zoomControl: window.innerWidth > CONFIG.UI.MOBILE_BREAKPOINT,
-            scrollWheelZoom: true,
-            dragging: true,
-            tap: true
-        });
+        try {
+            const mapElement = document.getElementById(this.containerId);
+            if (!mapElement) {
+                throw new Error(`Map container with id '${this.containerId}' not found`);
+            }
 
-        this.setupPanes();
-        this.setupMarkerCluster();
-        this.updateTileLayer();
-        this.setupEventListeners();
+            this.map = L.map(this.containerId, {
+                center: CONFIG.MAP.DEFAULT_CENTER,
+                zoom: CONFIG.MAP.DEFAULT_ZOOM,
+                maxZoom: CONFIG.MAP.MAX_ZOOM,
+                minZoom: CONFIG.MAP.MIN_ZOOM,
+                zoomControl: window.innerWidth > CONFIG.UI.MOBILE_BREAKPOINT,
+                scrollWheelZoom: true,
+                dragging: true,
+                tap: true
+            });
 
-        store.setState({ map: this.map });
+            this.setupPanes();
+            this.setupMarkerCluster();
+            await this.updateTileLayer();
+            this.setupEventListeners();
 
-        PerformanceMonitor.endMeasure('mapInit');
-        return this.map;
+            store.setState({ map: this.map });
+
+            PerformanceMonitor.endMeasure('mapInit');
+            return this.map;
+        } catch (error) {
+            ErrorHandler.handle(error, 'Map Initialization');
+            throw error;
+        }
     }
 
     setupPanes() {
