@@ -397,6 +397,7 @@ body {
     position: relative;
     text-align: center;
     padding: 0 0.625rem;
+    justify-content: center;
 }
 
 /* SVG Gauge Base Styles */
@@ -416,8 +417,6 @@ body {
 
 .gauge-value {
     position: absolute;
-    top: 35%;
-    left: 50%;
     transform: translate(-50%, -50%);
     transform-origin: center;
     font-size: 1.125rem;
