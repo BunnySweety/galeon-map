@@ -418,7 +418,7 @@ body {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%) rotate(90deg);
+    transform: translate(-50%, -50%);
     transform-origin: center;
     font-size: 1.125rem;
     font-weight: bold;
@@ -427,10 +427,6 @@ body {
     text-align: center;
     color: var(--text-color-light);
     pointer-events: none;
-}
-
-.gauge .gauge-value {
-    transform: rotate(90deg);
 }
 
 .gauge-value-path {

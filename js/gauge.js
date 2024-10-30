@@ -139,7 +139,7 @@ class GaugeManager {
             valuePath.setAttribute('stroke', this.#defaultOptions.statusColors[status] || '#999');
             valuePath.setAttribute('stroke-width', this.#defaultOptions.strokeWidth);
             valuePath.setAttribute('stroke-linecap', 'round');
-            // valuePath.style.transform = 'rotate(-90deg)';
+            valuePath.style.transform = 'rotate(-90deg)';
             valuePath.style.transformOrigin = 'center';
 
             // Add paths to SVG
@@ -237,7 +237,6 @@ class GaugeManager {
                 // Calculate the dash offset based on percentage
                 // Important: Subtract from circumference because SVG arc starts at top and goes clockwise
                 const dashOffset = circumference * (1 - percentage / 100);
-                console.log(`Dash offset for ${status}:`, dashOffset);
 
                 // Update SVG path properties
                 const valuePath = elements.valuePath;
