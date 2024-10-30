@@ -139,7 +139,7 @@ class GaugeManager {
             valuePath.setAttribute('stroke', this.#defaultOptions.statusColors[status] || '#999');
             valuePath.setAttribute('stroke-width', this.#defaultOptions.strokeWidth);
             valuePath.setAttribute('stroke-linecap', 'round');
-            valuePath.style.transform = 'rotate(-90deg)';
+            // valuePath.style.transform = 'rotate(-90deg)';
             valuePath.style.transformOrigin = 'center';
 
             // Add paths to SVG
