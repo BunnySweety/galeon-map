@@ -1646,7 +1646,7 @@ class UIManager {
     hideControls() {
         const controls = this.elements['controls'];
         const hamburger = this.elements['hamburger-menu'];
-        
+
         if (controls && hamburger) {
             controls.classList.remove('visible');
             hamburger.classList.remove('active');
@@ -1661,13 +1661,65 @@ class UIManager {
     async updateTranslations(language) {
         const { translations } = store.getState();
         const currentTranslations = translations[language] || translations[CONFIG.UI.DEFAULT_LANGUAGE];
-        
+
         store.setState({ language });
-        
+
         document.querySelectorAll('[data-translate]').forEach(element => {
             const key = element.getAttribute('data-translate');
             if (currentTranslations[key]) {
                 element.textContent = currentTranslations[key];
+            }
+        });
+    }
+
+    /**
+     * Loads and applies user preferences
+     * @private
+     */
+    loadUserPreferences() {
+        const preferences = Utils.loadPreferences();
+        if (!preferences) return;
+
+        // Apply dark mode preference
+        if (preferences.darkMode !== undefined) {
+            this.setDarkMode(preferences.darkMode);
+        }
+
+        // Apply language preference
+        if (preferences.language) {
+            this.updateTranslations(preferences.language);
+        }
+
+        // Apply active status filters
+        if (preferences.activeStatus) {
+            store.setState({ activeStatus: preferences.activeStatus });
+            document.querySelectorAll('.status-tag').forEach(tag => {
+                const status = tag.getAttribute('status');
+                const isActive = preferences.activeStatus.includes(status);
+                tag.classList.toggle('active', isActive);
+                tag.setAttribute('aria-pressed', isActive.toString());
+            });
+        }
+
+        // Apply other filters if they exist
+        if (preferences.filters) {
+            this.updateFilters(preferences.filters);
+        }
+    }
+
+    /**
+     * Sets up keyboard handling for mobile devices
+     * @private
+     * @param {HTMLElement} element - Input element
+     */
+    setupMobileKeyboardHandling(element) {
+        if (!element) return;
+
+        element.addEventListener('focus', () => {
+            if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
+                setTimeout(() => {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                }, 500);
             }
         });
     }
