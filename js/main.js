@@ -512,17 +512,10 @@ class MapManager {
                 tap: true
             });
 
-            // Personnaliser les contrôles de zoom
             this.map.zoomControl.setPosition('topleft');
 
-            // Retirer explicitement le bouton zoom in
-            const zoomControl = document.querySelector('.leaflet-control-zoom-in');
-            if (zoomControl) {
-                zoomControl.remove();
-            }
-
-            await this.setupPanes();
-            await this.setupMarkerCluster();
+            this.setupPanes();
+            this.setupMarkerCluster();
             await this.updateTileLayer();
             this.setupEventListeners();
 
@@ -555,7 +548,6 @@ class MapManager {
 
             const { latitude: lat, longitude: lng } = position.coords;
             
-            // Vérifier si les coordonnées sont valides
             if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
                 this.map.setView([lat, lng], CONFIG.MAP.DEFAULT_ZOOM, {
                     animate: true,
