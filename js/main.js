@@ -1053,32 +1053,77 @@ class UIManager {
             AnalyticsManager.trackEvent('UI', 'LanguageChange', language);
         };
 
-        this.toggleTheme = () => {
+        this.handleThemeToggle = () => {
             const { darkMode } = store.getState();
             this.setDarkMode(!darkMode);
             AnalyticsManager.trackEvent('UI', 'ThemeToggle', !darkMode ? 'Dark' : 'Light');
         };
 
-        this.toggleLegend = () => {
-            const { legendVisible } = store.getState().ui;
+        this.handleLegendToggle = () => {
+            const { ui } = store.getState();
+            const newLegendVisible = !ui.legendVisible;
             store.setState({
-                ui: { ...store.getState().ui, legendVisible: !legendVisible }
+                ui: { ...ui, legendVisible: newLegendVisible }
             });
-            AnalyticsManager.trackEvent('UI', 'LegendToggle', !legendVisible ? 'Show' : 'Hide');
+
+            const legendContainer = document.querySelector('.legend-container');
+            if (legendContainer) {
+                legendContainer.style.display = newLegendVisible ? 'block' : 'none';
+            }
+
+            AnalyticsManager.trackEvent('UI', 'LegendToggle', newLegendVisible ? 'Show' : 'Hide');
         };
 
-        this.toggleControls = () => {
-            const controls = this.elements['controls'];
-            const hamburger = this.elements['hamburger-menu'];
+        this.handleControlsToggle = () => {
+            const controls = document.getElementById('controls');
+            const hamburger = document.getElementById('hamburger-menu');
 
             if (!controls || !hamburger) return;
 
             const isVisible = controls.classList.contains('visible');
-            controls.classList.toggle('visible');
-            hamburger.classList.toggle('active');
-            hamburger.setAttribute('aria-expanded', (!isVisible).toString());
+            const newVisibility = !isVisible;
 
-            AnalyticsManager.trackEvent('UI', 'ControlsToggle', isVisible ? 'Hide' : 'Show');
+            controls.classList.toggle('visible', newVisibility);
+            hamburger.classList.toggle('active', newVisibility);
+            hamburger.setAttribute('aria-expanded', newVisibility.toString());
+
+            store.setState({
+                ui: {
+                    ...store.getState().ui,
+                    controlsVisible: newVisibility
+                }
+            });
+
+            AnalyticsManager.trackEvent('UI', 'ControlsToggle', newVisibility ? 'Show' : 'Hide');
+        };
+
+        this.handleStatusTagClick = (e, tag) => {
+            if (!tag) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const status = tag.getAttribute('status');
+            if (!status) return;
+
+            const { activeStatus } = store.getState();
+            const isActive = activeStatus.includes(status);
+
+            const newActiveStatus = isActive
+                ? activeStatus.filter(s => s !== status)
+                : [...activeStatus, status];
+
+            tag.classList.toggle('active', !isActive);
+            tag.setAttribute('aria-pressed', (!isActive).toString());
+
+            store.setState({ activeStatus: newActiveStatus });
+            Utils.savePreferences({
+                ...Utils.loadPreferences(),
+                activeStatus: newActiveStatus
+            });
+
+            this.updateFilters();
+            AnalyticsManager.trackEvent('Filter', 'StatusToggle', `${status}: ${!isActive}`);
         };
 
         this.updateFilters = () => {
@@ -1097,35 +1142,6 @@ class UIManager {
             });
 
             AnalyticsManager.trackEvent('Filter', 'Update', `Results: ${filteredHospitals.length}`);
-        };
-
-        this.handleStatusTagClick = (e, tag) => {
-            if (!tag) return;
-
-            e.preventDefault();
-            e.stopPropagation();
-
-            const status = tag.getAttribute('status');
-            if (!status) return;
-
-            const { activeStatus } = store.getState();
-            const isActive = tag.classList.contains('active');
-
-            const newActiveStatus = isActive
-                ? activeStatus.filter(s => s !== status)
-                : [...activeStatus, status];
-
-            tag.classList.toggle('active', !isActive);
-            tag.setAttribute('aria-pressed', (!isActive).toString());
-
-            store.setState({ activeStatus: newActiveStatus });
-            Utils.savePreferences({
-                ...Utils.loadPreferences(),
-                activeStatus: newActiveStatus
-            });
-
-            this.updateFilters();
-            AnalyticsManager.trackEvent('Filter', 'StatusToggle', `${status}: ${!isActive}`);
         };
 
         // Initialisation
@@ -1200,39 +1216,38 @@ class UIManager {
     }
 
     setupEventListeners() {
-        if (!this.elements) return;
-
         // Window events
         window.addEventListener('resize', this.handleResize, { passive: true });
         window.addEventListener('orientationchange', this.handleOrientationChange, { passive: true });
         window.addEventListener('keydown', this.handleEscapeKey);
 
         // Element-specific events
-        Object.entries(this.elements).forEach(([id, element]) => {
-            if (!element) return;
+        const languageSelect = document.getElementById('language-select');
+        if (languageSelect) {
+            languageSelect.addEventListener('change', (e) => this.handleLanguageChange(e.target.value));
+        }
 
-            switch (id) {
-                case 'language-select':
-                    element.addEventListener('change', (e) => this.handleLanguageChange(e.target.value));
-                    break;
-                case 'theme-toggle':
-                    element.addEventListener('click', this.toggleTheme);
-                    this.addKeyboardSupport(element, this.toggleTheme);
-                    break;
-                case 'legend-toggle':
-                    element.addEventListener('click', this.toggleLegend);
-                    this.addKeyboardSupport(element, this.toggleLegend);
-                    break;
-                case 'hamburger-menu':
-                    element.addEventListener('click', this.toggleControls);
-                    this.addKeyboardSupport(element, this.toggleControls);
-                    break;
-            }
-        });
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', this.handleThemeToggle);
+            this.addKeyboardSupport(themeToggle, this.handleThemeToggle);
+        }
+
+        const legendToggle = document.getElementById('legend-toggle');
+        if (legendToggle) {
+            legendToggle.addEventListener('click', this.handleLegendToggle);
+            this.addKeyboardSupport(legendToggle, this.handleLegendToggle);
+        }
+
+        const hamburgerMenu = document.getElementById('hamburger-menu');
+        if (hamburgerMenu) {
+            hamburgerMenu.addEventListener('click', this.handleControlsToggle);
+            this.addKeyboardSupport(hamburgerMenu, this.handleControlsToggle);
+        }
 
         // Filter inputs
         ['continent-select', 'country-filter', 'city-filter', 'hospital-search'].forEach(id => {
-            const element = this.elements[id];
+            const element = document.getElementById(id);
             if (element) {
                 element.addEventListener('input', Utils.debounce(this.updateFilters, CONFIG.UI.ANIMATION.DEBOUNCE_DELAY));
                 this.setupMobileKeyboardHandling(element);
@@ -1253,22 +1268,18 @@ class UIManager {
     }
 
     setupAccessibility() {
-        Object.entries(this.elements).forEach(([id, element]) => {
-            if (!element) return;
-
-            const label = id.replace(/([A-Z])/g, ' $1').toLowerCase();
-            element.setAttribute('aria-label', label);
-
-            if (['theme-toggle', 'legend-toggle', 'hamburger-menu'].includes(id)) {
-                element.setAttribute('role', 'button');
-                element.setAttribute('tabindex', '0');
-            }
-        });
-
         document.querySelectorAll('.status-tag').forEach(tag => {
             tag.setAttribute('role', 'button');
             tag.setAttribute('tabindex', '0');
             tag.setAttribute('aria-pressed', 'false');
+        });
+
+        ['theme-toggle', 'legend-toggle', 'hamburger-menu'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.setAttribute('role', 'button');
+                element.setAttribute('tabindex', '0');
+            }
         });
     }
 
@@ -1336,20 +1347,19 @@ class UIManager {
     getCurrentFilters() {
         return {
             activeStatus: store.getState().activeStatus,
-            searchTerm: this.elements['hospital-search']?.value?.toLowerCase() || '',
-            continent: this.elements['continent-select']?.value || '',
-            country: this.elements['country-filter']?.value?.toLowerCase() || '',
-            city: this.elements['city-filter']?.value?.toLowerCase() || ''
+            searchTerm: document.getElementById('hospital-search')?.value?.toLowerCase() || '',
+            continent: document.getElementById('continent-select')?.value || '',
+            country: document.getElementById('country-filter')?.value?.toLowerCase() || '',
+            city: document.getElementById('city-filter')?.value?.toLowerCase() || ''
         };
     }
 
     filterHospitals(filters) {
         const { hospitals } = store.getState();
-
         console.log('Filtres actifs:', {
             activeStatus: filters.activeStatus,
             totalHospitals: hospitals.length
-        });        
+        });
 
         const filteredHospitals = hospitals.filter(hospital => {
             if (filters.activeStatus.length && !filters.activeStatus.includes(hospital.status)) {
@@ -1393,28 +1403,24 @@ class UIManager {
         return filteredHospitals;
     }
 
-    /**
-     * Update visibility of markers
-     * @param {Array} filteredHospitals List of filtered hospitals
-     */
     updateMarkerVisibility(filteredHospitals) {
         try {
             if (!this.mapManager?.markerClusterGroup) return;
-    
+
             this.mapManager.markerClusterGroup.clearLayers();
-    
+
             const noResults = document.getElementById('no-hospitals-message');
             if (noResults) {
                 noResults.style.display = filteredHospitals.length === 0 ? 'block' : 'none';
             }
-    
+
             const markers = filteredHospitals
                 .map(hospital => this.mapManager.markers.get(hospital.id))
                 .filter(marker => marker instanceof L.CircleMarker);
-    
+
             if (markers.length > 0) {
                 this.mapManager.markerClusterGroup.addLayers(markers);
-    
+
                 if (this.mapManager.map) {
                     const bounds = L.latLngBounds(markers.map(m => m.getLatLng()));
                     this.mapManager.map.fitBounds(bounds, {
@@ -1465,8 +1471,8 @@ class UIManager {
     }
 
     hideControls() {
-        const controls = this.elements['controls'];
-        const hamburger = this.elements['hamburger-menu'];
+        const controls = document.getElementById('controls');
+        const hamburger = document.getElementById('hamburger-menu');
 
         if (controls) {
             controls.classList.remove('visible');
@@ -1475,6 +1481,13 @@ class UIManager {
             hamburger.classList.remove('active');
             hamburger.setAttribute('aria-expanded', 'false');
         }
+
+        store.setState({
+            ui: {
+                ...store.getState().ui,
+                controlsVisible: false
+            }
+        });
     }
 
     updateTranslations(language) {
@@ -1524,35 +1537,47 @@ class UIManager {
     }
 
     clearFilters() {
+        // Reset input values
         ['hospital-search', 'country-filter', 'city-filter'].forEach(id => {
             const element = document.getElementById(id);
             if (element) element.value = '';
         });
 
+        // Reset continent select
         const continentSelect = document.getElementById('continent-select');
         if (continentSelect) continentSelect.selectedIndex = 0;
 
+        // Reset status tags
         document.querySelectorAll('.status-tag').forEach(tag => {
             tag.classList.remove('active');
             tag.setAttribute('aria-pressed', 'false');
         });
 
+        // Reset store state
         store.setState({ activeStatus: [] });
 
+        // Reset markers
         const { hospitals } = store.getState();
-        this.mapManager.markerClusterGroup.clearLayers();
-        hospitals.forEach(hospital => {
-            const marker = this.mapManager.markers.get(hospital.id);
-            if (marker) {
-                this.mapManager.markerClusterGroup.addLayer(marker);
-            }
-        });
+        if (this.mapManager?.markerClusterGroup) {
+            this.mapManager.markerClusterGroup.clearLayers();
+            hospitals.forEach(hospital => {
+                const marker = this.mapManager.markers.get(hospital.id);
+                if (marker) {
+                    this.mapManager.markerClusterGroup.addLayer(marker);
+                }
+            });
+        }
 
+        // Hide no results message
         const noResults = document.getElementById('no-hospitals-message');
         if (noResults) noResults.style.display = 'none';
 
-        this.mapManager.fitMarkersInView();
+        // Reset map view
+        if (this.mapManager) {
+            this.mapManager.fitMarkersInView();
+        }
 
+        // Track event
         AnalyticsManager.trackEvent('Filter', 'Clear');
     }
 
@@ -1563,8 +1588,15 @@ class UIManager {
             window.removeEventListener('orientationchange', this.handleOrientationChange);
             window.removeEventListener('keydown', this.handleEscapeKey);
 
-            // Remove element-specific event listeners
-            Object.entries(this.elements).forEach(([id, element]) => {
+            // Clean up ResizeObserver
+            if (this.resizeObserver) {
+                this.resizeObserver.disconnect();
+                this.resizeObserver = null;
+            }
+
+            // Remove element event listeners
+            ['language-select', 'theme-toggle', 'legend-toggle', 'hamburger-menu'].forEach(id => {
+                const element = document.getElementById(id);
                 if (!element) return;
 
                 switch (id) {
@@ -1572,20 +1604,20 @@ class UIManager {
                         element.removeEventListener('change', this.handleLanguageChange);
                         break;
                     case 'theme-toggle':
-                        element.removeEventListener('click', this.toggleTheme);
+                        element.removeEventListener('click', this.handleThemeToggle);
                         break;
                     case 'legend-toggle':
-                        element.removeEventListener('click', this.toggleLegend);
+                        element.removeEventListener('click', this.handleLegendToggle);
                         break;
                     case 'hamburger-menu':
-                        element.removeEventListener('click', this.toggleControls);
+                        element.removeEventListener('click', this.handleControlsToggle);
                         break;
                 }
             });
 
             // Remove filter input listeners
             ['continent-select', 'country-filter', 'city-filter', 'hospital-search'].forEach(id => {
-                const element = this.elements[id];
+                const element = document.getElementById(id);
                 if (element) {
                     element.removeEventListener('input', this.updateFilters);
                     element.removeEventListener('focus', this.setupMobileKeyboardHandling);
@@ -1598,12 +1630,6 @@ class UIManager {
                 tag.removeEventListener('click', this.handleStatusTagClick);
             });
 
-            // Cleanup ResizeObserver
-            if (this.resizeObserver) {
-                this.resizeObserver.disconnect();
-                this.resizeObserver = null;
-            }
-
             // Clear references
             this.elements = {};
 
@@ -1614,7 +1640,7 @@ class UIManager {
         }
     }
 
-    // Debugging method
+    // Debug method
     debug() {
         return {
             elements: this.elements,
@@ -1624,6 +1650,8 @@ class UIManager {
         };
     }
 }
+
+export { UIManager };
 
 /**
  * Main application initialization
