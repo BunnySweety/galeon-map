@@ -593,26 +593,17 @@ class MapManager {
         }
     }
 
-    /**
-     * Creates a custom cluster icon
-     * @param {L.MarkerCluster} cluster - The cluster instance
-     * @returns {L.DivIcon} The created icon
-     */
     createClusterIcon(cluster) {
         const count = cluster.getChildCount();
         let size = 'small';
 
-        if (count > 100) {
-            size = 'large';
-        } else if (count > 10) {
-            size = 'medium';
-        }
+        if (count > 100) size = 'large';
+        else if (count > 10) size = 'medium';
 
         return L.divIcon({
             html: `<div class="cluster-icon cluster-${size}">${count}</div>`,
             className: `marker-cluster marker-cluster-${size}`,
-            iconSize: L.point(40, 40),
-            iconAnchor: L.point(20, 20)
+            iconSize: L.point(40, 40)
         });
     }
 
@@ -1561,7 +1552,7 @@ class UIManager {
             }
 
             this.elements = {};
-
+            
             console.log('UIManager cleanup completed successfully');
         } catch (error) {
             console.error('Error during UIManager cleanup:', error);
