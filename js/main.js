@@ -599,6 +599,42 @@ class MapManager {
         store.setState({ markerClusterGroup: this.markerClusterGroup });
     }
 
+    handleMapClick(e) {
+        if (!this.map) return;
+
+        const { ui } = store.getState();
+        if (ui.controlsVisible && window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
+            store.setState({
+                ui: { ...ui, controlsVisible: false }
+            });
+        }
+        AnalyticsManager.trackEvent('Map', 'Click', `${e.latlng.lat},${e.latlng.lng}`);
+    }
+
+    handleZoomEnd() {
+        if (!this.map) return;
+
+        const zoom = this.map.getZoom();
+        AnalyticsManager.trackEvent('Map', 'Zoom', `Level: ${zoom}`);
+        store.setState({ currentZoom: zoom });
+    }
+
+    handleMoveEnd() {
+        if (!this.map) return;
+
+        const center = this.map.getCenter();
+        if (!center) return;
+
+        AnalyticsManager.trackEvent('Map', 'Move', `${center.lat},${center.lng}`);
+        this.updateVisibleMarkers();
+    }
+
+    handleResize() {
+        if (this.map) {
+            this.map.invalidateSize();
+        }
+    }    
+
     createClusterIcon(cluster) {
         const count = cluster.getChildCount();
         let size = 'small';
