@@ -158,21 +158,46 @@ const Utils = {
             return {
                 street: '',
                 city: '',
-                state: '',
                 country: '',
                 postalCode: ''
             };
         }
-
+    
         const parts = address.split(',').map(part => part.trim());
-        const postalMatch = parts.join(' ').match(/\b[A-Z0-9]{4,10}\b/i);
-        const postalCode = postalMatch ? postalMatch[0] : '';
-
+        
+        const postalPatterns = [
+            /\b[0-9]{5}\b/, // US, FR, DE, etc.
+            /\b[A-Z][0-9][A-Z]\s?[0-9][A-Z][0-9]\b/i, // CA
+            /\b[A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2}\b/i, // UK
+            /\b[0-9]{4}\s?[A-Z]{2}\b/i, // NL
+            /\b[0-9]{4,6}\b/, // JP, CN, KR, etc.
+            /\b[A-Z0-9]{2,4}\s?[0-9]{3,4}\b/i // SG, etc.
+        ];
+    
+        let postalCode = '';
+        let city = '';
+        let potentialCityPart = parts[1] || '';
+    
+        for (const pattern of postalPatterns) {
+            const match = potentialCityPart.match(pattern);
+            if (match) {
+                postalCode = match[0];
+                city = potentialCityPart.replace(pattern, '').trim();
+                break;
+            }
+        }
+    
+        if (!city && potentialCityPart) {
+            city = potentialCityPart;
+        }
+    
+        const country = parts[parts.length - 1];
+        const street = parts[0];
+    
         return {
-            country: parts[parts.length - 1] || '',
-            state: parts[parts.length - 2] || '',
-            city: parts[parts.length - 3] || '',
-            street: parts.slice(0, -3).join(', '),
+            street,
+            city,
+            country,
             postalCode
         };
     },
@@ -784,15 +809,15 @@ class MapManager {
 
     generatePopupContent(hospital) {
         if (!hospital) return document.createElement('div');
-    
+
         const { translations, language } = store.getState();
         const currentTranslations = translations[language] || translations[CONFIG.UI.DEFAULT_LANGUAGE];
-    
+
         const container = document.createElement('div');
         container.className = 'popup-content';
-    
+
         const address = Utils.parseAddress(hospital.address);
-    
+
         container.innerHTML = `
             <h3 class="popup-title">${hospital.name}</h3>
             <div class="popup-image-wrapper">
@@ -807,9 +832,9 @@ class MapManager {
             <div class="popup-address">
                 <strong>${currentTranslations.address || 'Address'}:</strong>
                 <span class="popup-address-line">${address.street}</span>
-                ${address.postalCode || address.city ? 
-                    `<span class="popup-address-line">${[address.postalCode, address.city].filter(Boolean).join(' ')}</span>` 
-                    : ''}
+                ${address.postalCode || address.city ?
+                `<span class="popup-address-line">${[address.postalCode, address.city].filter(Boolean).join(' ')}</span>`
+                : ''}
                 <span class="popup-address-line">${address.country}</span>
             </div>
             <a href="${hospital.website}" 
@@ -825,7 +850,7 @@ class MapManager {
                 </span>
             </div>
         `;
-    
+
         return container;
     }
 
@@ -1526,6 +1551,55 @@ class UIManager {
                 handler(e);
             }
         });
+    }
+
+    /**
+     * Toggles the dark mode theme for the application.
+     * Updates the body class, store state, and map tile layer to reflect the theme change.
+     * Persists the user's preference for dark mode.
+     * 
+     * @param {boolean} isDark - Indicates whether to enable dark mode.
+     */
+    setDarkMode(isDark) {
+        const body = document.body;
+        body.classList.toggle('dark-mode', isDark);
+        store.setState({ darkMode: isDark });
+        
+        if (this.mapManager) {
+            this.mapManager.updateTileLayer();
+        }
+
+        Utils.savePreferences({
+            ...Utils.loadPreferences(),
+            darkMode: isDark
+        });
+    }
+
+    /**
+     * Detects the user's system color scheme preference and sets the app's theme accordingly.
+     * Listens for changes to the system preference and updates the app's theme.
+     * Also sets up a theme toggle button to allow users to override the system preference.
+     */
+    setupThemeDetection() {
+        // Detect system preference
+        const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        
+        // Initial setup
+        this.setDarkMode(darkModeMediaQuery.matches);
+        
+        // Listen for system changes
+        darkModeMediaQuery.addEventListener('change', e => {
+            this.setDarkMode(e.matches);
+        });
+
+        // Theme toggle button
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                const currentMode = store.getState().darkMode;
+                this.setDarkMode(!currentMode);
+            });
+        }
     }
 
     /**
