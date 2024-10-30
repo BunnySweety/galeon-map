@@ -1062,15 +1062,16 @@ class UIManager {
         this.handleLegendToggle = () => {
             const { ui } = store.getState();
             const newLegendVisible = !ui.legendVisible;
+            
+            const legendContainer = document.querySelector('.legend-container');
+            if (legendContainer) {
+                legendContainer.classList.toggle('hidden', !newLegendVisible);
+            }
+            
             store.setState({
                 ui: { ...ui, legendVisible: newLegendVisible }
             });
-
-            const legendContainer = document.querySelector('.legend-container');
-            if (legendContainer) {
-                legendContainer.style.display = newLegendVisible ? 'block' : 'none';
-            }
-
+            
             AnalyticsManager.trackEvent('UI', 'LegendToggle', newLegendVisible ? 'Show' : 'Hide');
         };
 
@@ -1080,21 +1081,20 @@ class UIManager {
 
             if (!controls || !hamburger) return;
 
-            const isVisible = controls.classList.contains('visible');
-            const newVisibility = !isVisible;
-
-            controls.classList.toggle('visible', newVisibility);
-            hamburger.classList.toggle('active', newVisibility);
-            hamburger.setAttribute('aria-expanded', newVisibility.toString());
-
+            const isVisible = !controls.classList.contains('hidden');
+            
+            controls.classList.toggle('hidden', isVisible);
+            hamburger.classList.toggle('active', !isVisible);
+            hamburger.setAttribute('aria-expanded', (!isVisible).toString());
+            
             store.setState({
                 ui: {
                     ...store.getState().ui,
-                    controlsVisible: newVisibility
+                    controlsVisible: !isVisible
                 }
             });
 
-            AnalyticsManager.trackEvent('UI', 'ControlsToggle', newVisibility ? 'Show' : 'Hide');
+            AnalyticsManager.trackEvent('UI', 'ControlsToggle', isVisible ? 'Hide' : 'Show');
         };
 
         this.handleStatusTagClick = (e, tag) => {
@@ -1157,6 +1157,14 @@ class UIManager {
             this.setupThemeDetection();
             this.setupResizeObserver();
             this.updateLayout();
+
+            store.setState({
+                ui: {
+                    ...store.getState().ui,
+                    controlsVisible: true,
+                    legendVisible: true
+                }
+            });
 
             AnalyticsManager.trackEvent('UI', 'Initialize', 'Success');
         } catch (error) {
@@ -1475,7 +1483,7 @@ class UIManager {
         const hamburger = document.getElementById('hamburger-menu');
 
         if (controls) {
-            controls.classList.remove('visible');
+            controls.classList.add('hidden');
         }
         if (hamburger) {
             hamburger.classList.remove('active');
