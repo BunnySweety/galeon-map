@@ -694,6 +694,8 @@ class MapManager {
     }
 
     bindPopupToMarker(marker) {
+        if (!marker?.hospitalData) return;
+    
         const popup = L.popup({
             maxWidth: 300,
             minWidth: 200,
@@ -705,15 +707,14 @@ class MapManager {
             closeOnClick: false
         });
 
-        marker.bindPopup(() => {
-            const content = this.generatePopupContent(marker.hospitalData);
-            popup.setContent(content);
-            return popup;
-        });
+        marker.bindPopup(() => this.generatePopupContent(marker.hospitalData));
 
         marker.on('popupopen', () => {
-            this.initializePopupImage(marker.getPopup().getElement());
-            AnalyticsManager.trackEvent('Popup', 'Open', marker.hospitalData.name);
+            const popupElement = marker.getPopup().getElement();
+            if (popupElement) {
+                this.initializePopupImage(popupElement);
+                AnalyticsManager.trackEvent('Popup', 'Open', marker.hospitalData.name);
+            }
         });
     }
 
@@ -730,53 +731,48 @@ class MapManager {
     }
 
     generatePopupContent(hospital) {
-        if (!hospital) return '';
-
+        if (!hospital) return document.createElement('div');
+    
         const { translations, language } = store.getState();
         const currentTranslations = translations[language] || translations[CONFIG.UI.DEFAULT_LANGUAGE];
-
+    
+        const container = document.createElement('div');
+        container.className = 'popup-content';
+    
         const address = Utils.parseAddress(hospital.address);
-        const distance = this.calculateDistanceToUserLocation(hospital);
-
-        return `
-            <div class="popup-content">
-                <h3 class="popup-title">${hospital.name}</h3>
-                <div class="popup-image-wrapper">
-                    <img 
-                        src="${CONFIG.UI.IMAGE.DEFAULT}"
-                        data-src="${hospital.imageUrl}" 
-                        alt="${hospital.name}"
-                        class="popup-image"
-                        data-loading-state="${CONFIG.UI.IMAGE.STATES.LOADING}"
-                    />
-                </div>
-                <div class="popup-address">
-                    <strong>${currentTranslations.address || 'Address'}:</strong><br>
-                    ${address.street}<br>
-                    ${address.city}${address.postalCode ? ` (${address.postalCode})` : ''}<br>
-                    ${address.country}
-                    ${distance ? `<br><small>Distance: ${distance} km</small>` : ''}
-                </div>
-                <a href="${hospital.website}" 
-                   target="_blank" 
-                   rel="noopener noreferrer" 
-                   class="popup-link">
-                    ${currentTranslations.visitWebsite || 'Visit Website'}
-                </a>
-                <div class="popup-status">
-                    <span>${currentTranslations.status || 'Status'}:</span>
-                    <span class="status-tag status-${hospital.status.toLowerCase().replace(/\s+/g, '-')} active">
-                        ${hospital.status}
-                    </span>
-                </div>
-                <div class="popup-actions">
-                    <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${hospital.lat},${hospital.lon}')" 
-                            class="directions-button">
-                        Get Directions
-                    </button>
-                </div>
+        
+        container.innerHTML = `
+            <h3 class="popup-title">${hospital.name}</h3>
+            <div class="popup-image-wrapper">
+                <img 
+                    src="${CONFIG.UI.IMAGE.DEFAULT}"
+                    data-src="${hospital.imageUrl}" 
+                    alt="${hospital.name}"
+                    class="popup-image"
+                    data-loading-state="${CONFIG.UI.IMAGE.STATES.LOADING}"
+                />
+            </div>
+            <div class="popup-address">
+                <strong>${currentTranslations.address || 'Adresse'}:</strong><br>
+                ${address.street}<br>
+                ${address.city}${address.postalCode ? ` (${address.postalCode})` : ''}<br>
+                ${address.country}
+            </div>
+            <a href="${hospital.website}" 
+               target="_blank" 
+               rel="noopener noreferrer" 
+               class="popup-link">
+               ${currentTranslations.visitWebsite || 'Visiter le site Web'}
+            </a>
+            <div class="popup-status">
+                <span>${currentTranslations.status || 'Statut'}:</span>
+                <span class="status-tag status-${hospital.status.toLowerCase().replace(/\s+/g, '-')} active">
+                    ${hospital.status}
+                </span>
             </div>
         `;
+    
+        return container;
     }
 
     initializePopupImage(popupElement) {
@@ -1279,58 +1275,58 @@ class UIManager {
 
     filterHospitals(filters) {
         const { hospitals } = store.getState();
-
-        return hospitals.filter(hospital => {
+        
+        const filteredHospitals = hospitals.filter(hospital => {
             if (filters.activeStatus.length && !filters.activeStatus.includes(hospital.status)) {
                 return false;
             }
-
-            if (filters.searchTerm && !hospital.name.toLowerCase().includes(filters.searchTerm)) {
+    
+            if (filters.searchTerm && !hospital.name.toLowerCase().includes(filters.searchTerm.toLowerCase())) {
                 return false;
             }
-
+    
             const address = Utils.parseAddress(hospital.address);
-
-            if (filters.continent &&
-                Utils.getContinent(hospital.lat, hospital.lon) !== filters.continent) {
+    
+            if (filters.continent) {
+                const hospitalContinent = Utils.getContinent(hospital.lat, hospital.lon);
+                if (hospitalContinent !== filters.continent) {
+                    return false;
+                }
+            }
+    
+            if (filters.country && !address.country.toLowerCase().includes(filters.country.toLowerCase())) {
                 return false;
             }
-
-            if (filters.country &&
-                !address.country.toLowerCase().includes(filters.country)) {
+    
+            if (filters.city && !address.city.toLowerCase().includes(filters.city.toLowerCase())) {
                 return false;
             }
-
-            if (filters.city &&
-                !address.city.toLowerCase().includes(filters.city)) {
-                return false;
-            }
-
+    
             return true;
         });
+    
+        return filteredHospitals;
     }
 
     updateMarkerVisibility(filteredHospitals) {
-        const filteredIds = new Set(filteredHospitals.map(h => h.id));
-
-        this.mapManager.markers.forEach(marker => {
-            const isVisible = filteredIds.has(marker.hospitalData.id);
-            if (isVisible) {
-                this.mapManager.markerClusterGroup.addLayer(marker);
-            } else {
-                this.mapManager.markerClusterGroup.removeLayer(marker);
-            }
-        });
-
-        const noResults = this.elements['no-hospitals-message'];
+        this.mapManager.markerClusterGroup.clearLayers();
+    
+        const noResults = document.getElementById('no-hospitals-message');
         if (noResults) {
             noResults.style.display = filteredHospitals.length === 0 ? 'block' : 'none';
         }
-
+    
+        filteredHospitals.forEach(hospital => {
+            const marker = this.mapManager.markers.get(hospital.id);
+            if (marker) {
+                this.mapManager.markerClusterGroup.addLayer(marker);
+            }
+        });
+    
         if (filteredHospitals.length > 0) {
             this.mapManager.fitMarkersInView(
                 Array.from(this.mapManager.markers.values())
-                    .filter(m => filteredIds.has(m.hospitalData.id))
+                    .filter(m => filteredHospitals.includes(m.hospitalData))
             );
         }
     }
@@ -1430,33 +1426,35 @@ class UIManager {
     }
 
     clearFilters() {
-        // Reset input fields
         ['hospital-search', 'country-filter', 'city-filter'].forEach(id => {
-            if (this.elements[id]) {
-                this.elements[id].value = '';
-            }
+            const element = document.getElementById(id);
+            if (element) element.value = '';
         });
-
-        // Reset select elements
-        ['continent-select'].forEach(id => {
-            if (this.elements[id]) {
-                this.elements[id].selectedIndex = 0;
-            }
-        });
-
-        // Reset status tags
+    
+        const continentSelect = document.getElementById('continent-select');
+        if (continentSelect) continentSelect.selectedIndex = 0;
+    
         document.querySelectorAll('.status-tag').forEach(tag => {
             tag.classList.remove('active');
             tag.setAttribute('aria-pressed', 'false');
         });
-
-        // Reset store state
+    
         store.setState({ activeStatus: [] });
-
-        // Update filters and UI
-        this.updateFilters();
-
-        // Track event
+    
+        const { hospitals } = store.getState();
+        this.mapManager.markerClusterGroup.clearLayers();
+        hospitals.forEach(hospital => {
+            const marker = this.mapManager.markers.get(hospital.id);
+            if (marker) {
+                this.mapManager.markerClusterGroup.addLayer(marker);
+            }
+        });
+    
+        const noResults = document.getElementById('no-hospitals-message');
+        if (noResults) noResults.style.display = 'none';
+    
+        this.mapManager.fitMarkersInView();
+    
         AnalyticsManager.trackEvent('Filter', 'Clear');
     }
 
