@@ -999,113 +999,17 @@ class UIManager {
         this.elements = {};
         this.resizeObserver = null;
 
-        // Bind only the methods that actually exist
-        this.handleResize = () => {
-            this.updateLayout();
-            AnalyticsManager.trackEvent('UI', 'Resize', `Width: ${window.innerWidth}`);
-        };
-
-        this.handleOrientationChange = () => {
-            setTimeout(() => {
-                this.updateLayout();
-            }, 100);
-        };
-
-        this.handleEscapeKey = (e) => {
-            if (e.key === 'Escape') {
-                if (this.mapManager.map) {
-                    this.mapManager.map.closePopup();
-                }
-                if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
-                    this.hideControls();
-                }
-                document.activeElement?.blur();
-            }
-        };
-
-        this.handleLanguageChange = (language) => {
-            this.updateTranslations(language);
-            Utils.savePreferences({
-                ...Utils.loadPreferences(),
-                language
-            });
-            AnalyticsManager.trackEvent('UI', 'LanguageChange', language);
-        };
-
-        this.toggleTheme = () => {
-            const { darkMode } = store.getState();
-            this.setDarkMode(!darkMode);
-            AnalyticsManager.trackEvent('UI', 'ThemeToggle', !darkMode ? 'Dark' : 'Light');
-        };
-
-        this.toggleLegend = () => {
-            const { legendVisible } = store.getState().ui;
-            store.setState({
-                ui: { ...store.getState().ui, legendVisible: !legendVisible }
-            });
-            AnalyticsManager.trackEvent('UI', 'LegendToggle', !legendVisible ? 'Show' : 'Hide');
-        };
-
-        this.toggleControls = () => {
-            const controls = this.elements['controls'];
-            const hamburger = this.elements['hamburger-menu'];
-
-            if (!controls || !hamburger) return;
-
-            const isVisible = controls.classList.contains('visible');
-            controls.classList.toggle('visible');
-            hamburger.classList.toggle('active');
-            hamburger.setAttribute('aria-expanded', (!isVisible).toString());
-
-            AnalyticsManager.trackEvent('UI', 'ControlsToggle', isVisible ? 'Hide' : 'Show');
-        };
-
-        this.updateFilters = () => {
-            const filters = this.getCurrentFilters();
-            store.setState({ filters });
-
-            const filteredHospitals = this.filterHospitals(filters);
-
-            this.updateMarkerVisibility(filteredHospitals);
-            GaugeManager.updateAllGauges(filteredHospitals);
-            this.updateURLParams(filters);
-
-            Utils.savePreferences({
-                ...Utils.loadPreferences(),
-                filters
-            });
-
-            AnalyticsManager.trackEvent('Filter', 'Update', `Results: ${filteredHospitals.length}`);
-        };
-
-        this.handleStatusTagClick = (e, tag) => {
-            if (!tag) return;
-
-            e.preventDefault();
-            e.stopPropagation();
-
-            const status = tag.getAttribute('status');
-            if (!status) return;
-
-            const { activeStatus } = store.getState();
-            const isActive = tag.classList.contains('active');
-
-            const newActiveStatus = isActive
-                ? activeStatus.filter(s => s !== status)
-                : [...activeStatus, status];
-
-            tag.classList.toggle('active', !isActive);
-            tag.setAttribute('aria-pressed', (!isActive).toString());
-
-            store.setState({ activeStatus: newActiveStatus });
-            Utils.savePreferences({
-                ...Utils.loadPreferences(),
-                activeStatus: newActiveStatus
-            });
-
-            this.updateFilters();
-            AnalyticsManager.trackEvent('Filter', 'StatusToggle', `${status}: ${!isActive}`);
-        };
+        // Bind methods to preserve context
+        this.handleResize = this.handleResize.bind(this);
+        this.handleOrientationChange = this.handleOrientationChange.bind(this);
+        this.handleEscapeKey = this.handleEscapeKey.bind(this);
+        this.handleLanguageChange = this.handleLanguageChange.bind(this);
+        this.toggleTheme = this.toggleTheme.bind(this);
+        this.toggleLegend = this.toggleLegend.bind(this);
+        this.toggleControls = this.toggleControls.bind(this);
+        this.updateFilters = this.updateFilters.bind(this);
+        this.handleStatusTagClick = this.handleStatusTagClick.bind(this);
+        this.updateMarkerVisibility = this.updateMarkerVisibility.bind(this);
     }
 
     /**
