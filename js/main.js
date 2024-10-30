@@ -1346,18 +1346,8 @@ class UIManager {
     filterHospitals(filters) {
         const { hospitals } = store.getState();
 
-        console.log('Filtres actifs:', {
-            activeStatus: filters.activeStatus,
-            totalHospitals: hospitals.length
-        });        
-
         const filteredHospitals = hospitals.filter(hospital => {
             if (filters.activeStatus.length && !filters.activeStatus.includes(hospital.status)) {
-                console.log('Hospital filtered out:', {
-                    hospitalStatus: hospital.status,
-                    activeFilters: filters.activeStatus,
-                    matched: filters.activeStatus.includes(hospital.status)
-                });
                 return false;
             }
 
@@ -1383,11 +1373,6 @@ class UIManager {
             }
 
             return true;
-        });
-
-        console.log('Résultat du filtrage:', {
-            total: filteredHospitals.length,
-            statuses: [...new Set(filteredHospitals.map(h => h.status))]
         });
 
         return filteredHospitals;

@@ -3,7 +3,7 @@
  */
 class GaugeManager {
     static #gauges = new Map();
-    
+
     static #defaultOptions = {
         radius: 15.9155,
         strokeWidth: 3,
@@ -20,7 +20,7 @@ class GaugeManager {
     static async initGauges(options = {}) {
         try {
             this.#defaultOptions = { ...this.#defaultOptions, ...options };
-            
+
             // Create or get chart container
             let container = document.querySelector('.chart-container');
             if (!container) {
@@ -32,7 +32,7 @@ class GaugeManager {
 
             // Create gauges for the three fixed statuses
             const statuses = ['Deployed', 'In Progress', 'Signed'];
-            
+
             statuses.forEach(status => {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'gauge-wrapper';
@@ -58,10 +58,10 @@ class GaugeManager {
     static #createGaugeElements(wrapper, status) {
         try {
             wrapper.innerHTML = '';
-            
+
             const gaugeContainer = document.createElement('div');
             gaugeContainer.className = 'gauge-container';
-            
+
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svg.setAttribute('viewBox', '0 0 36 36');
             svg.classList.add('gauge');
@@ -74,7 +74,7 @@ class GaugeManager {
 
             const backgroundPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             const valuePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            
+
             const radius = this.#defaultOptions.radius;
             const pathD = `M18 2.0845
                           a ${radius} ${radius} 0 0 1 0 31.831
@@ -98,22 +98,22 @@ class GaugeManager {
             const valueDisplay = document.createElement('div');
             valueDisplay.classList.add('gauge-value');
             valueDisplay.textContent = '0';
-    
+
             gaugeContainer.appendChild(svg);
             gaugeContainer.appendChild(valueDisplay);
-            
+
             const percentageDisplay = document.createElement('div');
             percentageDisplay.classList.add('gauge-percentage');
             percentageDisplay.textContent = '(0.0%)';
-    
+
             const labelDisplay = document.createElement('div');
             labelDisplay.classList.add('gauge-label');
             labelDisplay.textContent = status;
-    
+
             wrapper.appendChild(gaugeContainer);
             wrapper.appendChild(percentageDisplay);
             wrapper.appendChild(labelDisplay);
-    
+
             return {
                 wrapper,
                 svg,
@@ -133,36 +133,36 @@ class GaugeManager {
         try {
             const total = hospitals.length;
             const counts = new Map();
-            
+
             // Initialiser tous les statuts à 0
             for (const status of this.#gauges.keys()) {
                 counts.set(status, 0);
             }
-            
+
             // Compter les hôpitaux par statut
             hospitals.forEach(hospital => {
                 const count = counts.get(hospital.status) || 0;
                 counts.set(hospital.status, count + 1);
             });
-    
+
             // Mettre à jour chaque jauge
             for (const [status, gauge] of this.#gauges) {
                 const count = counts.get(status) || 0;
                 const percentage = total > 0 ? (count / total * 100) : 0;
-                
+
                 const radius = this.#defaultOptions.radius;
                 const circumference = 2 * Math.PI * radius;
                 const dashArray = circumference;
                 const dashOffset = circumference * (1 - percentage / 100);
-    
+
                 const valuePath = gauge.valuePath;
                 valuePath.style.strokeDasharray = dashArray;
                 valuePath.style.strokeDashoffset = dashOffset;
                 valuePath.style.transition = `stroke-dashoffset ${this.#defaultOptions.animationDuration}ms ease-in-out`;
-    
+
                 gauge.valueDisplay.textContent = count;
                 gauge.percentageDisplay.textContent = `(${percentage.toFixed(1)}%)`;
-    
+
                 gauge.wrapper.setAttribute('aria-valuenow', count);
                 gauge.wrapper.setAttribute('aria-valuetext',
                     `${count} ${status} hospitals (${percentage.toFixed(1)}%)`);
