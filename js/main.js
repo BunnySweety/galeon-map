@@ -495,7 +495,7 @@ class MapManager {
             this.setupEventListeners();
 
             store.setState({ map: this.map });
-            
+
             PerformanceMonitor.endMeasure('mapInit');
             return this.map;
         } catch (error) {
@@ -628,23 +628,52 @@ class MapManager {
         }).addTo(this.map);
     }
 
+    /**
+     * Add markers for all hospitals
+     * @param {Array} hospitals List of hospitals
+     * @param {number} chunkSize Size of chunks to create
+     */
     async addMarkers(hospitals, chunkSize = 10) {
         if (!hospitals?.length || !this.markerClusterGroup) return;
 
         PerformanceMonitor.startMeasure('addMarkers');
 
-        this.markerClusterGroup.clearLayers();
-        this.markers.clear();
+        try {
+            this.markerClusterGroup.clearLayers();
+            this.markers.clear();
 
-        const chunks = Array(Math.ceil(hospitals.length / chunkSize))
-            .fill()
-            .map((_, i) => hospitals.slice(i * chunkSize, (i + 1) * chunkSize));
+            const chunks = Array(Math.ceil(hospitals.length / chunkSize))
+                .fill()
+                .map((_, i) => hospitals.slice(i * chunkSize, (i + 1) * chunkSize));
 
-        for (const chunk of chunks) {
-            await this.processMarkerChunk(chunk);
+            for (const chunk of chunks) {
+                await new Promise(resolve => {
+                    requestAnimationFrame(() => {
+                        const validMarkers = chunk
+                            .map(hospital => {
+                                const marker = this.createMarker(hospital);
+                                if (marker) {
+                                    this.markers.set(hospital.id, marker);
+                                }
+                                return marker;
+                            })
+                            .filter(marker => marker instanceof L.CircleMarker);
+
+                        if (validMarkers.length > 0) {
+                            this.markerClusterGroup.addLayers(validMarkers);
+                        }
+                        resolve();
+                    });
+                });
+            }
+
+            await GaugeManager.updateAllGauges(hospitals);
+
+            PerformanceMonitor.endMeasure('addMarkers');
+        } catch (error) {
+            console.error('Error adding markers:', error);
+            ErrorHandler.handle(error, 'Add Markers');
         }
-
-        PerformanceMonitor.endMeasure('addMarkers');
     }
 
     async processMarkerChunk(chunk) {
@@ -669,33 +698,47 @@ class MapManager {
         });
     }
 
+    /**
+    * Create a marker for a hospital
+    * @param {Object} hospital Les données de l'hôpital
+    * @returns {L.CircleMarker|null} Le marqueur créé ou null en cas d'erreur
+    */
     createMarker(hospital) {
-        if (!Utils.validateCoordinates(hospital.lat, hospital.lon)) return null;
+        if (!Utils.validateCoordinates(hospital.lat, hospital.lon)) {
+            console.warn(`Invalid coordinates for hospital ${hospital.id}`);
+            return null;
+        }
 
-        const marker = L.circleMarker([hospital.lat, hospital.lon], {
-            radius: CONFIG.UI.MARKER.RADIUS,
-            fillColor: CONFIG.UI.COLORS[hospital.status.toUpperCase().replace(/\s+/g, '_')],
-            color: "#ffffff",
-            weight: CONFIG.UI.MARKER.WEIGHT,
-            opacity: CONFIG.UI.MARKER.OPACITY,
-            fillOpacity: CONFIG.UI.MARKER.FILL_OPACITY,
-            pane: 'markerPane'
-        });
+        try {
+            const marker = L.circleMarker([hospital.lat, hospital.lon], {
+                radius: CONFIG.UI.MARKER.RADIUS,
+                fillColor: CONFIG.UI.COLORS[hospital.status.toUpperCase().replace(/\s+/g, '_')],
+                color: "#ffffff",
+                weight: CONFIG.UI.MARKER.WEIGHT,
+                opacity: CONFIG.UI.MARKER.OPACITY,
+                fillOpacity: CONFIG.UI.MARKER.FILL_OPACITY,
+                pane: 'markerPane'
+            });
 
-        marker.hospitalData = hospital;
-        this.bindPopupToMarker(marker);
-        this.bindTooltipToMarker(marker);
+            marker.hospitalData = hospital;
 
-        marker.on('click', () => {
-            AnalyticsManager.trackEvent('Marker', 'Click', hospital.name);
-        });
+            this.bindPopupToMarker(marker);
+            this.bindTooltipToMarker(marker);
 
-        return marker;
+            marker.on('click', () => {
+                AnalyticsManager.trackEvent('Marker', 'Click', hospital.name);
+            });
+
+            return marker;
+        } catch (error) {
+            console.error('Error creating marker:', error);
+            return null;
+        }
     }
 
     bindPopupToMarker(marker) {
         if (!marker?.hospitalData) return;
-    
+
         const popup = L.popup({
             maxWidth: 300,
             minWidth: 200,
@@ -732,15 +775,15 @@ class MapManager {
 
     generatePopupContent(hospital) {
         if (!hospital) return document.createElement('div');
-    
+
         const { translations, language } = store.getState();
         const currentTranslations = translations[language] || translations[CONFIG.UI.DEFAULT_LANGUAGE];
-    
+
         const container = document.createElement('div');
         container.className = 'popup-content';
-    
+
         const address = Utils.parseAddress(hospital.address);
-        
+
         container.innerHTML = `
             <h3 class="popup-title">${hospital.name}</h3>
             <div class="popup-image-wrapper">
@@ -771,7 +814,7 @@ class MapManager {
                 </span>
             </div>
         `;
-    
+
         return container;
     }
 
@@ -1275,59 +1318,68 @@ class UIManager {
 
     filterHospitals(filters) {
         const { hospitals } = store.getState();
-        
+
         const filteredHospitals = hospitals.filter(hospital => {
             if (filters.activeStatus.length && !filters.activeStatus.includes(hospital.status)) {
                 return false;
             }
-    
+
             if (filters.searchTerm && !hospital.name.toLowerCase().includes(filters.searchTerm.toLowerCase())) {
                 return false;
             }
-    
+
             const address = Utils.parseAddress(hospital.address);
-    
+
             if (filters.continent) {
                 const hospitalContinent = Utils.getContinent(hospital.lat, hospital.lon);
                 if (hospitalContinent !== filters.continent) {
                     return false;
                 }
             }
-    
+
             if (filters.country && !address.country.toLowerCase().includes(filters.country.toLowerCase())) {
                 return false;
             }
-    
+
             if (filters.city && !address.city.toLowerCase().includes(filters.city.toLowerCase())) {
                 return false;
             }
-    
+
             return true;
         });
-    
+
         return filteredHospitals;
     }
 
+    /**
+     * Update visibility of markers
+     * @param {Array} filteredHospitals List of filtered hospitals
+     */
     updateMarkerVisibility(filteredHospitals) {
-        this.mapManager.markerClusterGroup.clearLayers();
-    
-        const noResults = document.getElementById('no-hospitals-message');
-        if (noResults) {
-            noResults.style.display = filteredHospitals.length === 0 ? 'block' : 'none';
-        }
-    
-        filteredHospitals.forEach(hospital => {
-            const marker = this.mapManager.markers.get(hospital.id);
-            if (marker) {
-                this.mapManager.markerClusterGroup.addLayer(marker);
+        try {
+            this.markerClusterGroup.clearLayers();
+
+            const noResults = document.getElementById('no-hospitals-message');
+            if (noResults) {
+                noResults.style.display = filteredHospitals.length === 0 ? 'block' : 'none';
             }
-        });
-    
-        if (filteredHospitals.length > 0) {
-            this.mapManager.fitMarkersInView(
-                Array.from(this.mapManager.markers.values())
-                    .filter(m => filteredHospitals.includes(m.hospitalData))
-            );
+
+            const markers = filteredHospitals
+                .map(hospital => this.markers.get(hospital.id))
+                .filter(marker => marker instanceof L.CircleMarker);
+
+            if (markers.length > 0) {
+                this.markerClusterGroup.addLayers(markers);
+
+                const bounds = L.latLngBounds(markers.map(m => m.getLatLng()));
+                this.map.fitBounds(bounds, {
+                    padding: CONFIG.MAP.BOUNDS_PADDING,
+                    maxZoom: this.map.getZoom()
+                });
+            }
+        } catch (error) {
+            console.error('Error updating marker visibility:', error);
+            ErrorHandler.handle(error, 'Marker Visibility Update');
         }
     }
 
@@ -1430,17 +1482,17 @@ class UIManager {
             const element = document.getElementById(id);
             if (element) element.value = '';
         });
-    
+
         const continentSelect = document.getElementById('continent-select');
         if (continentSelect) continentSelect.selectedIndex = 0;
-    
+
         document.querySelectorAll('.status-tag').forEach(tag => {
             tag.classList.remove('active');
             tag.setAttribute('aria-pressed', 'false');
         });
-    
+
         store.setState({ activeStatus: [] });
-    
+
         const { hospitals } = store.getState();
         this.mapManager.markerClusterGroup.clearLayers();
         hospitals.forEach(hospital => {
@@ -1449,12 +1501,12 @@ class UIManager {
                 this.mapManager.markerClusterGroup.addLayer(marker);
             }
         });
-    
+
         const noResults = document.getElementById('no-hospitals-message');
         if (noResults) noResults.style.display = 'none';
-    
+
         this.mapManager.fitMarkersInView();
-    
+
         AnalyticsManager.trackEvent('Filter', 'Clear');
     }
 
