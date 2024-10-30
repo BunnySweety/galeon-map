@@ -1384,25 +1384,29 @@ class UIManager {
      */
     updateMarkerVisibility(filteredHospitals) {
         try {
-            this.markerClusterGroup.clearLayers();
-
+            if (!this.mapManager?.markerClusterGroup) return;
+    
+            this.mapManager.markerClusterGroup.clearLayers();
+    
             const noResults = document.getElementById('no-hospitals-message');
             if (noResults) {
                 noResults.style.display = filteredHospitals.length === 0 ? 'block' : 'none';
             }
-
+    
             const markers = filteredHospitals
-                .map(hospital => this.markers.get(hospital.id))
+                .map(hospital => this.mapManager.markers.get(hospital.id))
                 .filter(marker => marker instanceof L.CircleMarker);
-
+    
             if (markers.length > 0) {
-                this.markerClusterGroup.addLayers(markers);
-
-                const bounds = L.latLngBounds(markers.map(m => m.getLatLng()));
-                this.map.fitBounds(bounds, {
-                    padding: CONFIG.MAP.BOUNDS_PADDING,
-                    maxZoom: this.map.getZoom()
-                });
+                this.mapManager.markerClusterGroup.addLayers(markers);
+    
+                if (this.mapManager.map) {
+                    const bounds = L.latLngBounds(markers.map(m => m.getLatLng()));
+                    this.mapManager.map.fitBounds(bounds, {
+                        padding: CONFIG.MAP.BOUNDS_PADDING,
+                        maxZoom: this.mapManager.map.getZoom()
+                    });
+                }
             }
         } catch (error) {
             console.error('Error updating marker visibility:', error);
