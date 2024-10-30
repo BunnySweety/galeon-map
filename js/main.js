@@ -54,7 +54,7 @@ const CONFIG = {
         DEFAULT_LANGUAGE: 'en',
         COLORS: {
             DEPLOYED: '#4CAF50',
-            IN_PROGRESS: '#FFA500',
+            'IN PROGRESS': '#FFA500',
             SIGNED: '#2196F3'
         },
         IMAGE: {
@@ -737,7 +737,7 @@ class MapManager {
         try {
             const marker = L.circleMarker([hospital.lat, hospital.lon], {
                 radius: CONFIG.UI.MARKER.RADIUS,
-                fillColor: CONFIG.UI.COLORS[hospital.status.toUpperCase().replace(/\s+/g, '_')],
+                fillColor: CONFIG.UI.COLORS[hospital.status.toUpperCase()],
                 color: "#ffffff",
                 weight: CONFIG.UI.MARKER.WEIGHT,
                 opacity: CONFIG.UI.MARKER.OPACITY,
