@@ -1,53 +1,9 @@
 /**
- * @fileoverview Gauge Manager for hospital status visualization
- * @author AssistantAI
- * @version 1.0.0
- */
-
-'use strict';
-
-/**
- * @typedef {Object} GaugeOptions
- * @property {number} [radius=15.9155] - Radius of the gauge circle
- * @property {number} [strokeWidth=3] - Width of the gauge stroke
- * @property {string} [backgroundColor='#eee'] - Background circle color
- * @property {Object.<string, string>} [statusColors] - Color mapping for different statuses
- * @property {number} [animationDuration=500] - Duration of gauge animations in milliseconds
- * @property {string} [fontFamily='Arial, sans-serif'] - Font family for gauge text
- */
-
-/**
- * @typedef {Object} GaugeElements
- * @property {HTMLElement} wrapper - The gauge wrapper element
- * @property {HTMLElement} svg - The SVG element
- * @property {HTMLElement} backgroundPath - The background circle path
- * @property {HTMLElement} valuePath - The value circle path
- * @property {HTMLElement} valueDisplay - The numeric value display
- * @property {HTMLElement} percentageDisplay - The percentage display
- * @property {HTMLElement} labelDisplay - The label display
- */
-
-/**
- * @typedef {Object} GaugeData
- * @property {number} value - The current value
- * @property {number} total - The total value
- * @property {string} status - The status category
- */
-
-/**
  * Class managing the creation and updates of gauge visualizations
  */
 class GaugeManager {
-    /**
-     * @private
-     * @type {Object.<string, GaugeElements>}
-     */
     static #gauges = new Map();
-
-    /**
-     * @private
-     * @type {GaugeOptions}
-     */
+    
     static #defaultOptions = {
         radius: 15.9155,
         strokeWidth: 3,
@@ -61,28 +17,32 @@ class GaugeManager {
         fontFamily: 'Arial, sans-serif'
     };
 
-    /**
-     * Initialize all gauge elements on the page
-     * @param {GaugeOptions} [options] - Configuration options for the gauges
-     * @returns {Promise<void>}
-     */
     static async initGauges(options = {}) {
         try {
-            console.log('Initializing gauges...');
             this.#defaultOptions = { ...this.#defaultOptions, ...options };
-
-            const gaugeWrappers = document.querySelectorAll('.gauge-wrapper');
-            if (!gaugeWrappers.length) {
-                console.warn('No gauge elements found');
-                return;
+            
+            // Create or get chart container
+            let container = document.querySelector('.chart-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.className = 'chart-container';
+                document.body.appendChild(container);
             }
+            container.innerHTML = '';
 
-            gaugeWrappers.forEach(wrapper => {
-                const status = wrapper.getAttribute('data-status');
-                if (!status) {
-                    console.warn('Gauge wrapper missing data-status attribute:', wrapper);
-                    return;
-                }
+            // Create gauges for the three fixed statuses
+            const statuses = ['Deployed', 'In Progress', 'Signed'];
+            
+            statuses.forEach(status => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'gauge-wrapper';
+                wrapper.setAttribute('data-status', status);
+                wrapper.setAttribute('role', 'progressbar');
+                wrapper.setAttribute('aria-label', `Percentage of ${status.toLowerCase()} hospitals`);
+                wrapper.setAttribute('aria-valuemin', '0');
+                wrapper.setAttribute('aria-valuemax', '100');
+                wrapper.setAttribute('aria-valuenow', '0');
+                container.appendChild(wrapper);
 
                 const elements = this.#createGaugeElements(wrapper, status);
                 if (elements) {
@@ -90,43 +50,33 @@ class GaugeManager {
                 }
             });
 
-            console.log(`Initialized ${this.#gauges.size} gauges successfully`);
         } catch (error) {
             console.error('Error initializing gauges:', error);
             throw error;
         }
     }
 
-    /**
-     * Creates and sets up SVG elements for a gauge
-     * @private
-     * @param {HTMLElement} wrapper - The gauge wrapper element
-     * @param {string} status - The status category
-     * @returns {GaugeElements|null}
-     */
     static #createGaugeElements(wrapper, status) {
         try {
-            // Clear existing content
             wrapper.innerHTML = '';
+            
+            const container = document.createElement('div');
+            container.style.position = 'relative';
+            container.style.width = '80px';
+            container.style.height = '80px';
 
-            // Create SVG element with correct viewBox
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svg.setAttribute('viewBox', '0 0 36 36');
             svg.classList.add('gauge');
+            svg.style.transform = 'rotate(-90deg)';
 
-            // Create background circle path
             const backgroundPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            backgroundPath.classList.add('gauge-background');
-
-            // Create value circle path
             const valuePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            valuePath.classList.add('gauge-value');
-
-            // Set common path attributes
+            
             const radius = this.#defaultOptions.radius;
             const pathD = `M18 2.0845
-            a ${radius} ${radius} 0 0 1 0 31.831
-            a ${radius} ${radius} 0 0 1 0 -31.831`;
+                          a ${radius} ${radius} 0 0 1 0 31.831
+                          a ${radius} ${radius} 0 0 1 0 -31.831`;
 
             backgroundPath.setAttribute('d', pathD);
             backgroundPath.setAttribute('fill', 'none');
@@ -136,34 +86,45 @@ class GaugeManager {
 
             valuePath.setAttribute('d', pathD);
             valuePath.setAttribute('fill', 'none');
-            valuePath.setAttribute('stroke', this.#defaultOptions.statusColors[status] || '#999');
+            valuePath.setAttribute('stroke', this.#defaultOptions.statusColors[status]);
             valuePath.setAttribute('stroke-width', this.#defaultOptions.strokeWidth);
             valuePath.setAttribute('stroke-linecap', 'round');
-            valuePath.style.transform = 'rotate(-90deg)';
-            valuePath.style.transformOrigin = 'center';
 
-            // Add paths to SVG
             svg.appendChild(backgroundPath);
             svg.appendChild(valuePath);
+            container.appendChild(svg);
 
-            // Create text elements
+            const valueContainer = document.createElement('div');
+            valueContainer.style.position = 'absolute';
+            valueContainer.style.top = '50%';
+            valueContainer.style.left = '50%';
+            valueContainer.style.transform = 'translate(-50%, -50%)';
+            valueContainer.style.textAlign = 'center';
+            valueContainer.style.width = '100%';
+
             const valueDisplay = document.createElement('div');
             valueDisplay.classList.add('gauge-value');
-            valueDisplay.setAttribute('aria-live', 'polite');
+            valueDisplay.style.fontSize = '24px';
+            valueDisplay.style.fontWeight = 'bold';
+            valueDisplay.style.lineHeight = '1';
             valueDisplay.textContent = '0';
 
             const percentageDisplay = document.createElement('div');
             percentageDisplay.classList.add('gauge-percentage');
+            percentageDisplay.style.fontSize = '12px';
             percentageDisplay.textContent = '(0.0%)';
+
+            valueContainer.appendChild(valueDisplay);
+            valueContainer.appendChild(percentageDisplay);
+            container.appendChild(valueContainer);
 
             const labelDisplay = document.createElement('div');
             labelDisplay.classList.add('gauge-label');
+            labelDisplay.style.marginTop = '8px';
+            labelDisplay.style.textAlign = 'center';
             labelDisplay.textContent = status;
 
-            // Add all elements to wrapper
-            wrapper.appendChild(svg);
-            wrapper.appendChild(valueDisplay);
-            wrapper.appendChild(percentageDisplay);
+            wrapper.appendChild(container);
             wrapper.appendChild(labelDisplay);
 
             return {
@@ -181,172 +142,54 @@ class GaugeManager {
         }
     }
 
-    /**
-     * Set the common attributes for gauge paths
-     * @private
-     * @param {SVGPathElement} path - The SVG path element
-     * @param {string} color - The stroke color
-     */
-    static #setGaugePathAttributes(path, color) {
-        const radius = this.#defaultOptions.radius;
-        path.setAttribute('d', `M18 2.0845
-            a ${radius} ${radius} 0 0 1 0 31.831
-            a ${radius} ${radius} 0 0 1 0 -31.831`);
-        path.setAttribute('fill', 'none');
-        path.setAttribute('stroke', color);
-        path.setAttribute('stroke-width', this.#defaultOptions.strokeWidth);
-    }
-
-    /**
-    * Updates all gauges with the correct calculations and display
-    * @param {Array.<Object>} hospitals - Array of hospital data
-    * @returns {Promise<void>}
-    */
     static async updateAllGauges(hospitals) {
         try {
-            if (!hospitals?.length) {
-                console.warn('No hospital data provided for gauge update');
-                return;
-            }
-    
-            // Calculate the total number of hospitals for each status
+            if (!hospitals?.length) return;
+
             const total = hospitals.length;
-            const counts = {
-                'Deployed': 0,
-                'In Progress': 0,
-                'Signed': 0
-            };
-    
+            const counts = new Map();
+            
+            // Count hospitals for each status
             hospitals.forEach(hospital => {
-                if (counts.hasOwnProperty(hospital.status)) {
-                    counts[hospital.status]++;
-                }
+                const count = counts.get(hospital.status) || 0;
+                counts.set(hospital.status, count + 1);
             });
-    
-            // Update each gauge with new data
-            for (const [status, count] of Object.entries(counts)) {
-                const elements = this.#gauges.get(status);
-                if (!elements) continue;
-    
+
+            // Update each gauge
+            for (const [status, gauge] of this.#gauges) {
+                const count = counts.get(status) || 0;
                 const percentage = (count / total * 100) || 0;
-    
-                // Calculate dash offset based on percentage
                 const radius = this.#defaultOptions.radius;
                 const circumference = 2 * Math.PI * radius;
+                const dashArray = circumference;
                 const dashOffset = circumference * (1 - percentage / 100);
-    
-                // Update the SVG path
-                const valuePath = elements.valuePath;
-                valuePath.style.strokeDasharray = `${circumference} ${circumference}`;
+
+                const valuePath = gauge.valuePath;
+                valuePath.style.strokeDasharray = dashArray;
                 valuePath.style.strokeDashoffset = dashOffset;
                 valuePath.style.transition = `stroke-dashoffset ${this.#defaultOptions.animationDuration}ms ease-in-out`;
-    
-                // Update the value display
-                elements.valueDisplay.textContent = count; // Affiche le nombre d'hôpitaux ayant ce statut
-                elements.percentageDisplay.textContent = `(${percentage.toFixed(1)}%)`;
-    
-                // Update the ARIA attributes
-                elements.wrapper.setAttribute('aria-valuenow', count);
-                elements.wrapper.setAttribute('aria-valuetext',
+
+                gauge.valueDisplay.textContent = count;
+                gauge.percentageDisplay.textContent = `(${percentage.toFixed(1)}%)`;
+
+                gauge.wrapper.setAttribute('aria-valuenow', count);
+                gauge.wrapper.setAttribute('aria-valuetext',
                     `${count} ${status} hospitals (${percentage.toFixed(1)}%)`);
             }
         } catch (error) {
             console.error('Error updating gauges:', error);
             throw error;
         }
-    }       
-
-    /**
-     * Update a single gauge with new data
-     * @private
-     * @param {GaugeData} data - The data for updating the gauge
-     * @returns {Promise<void>}
-     */
-    static async #updateGauge(data) {
-        return new Promise((resolve) => {
-            requestAnimationFrame(() => {
-                try {
-                    const elements = this.#gauges.get(data.status);
-                    if (!elements) {
-                        console.warn(`No gauge found for status: ${data.status}`);
-                        resolve();
-                        return;
-                    }
-
-                    const percentage = (data.value / data.total * 100) || 0;
-                    const circumference = 2 * Math.PI * this.#defaultOptions.radius;
-                    const offset = circumference * (1 - percentage / 100);
-
-                    // Update value path
-                    const valuePath = elements.valuePath;
-                    valuePath.style.strokeDasharray = `${circumference} ${circumference}`;
-                    valuePath.style.strokeDashoffset = offset;
-                    valuePath.style.transition = `stroke-dashoffset ${this.#defaultOptions.animationDuration}ms ease-in-out`;
-
-                    // Update text displays
-                    elements.valueDisplay.textContent = data.value;
-                    elements.percentageDisplay.textContent = `(${percentage.toFixed(1)}%)`;
-
-                    // Update ARIA attributes
-                    elements.wrapper.setAttribute('aria-valuenow', data.value);
-                    elements.wrapper.setAttribute('aria-valuetext',
-                        `${data.value} ${data.status} hospitals (${percentage.toFixed(1)}%)`);
-
-                    resolve();
-                } catch (error) {
-                    console.error('Error updating gauge:', error);
-                    resolve();
-                }
-            });
-        });
     }
 
-    /**
-     * Reset all gauges to zero
-     * @returns {Promise<void>}
-     */
-    static async resetGauges() {
-        try {
-            const resetPromises = Array.from(this.#gauges.keys()).map(status =>
-                this.#updateGauge({
-                    value: 0,
-                    total: 100,
-                    status: status
-                })
-            );
-
-            await Promise.all(resetPromises);
-        } catch (error) {
-            console.error('Error resetting gauges:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Clean up gauge resources
-     * @returns {void}
-     */
     static destroy() {
         try {
             this.#gauges.clear();
-            console.log('Gauge manager cleanup completed');
         } catch (error) {
             console.error('Error during gauge manager cleanup:', error);
             throw error;
         }
     }
-
-    /**
-     * Get the current state of all gauges (for debugging)
-     * @returns {Object.<string, GaugeElements>}
-     */
-    static debug() {
-        return {
-            gauges: this.#gauges,
-            options: this.#defaultOptions
-        };
-    }
 }
 
-// Export the GaugeManager class
 export { GaugeManager };
