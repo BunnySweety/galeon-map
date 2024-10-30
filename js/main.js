@@ -694,6 +694,8 @@ class MapManager {
     }
 
     bindPopupToMarker(marker) {
+        if (!marker?.hospitalData) return;
+    
         const popup = L.popup({
             maxWidth: 300,
             minWidth: 200,
@@ -705,15 +707,14 @@ class MapManager {
             closeOnClick: false
         });
 
-        marker.bindPopup(() => {
-            const content = this.generatePopupContent(marker.hospitalData);
-            popup.setContent(content);
-            return popup;
-        });
+        marker.bindPopup(() => this.generatePopupContent(marker.hospitalData));
 
         marker.on('popupopen', () => {
-            this.initializePopupImage(marker.getPopup().getElement());
-            AnalyticsManager.trackEvent('Popup', 'Open', marker.hospitalData.name);
+            const popupElement = marker.getPopup().getElement();
+            if (popupElement) {
+                this.initializePopupImage(popupElement);
+                AnalyticsManager.trackEvent('Popup', 'Open', marker.hospitalData.name);
+            }
         });
     }
 
@@ -730,53 +731,61 @@ class MapManager {
     }
 
     generatePopupContent(hospital) {
-        if (!hospital) return '';
-
+        if (!hospital) return document.createElement('div'); // Retourner un élément DOM vide si pas d'hôpital
+    
         const { translations, language } = store.getState();
         const currentTranslations = translations[language] || translations[CONFIG.UI.DEFAULT_LANGUAGE];
-
-        const address = Utils.parseAddress(hospital.address);
-        const distance = this.calculateDistanceToUserLocation(hospital);
-
-        return `
-            <div class="popup-content">
-                <h3 class="popup-title">${hospital.name}</h3>
-                <div class="popup-image-wrapper">
-                    <img 
-                        src="${CONFIG.UI.IMAGE.DEFAULT}"
-                        data-src="${hospital.imageUrl}" 
-                        alt="${hospital.name}"
-                        class="popup-image"
-                        data-loading-state="${CONFIG.UI.IMAGE.STATES.LOADING}"
-                    />
-                </div>
-                <div class="popup-address">
-                    <strong>${currentTranslations.address || 'Address'}:</strong><br>
-                    ${address.street}<br>
-                    ${address.city}${address.postalCode ? ` (${address.postalCode})` : ''}<br>
-                    ${address.country}
-                    ${distance ? `<br><small>Distance: ${distance} km</small>` : ''}
-                </div>
-                <a href="${hospital.website}" 
-                   target="_blank" 
-                   rel="noopener noreferrer" 
-                   class="popup-link">
-                    ${currentTranslations.visitWebsite || 'Visit Website'}
-                </a>
-                <div class="popup-status">
-                    <span>${currentTranslations.status || 'Status'}:</span>
-                    <span class="status-tag status-${hospital.status.toLowerCase().replace(/\s+/g, '-')} active">
-                        ${hospital.status}
-                    </span>
-                </div>
-                <div class="popup-actions">
-                    <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${hospital.lat},${hospital.lon}')" 
-                            class="directions-button">
-                        Get Directions
-                    </button>
-                </div>
+    
+        const container = document.createElement('div');
+        container.className = 'popup-content';
+    
+        container.innerHTML = `
+            <h3 class="popup-title">${hospital.name}</h3>
+            <div class="popup-image-wrapper">
+                <img 
+                    src="${CONFIG.UI.IMAGE.DEFAULT}"
+                    data-src="${hospital.imageUrl}" 
+                    alt="${hospital.name}"
+                    class="popup-image"
+                    data-loading-state="${CONFIG.UI.IMAGE.STATES.LOADING}"
+                />
+            </div>
+            <div class="popup-address">
+                <strong>${currentTranslations.address || 'Address'}:</strong><br>
+                ${Utils.parseAddress(hospital.address).street}<br>
+                ${Utils.parseAddress(hospital.address).city}${Utils.parseAddress(hospital.address).postalCode ? 
+                    ` (${Utils.parseAddress(hospital.address).postalCode})` : ''}<br>
+                ${Utils.parseAddress(hospital.address).country}
+                ${this.calculateDistanceToUserLocation(hospital) ? 
+                    `<br><small>Distance: ${this.calculateDistanceToUserLocation(hospital)} km</small>` : ''}
+            </div>
+            <a href="${hospital.website}" 
+               target="_blank" 
+               rel="noopener noreferrer" 
+               class="popup-link">
+                ${currentTranslations.visitWebsite || 'Visit Website'}
+            </a>
+            <div class="popup-status">
+                <span>${currentTranslations.status || 'Status'}:</span>
+                <span class="status-tag status-${hospital.status.toLowerCase().replace(/\s+/g, '-')} active">
+                    ${hospital.status}
+                </span>
+            </div>
+            <div class="popup-actions">
+                <button class="directions-button" type="button">
+                    Get Directions
+                </button>
             </div>
         `;
+    
+        const directionsButton = container.querySelector('.directions-button');
+        if (directionsButton) {
+            directionsButton.addEventListener('click', () => {
+                window.open(`https://www.google.com/maps/dir/?api=1&destination=${hospital.lat},${hospital.lon}`);
+            });
+        }
+    
+        return container;
     }
 
     initializePopupImage(popupElement) {
