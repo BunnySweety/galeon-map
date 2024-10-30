@@ -135,17 +135,35 @@ class GaugeManager {
 
             const total = hospitals.length;
             const counts = new Map();
+
+            // Log pour déboguer
+            console.log('GaugeManager - Statuts disponibles:', {
+                gauges: Array.from(this.#gauges.keys()),
+                statusColors: this.#defaultOptions.statusColors
+            });            
             
             // Count hospitals for each status
             hospitals.forEach(hospital => {
-                console.log('Hospital status:', hospital.status);
+                console.log('Hospital status:', {
+                    status: hospital.status,
+                    exactMatch: this.#defaultOptions.statusColors[hospital.status],
+                    gaugeExists: this.#gauges.has(hospital.status)
+                });
                 const count = counts.get(hospital.status) || 0;
                 counts.set(hospital.status, count + 1);
             });
 
+            console.log('Counts par statut:', Object.fromEntries(counts));
+
             // Update each gauge
             for (const [status, gauge] of this.#gauges) {
                 const count = counts.get(status) || 0;
+                console.log('Mise à jour jauge:', {
+                    status,
+                    count,
+                    hasGauge: !!gauge
+                });
+                
                 const percentage = (count / total * 100) || 0;
                 const radius = this.#defaultOptions.radius;
                 const circumference = 2 * Math.PI * radius;
