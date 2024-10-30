@@ -135,37 +135,32 @@
         </div>
     </div>
 
-    <!-- Statistics -->
-    <div class="chart-container" role="complementary" aria-label="Status statistics">
-        <template id="gauge-wrapper-template">
-            <div class="gauge-wrapper">
-                <div class="gauge" role="progressbar" aria-valuemin="0" aria-valuemax="100">
-                </div>
-                <div class="gauge-value" aria-live="polite"></div>
-                <div class="gauge-percentage"></div>
-                <div class="gauge-label"></div>
-            </div>
-        </template>
-        
-        <template id="gauge-template">
-            <svg viewBox="0 0 36 36">
-                <path class="gauge-background" 
-                      d="M18 2.0845
-                         a 15.9155 15.9155 0 0 1 0 31.831
-                         a 15.9155 15.9155 0 0 1 0 -31.831"
-                      fill="none"
-                      stroke="#eee"
-                      stroke-width="3" />
-                <path class="gauge-value" 
-                      d="M18 2.0845
-                         a 15.9155 15.9155 0 0 1 0 31.831
-                         a 15.9155 15.9155 0 0 1 0 -31.831"
-                      fill="none"
-                      stroke-width="3"
-                      stroke-dasharray="0, 100" />
-            </svg>
-        </template>
-    </div>
+    <!-- Gauge templates -->
+    <template id="gauge-wrapper-template">
+        <div class="gauge-wrapper">
+            <div class="gauge" role="progressbar" aria-valuemin="0" aria-valuemax="100"></div>
+            <div class="gauge-value" aria-live="polite">0</div>
+            <div class="gauge-percentage">(0%)</div>
+            <div class="gauge-label"></div>
+        </div>
+    </template>
+
+    <template id="gauge-template">
+        <svg viewBox="0 0 36 36">
+            <path class="gauge-background" 
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="#eee"
+                  stroke-width="3" />
+            <path class="gauge-value" 
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke-width="3" />
+        </svg>
+    </template>
+
+    <!-- Charts container -->
+    <div class="chart-container" role="complementary" aria-label="Status statistics"></div>
 
     <!-- Loading Spinner -->
     <div id="initial-loader" class="initial-loader">
