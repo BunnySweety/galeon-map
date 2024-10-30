@@ -111,7 +111,6 @@ const CONFIG = {
     ERROR_MESSAGES: {
         INIT_FAILED: 'Failed to initialize application. Please refresh the page.',
         DATA_LOAD_FAILED: 'Failed to load data. Please check your connection.',
-        GEOLOCATION_DENIED: 'Location access denied. Please enable location services.',
         INVALID_DATA: 'Invalid data received. Please contact support.'
     }
 };
@@ -480,7 +479,6 @@ class MapManager {
         this.map = null;
         this.markerClusterGroup = null;
         this.markers = new Map();
-        this.userMarker = null;
 
         // Bind methods
         this.handleResize = this.handleResize.bind(this);
@@ -508,16 +506,32 @@ class MapManager {
                 zoom: CONFIG.MAP.DEFAULT_ZOOM,
                 maxZoom: CONFIG.MAP.MAX_ZOOM,
                 minZoom: CONFIG.MAP.MIN_ZOOM,
-                zoomControl: window.innerWidth > CONFIG.UI.MOBILE_BREAKPOINT,
+                zoomControl: true,
                 scrollWheelZoom: true,
                 dragging: true,
                 tap: true
             });
 
-            await this.setupPanes();
-            await this.setupMarkerCluster();
+            // Personnaliser les contrôles de zoom
+            this.map.zoomControl.setPosition('topleft');
+
+            // Retirer explicitement le bouton zoom in
+            const zoomControl = document.querySelector('.leaflet-control-zoom-in');
+            if (zoomControl) {
+                zoomControl.remove();
+            }
+
+            this.setupPanes();
+            this.setupMarkerCluster();
             await this.updateTileLayer();
             this.setupEventListeners();
+
+            // Essayer de centrer sur la position de l'utilisateur
+            try {
+                await this.centerOnUserLocation();
+            } catch (error) {
+                console.warn('Could not center on user location, using default center');
+            }
 
             store.setState({ map: this.map });
 
@@ -525,6 +539,42 @@ class MapManager {
             return this.map;
         } catch (error) {
             ErrorHandler.handle(error, 'Map Initialization');
+            throw error;
+        }
+    }
+
+    async centerOnUserLocation() {
+        if (!this.map) return;
+
+        try {
+            const position = await new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error('Geolocation not supported'));
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: false,
+                    timeout: 5000,
+                    maximumAge: 0
+                });
+            });
+
+            const { latitude: lat, longitude: lng } = position.coords;
+            
+            // Vérifier si les coordonnées sont valides
+            if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                this.map.setView([lat, lng], CONFIG.MAP.DEFAULT_ZOOM, {
+                    animate: true,
+                    duration: 1
+                });
+                AnalyticsManager.trackEvent('Map', 'AutoCenter', 'Success');
+            } else {
+                throw new Error('Invalid coordinates received from geolocation');
+            }
+        } catch (error) {
+            console.warn('Geolocation failed:', error.message);
+            AnalyticsManager.trackEvent('Map', 'AutoCenter', 'Failed');
             throw error;
         }
     }
