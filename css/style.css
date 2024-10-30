@@ -395,7 +395,7 @@ body {
 .gauge {
     width: 5rem;
     height: 5rem;
-    transform: rotate(-90deg); /* Rotate the entire SVG */
+    transform: rotate(-90deg);
     position: relative;
 }
 
@@ -410,38 +410,20 @@ body {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) rotate(90deg);
     font-size: 1.125rem;
     font-weight: bold;
     z-index: 2;
+    width: 100%;
+    text-align: center;
+    color: var(--text-color-light);
+    pointer-events: none;
+}
+
+.gauge-value-path {
     stroke-linecap: round;
     fill: none;
     transition: stroke-dashoffset var(--transition-normal) ease-in-out;
-}
-
-/* Gauge Text Container */
-.gauge-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(90deg); /* Counter-rotate the text */
-    text-align: center;
-    width: 100%;
-}
-
-/* Gauge Value Display */
-.gauge-value-display {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 1.125rem;
-    font-weight: bold;
-    z-index: 2;
-    background: transparent;
-    width: 100%;
-    text-align: center;    
-    color: var(--text-color-light);
 }
 
 .gauge-percentage {
@@ -480,6 +462,68 @@ body.dark-mode .gauge-value-display,
 body.dark-mode .gauge-percentage,
 body.dark-mode .gauge-label {
     color: var(--text-color-dark);
+}
+
+/* ==========================================================================
+   Cluster Styles
+   ========================================================================== */
+   .marker-cluster {
+    background: transparent !important;
+    border: none !important;
+}
+
+.marker-cluster div {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 50%;
+    margin-left: 0 !important;
+    margin-top: 0 !important;
+    text-align: center;
+    border: 2px solid #fff;
+    background-color: var(--control-background-dark);
+    color: #fff;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-md);
+}
+
+/* Cluster sizes */
+.marker-cluster-small {
+    background-color: rgba(181, 226, 140, 0.6);
+}
+
+.marker-cluster-small div {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 12px;
+}
+
+.marker-cluster-medium {
+    background-color: rgba(241, 211, 87, 0.6);
+}
+
+.marker-cluster-medium div {
+    width: 40px !important;
+    height: 40px !important;
+    font-size: 14px;
+}
+
+.marker-cluster-large {
+    background-color: rgba(253, 156, 115, 0.6);
+}
+
+.marker-cluster-large div {
+    width: 50px !important;
+    height: 50px !important;
+    font-size: 16px;
+}
+
+/* Dark mode adjustments */
+body.dark-mode .marker-cluster div {
+    background-color: var(--control-background-dark);
+    border-color: var(--control-border-dark);
 }
 
 /* ==========================================================================
