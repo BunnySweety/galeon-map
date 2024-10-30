@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -9,7 +10,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="format-detection" content="telephone=no">
-    
+
     <title>Hospital Map</title>
 
     <!-- Favicons -->
@@ -20,15 +21,18 @@
 
     <!-- Preconnect -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-    
+
     <!-- Dependencies CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
-    
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
+
     <!-- Application CSS -->
     <link rel="stylesheet" href="./css/style.css">
 </head>
+
 <body class="no-js">
     <!-- JavaScript Warning -->
     <div class="js-warning">
@@ -83,20 +87,11 @@
 
         <!-- Filters -->
         <div class="filter-container">
-            <input type="text" 
-                id="country-filter" 
-                placeholder="Filter by country" 
-                aria-label="Filter by country">
+            <input type="text" id="country-filter" placeholder="Filter by country" aria-label="Filter by country">
 
-            <input type="text" 
-                id="city-filter" 
-                placeholder="Filter by city" 
-                aria-label="Filter by city">
+            <input type="text" id="city-filter" placeholder="Filter by city" aria-label="Filter by city">
 
-            <input type="text" 
-                id="hospital-search" 
-                placeholder="Search hospitals" 
-                aria-label="Search hospitals">
+            <input type="text" id="hospital-search" placeholder="Search hospitals" aria-label="Search hospitals">
         </div>
 
         <!-- Status Tags -->
@@ -135,29 +130,71 @@
         </div>
     </div>
 
-    <!-- Gauge templates -->
-    <template id="gauge-wrapper-template">
-        <div class="gauge-wrapper">
-            <div class="gauge" role="progressbar" aria-valuemin="0" aria-valuemax="100"></div>
+    <!-- Gauge Statistics Container -->
+    <div class="chart-container" role="complementary" aria-label="Hospital Status Statistics">
+        <!-- Deployed Gauge -->
+        <div class="gauge-wrapper" data-status="Deployed" role="progressbar" aria-label="Deployed hospitals percentage"
+            aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+
+            <!-- SVG Gauge -->
+            <svg viewBox="0 0 36 36" class="gauge">
+                <path class="gauge-background" d="M18 2.0845 
+                     a 15.9155 15.9155 0 0 1 0 31.831 
+                     a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#eee" stroke-width="3" />
+
+                <path class="gauge-value" d="M18 2.0845 
+                     a 15.9155 15.9155 0 0 1 0 31.831 
+                     a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#4CAF50" stroke-width="3" />
+            </svg>
+
+            <!-- Gauge Text Content -->
             <div class="gauge-value" aria-live="polite">0</div>
             <div class="gauge-percentage">(0%)</div>
-            <div class="gauge-label"></div>
+            <div class="gauge-label" data-translate="statusDeployed">Deployed</div>
         </div>
-    </template>
 
-    <template id="gauge-template">
-        <svg viewBox="0 0 36 36">
-            <path class="gauge-background" 
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="#eee"
-                  stroke-width="3" />
-            <path class="gauge-value" 
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke-width="3" />
-        </svg>
-    </template>
+        <!-- In Progress Gauge -->
+        <div class="gauge-wrapper" data-status="In Progress" role="progressbar"
+            aria-label="In progress hospitals percentage" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+
+            <!-- SVG Gauge -->
+            <svg viewBox="0 0 36 36" class="gauge">
+                <path class="gauge-background" d="M18 2.0845 
+                     a 15.9155 15.9155 0 0 1 0 31.831 
+                     a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#eee" stroke-width="3" />
+
+                <path class="gauge-value" d="M18 2.0845 
+                     a 15.9155 15.9155 0 0 1 0 31.831 
+                     a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#FFA500" stroke-width="3" />
+            </svg>
+
+            <!-- Gauge Text Content -->
+            <div class="gauge-value" aria-live="polite">0</div>
+            <div class="gauge-percentage">(0%)</div>
+            <div class="gauge-label" data-translate="statusInProgress">In Progress</div>
+        </div>
+
+        <!-- Signed Gauge -->
+        <div class="gauge-wrapper" data-status="Signed" role="progressbar" aria-label="Signed hospitals percentage"
+            aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+
+            <!-- SVG Gauge -->
+            <svg viewBox="0 0 36 36" class="gauge">
+                <path class="gauge-background" d="M18 2.0845 
+                     a 15.9155 15.9155 0 0 1 0 31.831 
+                     a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#eee" stroke-width="3" />
+
+                <path class="gauge-value" d="M18 2.0845 
+                     a 15.9155 15.9155 0 0 1 0 31.831 
+                     a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#2196F3" stroke-width="3" />
+            </svg>
+
+            <!-- Gauge Text Content -->
+            <div class="gauge-value" aria-live="polite">0</div>
+            <div class="gauge-percentage">(0%)</div>
+            <div class="gauge-label" data-translate="statusSigned">Signed</div>
+        </div>
+    </div>
 
     <!-- Charts container -->
     <div class="chart-container" role="complementary" aria-label="Status statistics"></div>
@@ -165,7 +202,7 @@
     <!-- Loading Spinner -->
     <div id="initial-loader" class="initial-loader">
         <div class="loader-spinner"></div>
-    </div>    
+    </div>
 
     <!-- Dependencies JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -192,4 +229,5 @@
         }
     </script>
 </body>
+
 </html>
