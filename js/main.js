@@ -784,15 +784,15 @@ class MapManager {
 
     generatePopupContent(hospital) {
         if (!hospital) return document.createElement('div');
-
+    
         const { translations, language } = store.getState();
         const currentTranslations = translations[language] || translations[CONFIG.UI.DEFAULT_LANGUAGE];
-
+    
         const container = document.createElement('div');
         container.className = 'popup-content';
-
+    
         const address = Utils.parseAddress(hospital.address);
-
+    
         container.innerHTML = `
             <h3 class="popup-title">${hospital.name}</h3>
             <div class="popup-image-wrapper">
@@ -805,25 +805,27 @@ class MapManager {
                 />
             </div>
             <div class="popup-address">
-                <strong>${currentTranslations.address || 'Adresse'}:</strong><br>
-                ${address.street}<br>
-                ${address.city}${address.postalCode ? ` (${address.postalCode})` : ''}<br>
-                ${address.country}
+                <strong>${currentTranslations.address || 'Address'}:</strong>
+                <span class="popup-address-line">${address.street}</span>
+                ${address.postalCode || address.city ? 
+                    `<span class="popup-address-line">${[address.postalCode, address.city].filter(Boolean).join(' ')}</span>` 
+                    : ''}
+                <span class="popup-address-line">${address.country}</span>
             </div>
             <a href="${hospital.website}" 
                target="_blank" 
                rel="noopener noreferrer" 
                class="popup-link">
-               ${currentTranslations.visitWebsite || 'Visiter le site Web'}
+               ${currentTranslations.visitWebsite || 'Visit Website'}
             </a>
             <div class="popup-status">
-                <span>${currentTranslations.status || 'Statut'}:</span>
+                <span>${currentTranslations.status || 'Status'}:</span>
                 <span class="status-tag status-${hospital.status.toLowerCase().replace(/\s+/g, '-')} active">
                     ${hospital.status}
                 </span>
             </div>
         `;
-
+    
         return container;
     }
 
