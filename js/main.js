@@ -162,9 +162,9 @@ const Utils = {
                 postalCode: ''
             };
         }
-    
+
         const parts = address.split(',').map(part => part.trim());
-        
+
         const postalPatterns = [
             /\b[0-9]{5}\b/, // US, FR, DE, etc.
             /\b[A-Z][0-9][A-Z]\s?[0-9][A-Z][0-9]\b/i, // CA
@@ -173,11 +173,11 @@ const Utils = {
             /\b[0-9]{4,6}\b/, // JP, CN, KR, etc.
             /\b[A-Z0-9]{2,4}\s?[0-9]{3,4}\b/i // SG, etc.
         ];
-    
+
         let postalCode = '';
         let city = '';
         let potentialCityPart = parts[1] || '';
-    
+
         for (const pattern of postalPatterns) {
             const match = potentialCityPart.match(pattern);
             if (match) {
@@ -186,14 +186,14 @@ const Utils = {
                 break;
             }
         }
-    
+
         if (!city && potentialCityPart) {
             city = potentialCityPart;
         }
-    
+
         const country = parts[parts.length - 1];
         const street = parts[0];
-    
+
         return {
             street,
             city,
@@ -1212,6 +1212,44 @@ class UIManager {
     }
 
     /**
+     * Validates critical UI elements
+     * @private
+     * @returns {Promise<boolean>}
+     */
+    async validateCriticalElements() {
+        const criticalElements = {
+            'map': 'Map container',
+            'controls': 'Controls container',
+            'theme-toggle': 'Theme toggle button',
+            'legend-toggle': 'Legend toggle button',
+            'hamburger-menu': 'Menu button'
+        };
+
+        let valid = true;
+        for (const [id, name] of Object.entries(criticalElements)) {
+            if (!this.elements[id]) {
+                console.error(`Critical element missing: ${name} (${id})`);
+                valid = false;
+                continue;
+            }
+
+            // Vérifier que les boutons ont leurs écouteurs d'événements
+            if (['theme-toggle', 'legend-toggle', 'hamburger-menu'].includes(id)) {
+                this.elements[id].setAttribute('role', 'button');
+                this.elements[id].setAttribute('tabindex', '0');
+
+                // Réattacher les écouteurs d'événements
+                if (id === 'theme-toggle') {
+                    this.elements[id].removeEventListener('click', this.toggleTheme);
+                    this.elements[id].addEventListener('click', this.toggleTheme);
+                }
+            }
+        }
+
+        return valid;
+    }
+
+    /**
      * Sets up all event listeners for UI elements
      * @private
      */
@@ -1564,7 +1602,7 @@ class UIManager {
         const body = document.body;
         body.classList.toggle('dark-mode', isDark);
         store.setState({ darkMode: isDark });
-        
+
         if (this.mapManager) {
             this.mapManager.updateTileLayer();
         }
@@ -1583,10 +1621,10 @@ class UIManager {
     setupThemeDetection() {
         // Detect system preference
         const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        
+
         // Initial setup
         this.setDarkMode(darkModeMediaQuery.matches);
-        
+
         // Listen for system changes
         darkModeMediaQuery.addEventListener('change', e => {
             this.setDarkMode(e.matches);
