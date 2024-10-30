@@ -98,49 +98,69 @@ class GaugeManager {
     }
 
     /**
-     * Create SVG and associated elements for a gauge
+     * Creates and sets up SVG elements for a gauge
      * @private
      * @param {HTMLElement} wrapper - The gauge wrapper element
      * @param {string} status - The status category
-     * @returns {GaugeElements|null} The created gauge elements or null if creation failed
+     * @returns {GaugeElements|null}
      */
     static #createGaugeElements(wrapper, status) {
         try {
             // Clear existing content
             wrapper.innerHTML = '';
 
-            // Create SVG element
+            // Create SVG element with correct viewBox
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svg.setAttribute('viewBox', '0 0 36 36');
             svg.classList.add('gauge');
 
-            // Create background circle
+            // Create background circle path
             const backgroundPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             backgroundPath.classList.add('gauge-background');
-            this.#setGaugePathAttributes(backgroundPath, this.#defaultOptions.backgroundColor);
 
-            // Create value circle
+            // Create value circle path
             const valuePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             valuePath.classList.add('gauge-value');
-            this.#setGaugePathAttributes(valuePath, this.#defaultOptions.statusColors[status] || '#999');
+
+            // Set common path attributes
+            const radius = this.#defaultOptions.radius;
+            const pathD = `M18 2.0845
+            a ${radius} ${radius} 0 0 1 0 31.831
+            a ${radius} ${radius} 0 0 1 0 -31.831`;
+
+            backgroundPath.setAttribute('d', pathD);
+            backgroundPath.setAttribute('fill', 'none');
+            backgroundPath.setAttribute('stroke', this.#defaultOptions.backgroundColor);
+            backgroundPath.setAttribute('stroke-width', this.#defaultOptions.strokeWidth);
+            backgroundPath.setAttribute('stroke-linecap', 'round');
+
+            valuePath.setAttribute('d', pathD);
+            valuePath.setAttribute('fill', 'none');
+            valuePath.setAttribute('stroke', this.#defaultOptions.statusColors[status] || '#999');
+            valuePath.setAttribute('stroke-width', this.#defaultOptions.strokeWidth);
+            valuePath.setAttribute('stroke-linecap', 'round');
+            valuePath.style.transform = 'rotate(-90deg)';
+            valuePath.style.transformOrigin = 'center';
 
             // Add paths to SVG
             svg.appendChild(backgroundPath);
             svg.appendChild(valuePath);
 
-            // Create text displays
+            // Create text elements
             const valueDisplay = document.createElement('div');
             valueDisplay.classList.add('gauge-value');
             valueDisplay.setAttribute('aria-live', 'polite');
+            valueDisplay.textContent = '0';
 
             const percentageDisplay = document.createElement('div');
             percentageDisplay.classList.add('gauge-percentage');
+            percentageDisplay.textContent = '(0.0%)';
 
             const labelDisplay = document.createElement('div');
             labelDisplay.classList.add('gauge-label');
             labelDisplay.textContent = status;
 
-            // Add elements to wrapper
+            // Add all elements to wrapper
             wrapper.appendChild(svg);
             wrapper.appendChild(valueDisplay);
             wrapper.appendChild(percentageDisplay);
@@ -178,10 +198,10 @@ class GaugeManager {
     }
 
     /**
-     * Update all gauges with new data
-     * @param {Array.<Object>} hospitals - Array of hospital data
-     * @returns {Promise<void>}
-     */
+    * Updates all gauges with the correct calculations and display
+    * @param {Array.<Object>} hospitals - Array of hospital data
+    * @returns {Promise<void>}
+    */
     static async updateAllGauges(hospitals) {
         try {
             if (!hospitals?.length) {
@@ -204,15 +224,35 @@ class GaugeManager {
             });
 
             // Update each gauge
-            const updatePromises = Object.entries(counts).map(([status, count]) => {
-                return this.#updateGauge({
-                    value: count,
-                    total: total,
-                    status: status
-                });
-            });
+            for (const [status, count] of Object.entries(counts)) {
+                const elements = this.#gauges.get(status);
+                if (!elements) continue;
 
-            await Promise.all(updatePromises);
+                const percentage = (count / total * 100) || 0;
+
+                // Calculate the circumference of the circle
+                const radius = this.#defaultOptions.radius;
+                const circumference = 2 * Math.PI * radius;
+
+                // Calculate the dash offset based on percentage
+                // Important: Subtract from circumference because SVG arc starts at top and goes clockwise
+                const dashOffset = circumference * (1 - percentage / 100);
+
+                // Update SVG path properties
+                const valuePath = elements.valuePath;
+                valuePath.style.strokeDasharray = `${circumference} ${circumference}`;
+                valuePath.style.strokeDashoffset = dashOffset;
+                valuePath.style.transition = `stroke-dashoffset ${this.#defaultOptions.animationDuration}ms ease-in-out`;
+
+                // Update text displays
+                elements.valueDisplay.textContent = count;
+                elements.percentageDisplay.textContent = `(${percentage.toFixed(1)}%)`;
+
+                // Update ARIA attributes
+                elements.wrapper.setAttribute('aria-valuenow', count);
+                elements.wrapper.setAttribute('aria-valuetext',
+                    `${count} ${status} hospitals (${percentage.toFixed(1)}%)`);
+            }
         } catch (error) {
             console.error('Error updating gauges:', error);
             throw error;
@@ -252,7 +292,7 @@ class GaugeManager {
 
                     // Update ARIA attributes
                     elements.wrapper.setAttribute('aria-valuenow', data.value);
-                    elements.wrapper.setAttribute('aria-valuetext', 
+                    elements.wrapper.setAttribute('aria-valuetext',
                         `${data.value} ${data.status} hospitals (${percentage.toFixed(1)}%)`);
 
                     resolve();
@@ -270,7 +310,7 @@ class GaugeManager {
      */
     static async resetGauges() {
         try {
-            const resetPromises = Array.from(this.#gauges.keys()).map(status => 
+            const resetPromises = Array.from(this.#gauges.keys()).map(status =>
                 this.#updateGauge({
                     value: 0,
                     total: 100,
