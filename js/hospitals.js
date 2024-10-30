@@ -154,6 +154,16 @@ const hospitals = [
         address: "Boulevard du Bois du Verne, 71300 Montceau-les-Mines, France",
         website: "http://www.ch-montceau.fr",
         imageUrl: "https://i.ibb.co/HYs7nHY/b-timent-moderne-dh-pital.webp"        
+    },
+    {
+        "id": "16",
+        "name": "Centre Hospitalier d'Autun",
+        "lat": 46.9491,
+        "lon": 4.2976,
+        "status": "Deployed",
+        "address": "5 Boulevard Frédéric Latouche, 71400 Autun, France",
+        "website": "http://www.ch-autun.fr",
+        "imageUrl": "https://i.ibb.co/ZVLmySk/h-pital-autun.webp"
     }
 ];
 
