@@ -1614,9 +1614,8 @@ class UIManager {
     }
 
     /**
-     * Detects the user's system color scheme preference and sets the app's theme accordingly.
-     * Listens for changes to the system preference and updates the app's theme.
-     * Also sets up a theme toggle button to allow users to override the system preference.
+     * Sets up theme detection and theme toggle button
+     * @private
      */
     setupThemeDetection() {
         // Detect system preference
@@ -1638,6 +1637,39 @@ class UIManager {
                 this.setDarkMode(!currentMode);
             });
         }
+    }
+
+    /**
+     * Hides the controls
+     * @public
+     */
+    hideControls() {
+        const controls = this.elements['controls'];
+        const hamburger = this.elements['hamburger-menu'];
+        
+        if (controls && hamburger) {
+            controls.classList.remove('visible');
+            hamburger.classList.remove('active');
+            hamburger.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    /**
+     * Updates translations
+     * @public
+     */
+    async updateTranslations(language) {
+        const { translations } = store.getState();
+        const currentTranslations = translations[language] || translations[CONFIG.UI.DEFAULT_LANGUAGE];
+        
+        store.setState({ language });
+        
+        document.querySelectorAll('[data-translate]').forEach(element => {
+            const key = element.getAttribute('data-translate');
+            if (currentTranslations[key]) {
+                element.textContent = currentTranslations[key];
+            }
+        });
     }
 
     /**
