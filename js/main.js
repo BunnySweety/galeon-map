@@ -982,15 +982,9 @@ class MapManager {
 }
 
 /**
- * UI Manager Class
- * Manages the user interface and interactions with the map
+ * UI Manager
  */
 class UIManager {
-    /**
-     * Creates an instance of UIManager
-     * @param {MapManager} mapManager - Required MapManager instance
-     * @throws {Error} If MapManager is not provided
-     */
     constructor(mapManager) {
         if (!mapManager) {
             throw new Error('MapManager is required');
@@ -999,25 +993,118 @@ class UIManager {
         this.elements = {};
         this.resizeObserver = null;
 
-        // Bind methods to preserve context
-        this.handleResize = this.handleResize.bind(this);
-        this.handleOrientationChange = this.handleOrientationChange.bind(this);
-        this.handleEscapeKey = this.handleEscapeKey.bind(this);
-        this.handleLanguageChange = this.handleLanguageChange.bind(this);
-        this.toggleTheme = this.toggleTheme.bind(this);
-        this.toggleLegend = this.toggleLegend.bind(this);
-        this.toggleControls = this.toggleControls.bind(this);
-        this.updateFilters = this.updateFilters.bind(this);
-        this.handleStatusTagClick = this.handleStatusTagClick.bind(this);
-        this.updateMarkerVisibility = this.updateMarkerVisibility.bind(this);
+        // Définition des gestionnaires d'événements
+        this.handleResize = () => {
+            this.updateLayout();
+            AnalyticsManager.trackEvent('UI', 'Resize', `Width: ${window.innerWidth}`);
+        };
+
+        this.handleOrientationChange = () => {
+            setTimeout(() => {
+                this.updateLayout();
+            }, 100);
+        };
+
+        this.handleEscapeKey = (e) => {
+            if (e.key === 'Escape') {
+                if (this.mapManager.map) {
+                    this.mapManager.map.closePopup();
+                }
+                if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
+                    this.hideControls();
+                }
+                document.activeElement?.blur();
+            }
+        };
+
+        this.handleLanguageChange = (language) => {
+            this.updateTranslations(language);
+            Utils.savePreferences({
+                ...Utils.loadPreferences(),
+                language
+            });
+            AnalyticsManager.trackEvent('UI', 'LanguageChange', language);
+        };
+
+        this.toggleTheme = () => {
+            const { darkMode } = store.getState();
+            this.setDarkMode(!darkMode);
+            AnalyticsManager.trackEvent('UI', 'ThemeToggle', !darkMode ? 'Dark' : 'Light');
+        };
+
+        this.toggleLegend = () => {
+            const { legendVisible } = store.getState().ui;
+            store.setState({
+                ui: { ...store.getState().ui, legendVisible: !legendVisible }
+            });
+            AnalyticsManager.trackEvent('UI', 'LegendToggle', !legendVisible ? 'Show' : 'Hide');
+        };
+
+        this.toggleControls = () => {
+            const controls = this.elements['controls'];
+            const hamburger = this.elements['hamburger-menu'];
+
+            if (!controls || !hamburger) return;
+
+            const isVisible = controls.classList.contains('visible');
+            controls.classList.toggle('visible');
+            hamburger.classList.toggle('active');
+            hamburger.setAttribute('aria-expanded', (!isVisible).toString());
+
+            AnalyticsManager.trackEvent('UI', 'ControlsToggle', isVisible ? 'Hide' : 'Show');
+        };
+
+        this.updateFilters = () => {
+            const filters = this.getCurrentFilters();
+            store.setState({ filters });
+
+            const filteredHospitals = this.filterHospitals(filters);
+
+            this.updateMarkerVisibility(filteredHospitals);
+            GaugeManager.updateAllGauges(filteredHospitals);
+            this.updateURLParams(filters);
+
+            Utils.savePreferences({
+                ...Utils.loadPreferences(),
+                filters
+            });
+
+            AnalyticsManager.trackEvent('Filter', 'Update', `Results: ${filteredHospitals.length}`);
+        };
+
+        this.handleStatusTagClick = (e, tag) => {
+            if (!tag) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const status = tag.getAttribute('status');
+            if (!status) return;
+
+            const { activeStatus } = store.getState();
+            const isActive = tag.classList.contains('active');
+
+            const newActiveStatus = isActive
+                ? activeStatus.filter(s => s !== status)
+                : [...activeStatus, status];
+
+            tag.classList.toggle('active', !isActive);
+            tag.setAttribute('aria-pressed', (!isActive).toString());
+
+            store.setState({ activeStatus: newActiveStatus });
+            Utils.savePreferences({
+                ...Utils.loadPreferences(),
+                activeStatus: newActiveStatus
+            });
+
+            this.updateFilters();
+            AnalyticsManager.trackEvent('Filter', 'StatusToggle', `${status}: ${!isActive}`);
+        };
+
+        // Initialisation
+        this.init();
     }
 
-    /**
-     * Initializes the UI Manager
-     * @async
-     * @throws {Error} If initialization fails
-     * @returns {Promise<void>}
-     */
     async init() {
         try {
             await this.initElements();
@@ -1035,12 +1122,6 @@ class UIManager {
         }
     }
 
-    /**
-     * Initializes UI elements and stores references
-     * @async
-     * @returns {Promise<boolean>} True if initialization successful
-     * @throws {Error} If critical elements are missing
-     */
     async initElements() {
         console.log('Initializing UI elements...');
 
@@ -1079,10 +1160,18 @@ class UIManager {
         return true;
     }
 
-    /**
-     * Sets up all event listeners for UI elements
-     * @private
-     */
+    validateCriticalElements() {
+        const criticalElements = ['map', 'controls'];
+        const missingElements = criticalElements.filter(id => !document.getElementById(id));
+
+        if (missingElements.length > 0) {
+            console.error(`Critical elements missing: ${missingElements.join(', ')}`);
+            return false;
+        }
+
+        return true;
+    }
+
     setupEventListeners() {
         if (!this.elements) return;
 
@@ -1129,86 +1218,94 @@ class UIManager {
             this.addKeyboardSupport(tag, (e) => this.handleStatusTagClick(e, tag));
         });
 
-        // Location button
+        // User location button
         const locationButton = document.getElementById('get-location');
         if (locationButton) {
             locationButton.addEventListener('click', () => this.mapManager.getUserLocation());
         }
     }
 
-    /**
-     * Updates the visibility of markers based on filters
-     * @async
-     * @param {Array<Hospital>} filteredHospitals - Array of filtered hospitals
-     * @returns {Promise<void>}
-     */
-    async updateMarkerVisibility(filteredHospitals) {
-        try {
-            if (!this.mapManager || !this.mapManager.markerClusterGroup) {
-                throw new Error('MapManager or MarkerClusterGroup not initialized');
+    setupAccessibility() {
+        Object.entries(this.elements).forEach(([id, element]) => {
+            if (!element) return;
+
+            const label = id.replace(/([A-Z])/g, ' $1').toLowerCase();
+            element.setAttribute('aria-label', label);
+
+            if (['theme-toggle', 'legend-toggle', 'hamburger-menu'].includes(id)) {
+                element.setAttribute('role', 'button');
+                element.setAttribute('tabindex', '0');
             }
+        });
 
-            this.mapManager.markerClusterGroup.clearLayers();
+        document.querySelectorAll('.status-tag').forEach(tag => {
+            tag.setAttribute('role', 'button');
+            tag.setAttribute('tabindex', '0');
+            tag.setAttribute('aria-pressed', 'false');
+        });
+    }
 
-            const noResults = document.getElementById('no-hospitals-message');
-            if (noResults) {
-                noResults.style.display = filteredHospitals.length === 0 ? 'block' : 'none';
+    setupThemeDetection() {
+        const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const savedPreferences = Utils.loadPreferences();
+
+        if (savedPreferences?.darkMode !== undefined) {
+            this.setDarkMode(savedPreferences.darkMode);
+        } else {
+            this.setDarkMode(darkModeMediaQuery.matches);
+        }
+
+        darkModeMediaQuery.addEventListener('change', (e) => {
+            if (!Utils.loadPreferences()?.darkMode) {
+                this.setDarkMode(e.matches);
             }
+        });
+    }
 
-            if (filteredHospitals.length > 0) {
-                const markers = filteredHospitals
-                    .map(hospital => this.mapManager.markers.get(hospital.id))
-                    .filter(marker => marker instanceof L.CircleMarker);
-
-                if (markers.length > 0) {
-                    this.mapManager.markerClusterGroup.addLayers(markers);
-
-                    const bounds = L.latLngBounds(markers.map(m => m.getLatLng()));
-                    this.mapManager.map.fitBounds(bounds, {
-                        padding: CONFIG.MAP.BOUNDS_PADDING,
-                        maxZoom: this.mapManager.map.getZoom()
-                    });
+    setupResizeObserver() {
+        if ('ResizeObserver' in window) {
+            this.resizeObserver = new ResizeObserver(Utils.throttle(() => {
+                if (this.mapManager.map) {
+                    this.mapManager.map.invalidateSize();
                 }
+            }, 250));
+
+            const mapContainer = document.getElementById('map');
+            if (mapContainer) {
+                this.resizeObserver.observe(mapContainer);
             }
-        } catch (error) {
-            console.error('Error updating marker visibility:', error);
-            ErrorHandler.handle(error, 'Marker Visibility Update');
         }
     }
 
-    /**
-     * Updates filters and refreshes the map display
-     * @async
-     * @returns {Promise<void>}
-     */
-    async updateFilters() {
-        try {
-            const filters = this.getCurrentFilters();
-            store.setState({ filters });
+    setupMobileKeyboardHandling(element) {
+        if (!element) return;
 
-            const filteredHospitals = this.filterHospitals(filters);
+        element.addEventListener('focus', () => {
+            if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
+                document.body.classList.add('keyboard-open');
+                this.mapManager.map?.invalidateSize();
+            }
+        });
 
-            await this.updateMarkerVisibility(filteredHospitals);
-            await GaugeManager.updateAllGauges(filteredHospitals);
-            this.updateURLParams(filters);
-
-            Utils.savePreferences({
-                ...Utils.loadPreferences(),
-                filters
-            });
-
-            AnalyticsManager.trackEvent('Filter', 'Update', `Results: ${filteredHospitals.length}`);
-        } catch (error) {
-            console.error('Error updating filters:', error);
-            ErrorHandler.handle(error, 'Filter Update');
-        }
+        element.addEventListener('blur', () => {
+            if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
+                document.body.classList.remove('keyboard-open');
+                this.mapManager.map?.invalidateSize();
+            }
+        });
     }
 
-    /**
-     * Gets current filter values from UI elements
-     * @private
-     * @returns {Object} Current filter values
-     */
+    addKeyboardSupport(element, handler) {
+        if (!element || !handler) return;
+
+        element.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handler(e);
+            }
+        });
+    }
+
     getCurrentFilters() {
         return {
             activeStatus: store.getState().activeStatus,
@@ -1219,16 +1316,10 @@ class UIManager {
         };
     }
 
-    /**
-     * Filters hospitals based on current criteria
-     * @private
-     * @param {Object} filters - Filter criteria
-     * @returns {Array<Hospital>} Filtered hospitals
-     */
     filterHospitals(filters) {
         const { hospitals } = store.getState();
 
-        return hospitals.filter(hospital => {
+        const filteredHospitals = hospitals.filter(hospital => {
             if (filters.activeStatus.length && !filters.activeStatus.includes(hospital.status)) {
                 return false;
             }
@@ -1256,13 +1347,42 @@ class UIManager {
 
             return true;
         });
+
+        return filteredHospitals;
     }
 
     /**
-     * Updates URL parameters based on current filters
-     * @private
-     * @param {Object} filters - Current filters
+     * Update visibility of markers
+     * @param {Array} filteredHospitals List of filtered hospitals
      */
+    updateMarkerVisibility(filteredHospitals) {
+        try {
+            this.markerClusterGroup.clearLayers();
+
+            const noResults = document.getElementById('no-hospitals-message');
+            if (noResults) {
+                noResults.style.display = filteredHospitals.length === 0 ? 'block' : 'none';
+            }
+
+            const markers = filteredHospitals
+                .map(hospital => this.markers.get(hospital.id))
+                .filter(marker => marker instanceof L.CircleMarker);
+
+            if (markers.length > 0) {
+                this.markerClusterGroup.addLayers(markers);
+
+                const bounds = L.latLngBounds(markers.map(m => m.getLatLng()));
+                this.map.fitBounds(bounds, {
+                    padding: CONFIG.MAP.BOUNDS_PADDING,
+                    maxZoom: this.map.getZoom()
+                });
+            }
+        } catch (error) {
+            console.error('Error updating marker visibility:', error);
+            ErrorHandler.handle(error, 'Marker Visibility Update');
+        }
+    }
+
     updateURLParams(filters) {
         const params = new URLSearchParams(window.location.search);
 
@@ -1278,104 +1398,6 @@ class UIManager {
         window.history.replaceState({}, '', newUrl);
     }
 
-    /**
-     * Handles status tag click events
-     * @param {Event} e - Click event
-     * @param {HTMLElement} tag - Clicked status tag
-     */
-    handleStatusTagClick(e, tag) {
-        if (!tag) return;
-
-        e.preventDefault();
-        e.stopPropagation();
-
-        const status = tag.getAttribute('status');
-        if (!status) return;
-
-        const { activeStatus } = store.getState();
-        const isActive = tag.classList.contains('active');
-
-        const newActiveStatus = isActive
-            ? activeStatus.filter(s => s !== status)
-            : [...activeStatus, status];
-
-        tag.classList.toggle('active', !isActive);
-        tag.setAttribute('aria-pressed', (!isActive).toString());
-
-        store.setState({ activeStatus: newActiveStatus });
-        Utils.savePreferences({
-            ...Utils.loadPreferences(),
-            activeStatus: newActiveStatus
-        });
-
-        this.updateFilters();
-        AnalyticsManager.trackEvent('Filter', 'StatusToggle', `${status}: ${!isActive}`);
-    }
-
-    /**
-     * Handles window resize events
-     * @private
-     */
-    handleResize() {
-        this.updateLayout();
-        AnalyticsManager.trackEvent('UI', 'Resize', `Width: ${window.innerWidth}`);
-    }
-
-    /**
-     * Handles orientation change events
-     * @private
-     */
-    handleOrientationChange() {
-        setTimeout(() => {
-            this.updateLayout();
-        }, 100);
-    }
-
-    /**
-     * Handles escape key events
-     * @private
-     * @param {KeyboardEvent} e - Keyboard event
-     */
-    handleEscapeKey(e) {
-        if (e.key === 'Escape') {
-            if (this.mapManager.map) {
-                this.mapManager.map.closePopup();
-            }
-            if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
-                this.hideControls();
-            }
-            document.activeElement?.blur();
-        }
-    }
-
-    /**
-     * Sets up accessibility features
-     * @private
-     */
-    setupAccessibility() {
-        Object.entries(this.elements).forEach(([id, element]) => {
-            if (!element) return;
-
-            const label = id.replace(/([A-Z])/g, ' $1').toLowerCase();
-            element.setAttribute('aria-label', label);
-
-            if (['theme-toggle', 'legend-toggle', 'hamburger-menu'].includes(id)) {
-                element.setAttribute('role', 'button');
-                element.setAttribute('tabindex', '0');
-            }
-        });
-
-        document.querySelectorAll('.status-tag').forEach(tag => {
-            tag.setAttribute('role', 'button');
-            tag.setAttribute('tabindex', '0');
-            tag.setAttribute('aria-pressed', 'false');
-        });
-    }
-
-    /**
-     * Updates the layout based on screen size
-     * @private
-     */
     updateLayout() {
         const isMobile = window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT;
         document.body.classList.toggle('mobile-view', isMobile);
@@ -1385,52 +1407,117 @@ class UIManager {
         }
     }
 
-    /**
-     * Sets up the resize observer for the map
-     * @private
-     */
-    setupResizeObserver() {
-        if ('ResizeObserver' in window) {
-            this.resizeObserver = new ResizeObserver(Utils.throttle(() => {
-                if (this.mapManager.map) {
-                    this.mapManager.map.invalidateSize();
-                }
-            }, 250));
+    setDarkMode(enabled) {
+        document.body.classList.toggle('dark-mode', enabled);
+        store.setState({ darkMode: enabled });
+        this.mapManager.updateTileLayer();
 
-            const mapContainer = document.getElementById('map');
-            if (mapContainer) {
-                this.resizeObserver.observe(mapContainer);
+        Utils.savePreferences({
+            ...Utils.loadPreferences(),
+            darkMode: enabled
+        });
+    }
+
+    hideControls() {
+        const controls = this.elements['controls'];
+        const hamburger = this.elements['hamburger-menu'];
+
+        if (controls) {
+            controls.classList.remove('visible');
+        }
+        if (hamburger) {
+            hamburger.classList.remove('active');
+            hamburger.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    updateTranslations(language) {
+        const { translations } = store.getState();
+        const currentTranslations = translations[language] || translations[CONFIG.UI.DEFAULT_LANGUAGE];
+
+        document.querySelectorAll('[data-translate]').forEach(element => {
+            const key = element.getAttribute('data-translate');
+            if (currentTranslations[key]) {
+                if (element.tagName === 'INPUT') {
+                    element.placeholder = currentTranslations[key];
+                } else {
+                    element.textContent = currentTranslations[key];
+                }
+            }
+        });
+
+        document.documentElement.setAttribute('lang', language);
+        store.setState({ language });
+    }
+
+    loadUserPreferences() {
+        const preferences = Utils.loadPreferences();
+        if (preferences) {
+            if (preferences.language) {
+                this.updateTranslations(preferences.language);
+            }
+            if (preferences.darkMode !== undefined) {
+                this.setDarkMode(preferences.darkMode);
+            }
+            if (preferences.activeStatus) {
+                store.setState({ activeStatus: preferences.activeStatus });
+                this.applyStatusFilters(preferences.activeStatus);
             }
         }
     }
 
-    /**
-     * Adds keyboard support to an element
-     * @private
-     * @param {HTMLElement} element - Element to add keyboard support to
-     * @param {Function} handler - Event handler
-     */
-    addKeyboardSupport(element, handler) {
-        if (!element || !handler) return;
+    applyStatusFilters(statuses) {
+        if (!Array.isArray(statuses)) return;
 
-        element.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handler(e);
-            }
+        document.querySelectorAll('.status-tag').forEach(tag => {
+            const status = tag.getAttribute('status');
+            const isActive = statuses.includes(status);
+            tag.classList.toggle('active', isActive);
+            tag.setAttribute('aria-pressed', isActive.toString());
         });
     }
 
-    /**
-     * Cleans up resources and removes event listeners
-     * @public
-     */
+    clearFilters() {
+        ['hospital-search', 'country-filter', 'city-filter'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) element.value = '';
+        });
+
+        const continentSelect = document.getElementById('continent-select');
+        if (continentSelect) continentSelect.selectedIndex = 0;
+
+        document.querySelectorAll('.status-tag').forEach(tag => {
+            tag.classList.remove('active');
+            tag.setAttribute('aria-pressed', 'false');
+        });
+
+        store.setState({ activeStatus: [] });
+
+        const { hospitals } = store.getState();
+        this.mapManager.markerClusterGroup.clearLayers();
+        hospitals.forEach(hospital => {
+            const marker = this.mapManager.markers.get(hospital.id);
+            if (marker) {
+                this.mapManager.markerClusterGroup.addLayer(marker);
+            }
+        });
+
+        const noResults = document.getElementById('no-hospitals-message');
+        if (noResults) noResults.style.display = 'none';
+
+        this.mapManager.fitMarkersInView();
+
+        AnalyticsManager.trackEvent('Filter', 'Clear');
+    }
+
     destroy() {
         try {
+            // Remove window event listeners
             window.removeEventListener('resize', this.handleResize);
             window.removeEventListener('orientationchange', this.handleOrientationChange);
             window.removeEventListener('keydown', this.handleEscapeKey);
 
+            // Remove element-specific event listeners
             Object.entries(this.elements).forEach(([id, element]) => {
                 if (!element) return;
 
@@ -1450,13 +1537,30 @@ class UIManager {
                 }
             });
 
+            // Remove filter input listeners
+            ['continent-select', 'country-filter', 'city-filter', 'hospital-search'].forEach(id => {
+                const element = this.elements[id];
+                if (element) {
+                    element.removeEventListener('input', this.updateFilters);
+                    element.removeEventListener('focus', this.setupMobileKeyboardHandling);
+                    element.removeEventListener('blur', this.setupMobileKeyboardHandling);
+                }
+            });
+
+            // Remove status tag listeners
+            document.querySelectorAll('.status-tag').forEach(tag => {
+                tag.removeEventListener('click', this.handleStatusTagClick);
+            });
+
+            // Cleanup ResizeObserver
             if (this.resizeObserver) {
                 this.resizeObserver.disconnect();
                 this.resizeObserver = null;
             }
 
+            // Clear references
             this.elements = {};
-            
+
             console.log('UIManager cleanup completed successfully');
         } catch (error) {
             console.error('Error during UIManager cleanup:', error);
@@ -1464,10 +1568,7 @@ class UIManager {
         }
     }
 
-    /**
-     * Gets debug information about the current state
-     * @returns {Object} Debug information
-     */
+    // Debugging method
     debug() {
         return {
             elements: this.elements,
