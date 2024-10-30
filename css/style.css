@@ -368,7 +368,7 @@ body {
 /* ==========================================================================
    Chart Container and Gauges
    ========================================================================== */
-.chart-container {
+   .chart-container {
     position: fixed;
     bottom: 1rem;
     right: 1rem;
@@ -378,7 +378,6 @@ body {
     align-items: center;
     gap: 1.5rem;
     background: var(--control-background-light);
-    background-color: var(--control-background-light);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-md);
     z-index: 1000;
@@ -397,15 +396,13 @@ body {
     position: relative;
     text-align: center;
     padding: 0 0.625rem;
-    justify-content: center;
 }
 
 /* SVG Gauge Base Styles */
 .gauge {
-    width: 5rem;
-    height: 5rem;
-    transform: rotate(-90deg);
-    position: relative;
+    width: 80px;
+    height: 80px;
+    margin-bottom: 0.5rem;
 }
 
 /* SVG Path Styles */
@@ -415,38 +412,30 @@ body {
     fill: none;
 }
 
-.gauge-value {
-    position: absolute;
-    transform: translate(-50%, -50%);
-    transform-origin: center;
-    font-size: 1.125rem;
-    font-weight: bold;
-    z-index: 2;
-    width: 100%;
-    text-align: center;
-    color: var(--text-color-light);
-    pointer-events: none;
-}
-
 .gauge-value-path {
     stroke-linecap: round;
     fill: none;
     transition: stroke-dashoffset var(--transition-normal) ease-in-out;
 }
 
+.gauge-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 0.5rem;
+}
+
 .gauge-percentage {
-    margin-top: 0.3125rem;
-    font-size: 0.875rem;
-    color: var(--text-color-light);
+    font-size: 0.75rem;
+    text-align: center;
+    margin-top: 0.5rem;
 }
 
 .gauge-label {
-    margin-top: 0.3125rem;
     font-size: 0.875rem;
     font-weight: bold;
-    color: var(--text-color-light);
-    white-space: normal;
-    word-wrap: break-word;
+    text-align: center;
+    margin-top: 0.5rem;
 }
 
 /* Status-specific colors */

@@ -49,7 +49,6 @@ class GaugeManager {
                     this.#gauges.set(status, elements);
                 }
             });
-
         } catch (error) {
             console.error('Error initializing gauges:', error);
             throw error;
@@ -62,9 +61,8 @@ class GaugeManager {
             
             const container = document.createElement('div');
             container.style.position = 'relative';
-            container.style.width = '80px';
             container.style.height = '80px';
-
+            
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svg.setAttribute('viewBox', '0 0 36 36');
             svg.classList.add('gauge');
@@ -99,24 +97,14 @@ class GaugeManager {
             svg.appendChild(valuePath);
             container.appendChild(svg);
 
-            const valueContainer = document.createElement('div');
-            valueContainer.style.position = 'absolute';
-            valueContainer.style.inset = '0';
-            valueContainer.style.display = 'flex';
-            valueContainer.style.alignItems = 'center';
-            valueContainer.style.justifyContent = 'center';
-            valueContainer.style.zIndex = '1';
-            valueContainer.style.transform = 'rotate(0deg)';
-            
             const valueDisplay = document.createElement('div');
             valueDisplay.classList.add('gauge-value');
             valueDisplay.style.fontSize = '1.5rem';
             valueDisplay.style.fontWeight = 'bold';
+            valueDisplay.style.marginTop = '30px';
+            valueDisplay.style.textAlign = 'center';
             valueDisplay.textContent = '0';
-            
-            valueContainer.appendChild(valueDisplay);
-            container.appendChild(svg);
-            container.appendChild(valueContainer);
+            container.appendChild(valueDisplay);
             
             const percentageDisplay = document.createElement('div');
             percentageDisplay.classList.add('gauge-percentage');
@@ -124,13 +112,13 @@ class GaugeManager {
             percentageDisplay.style.marginTop = '0.5rem';
             percentageDisplay.style.textAlign = 'center';
             percentageDisplay.textContent = '(0.0%)';
-            
+
             const labelDisplay = document.createElement('div');
             labelDisplay.classList.add('gauge-label');
             labelDisplay.style.marginTop = '0.5rem';
             labelDisplay.style.textAlign = 'center';
             labelDisplay.textContent = status;
-            
+
             wrapper.appendChild(container);
             wrapper.appendChild(percentageDisplay);
             wrapper.appendChild(labelDisplay);
