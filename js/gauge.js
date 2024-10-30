@@ -208,47 +208,44 @@ class GaugeManager {
                 console.warn('No hospital data provided for gauge update');
                 return;
             }
-
+    
+            // Calculate the total number of hospitals for each status
             const total = hospitals.length;
             const counts = {
                 'Deployed': 0,
                 'In Progress': 0,
                 'Signed': 0
             };
-
-            // Count hospitals by status
+    
             hospitals.forEach(hospital => {
                 if (counts.hasOwnProperty(hospital.status)) {
                     counts[hospital.status]++;
                 }
             });
-
-            // Update each gauge
+    
+            // Update each gauge with new data
             for (const [status, count] of Object.entries(counts)) {
                 const elements = this.#gauges.get(status);
                 if (!elements) continue;
-
+    
                 const percentage = (count / total * 100) || 0;
-
-                // Calculate the circumference of the circle
+    
+                // Calculate dash offset based on percentage
                 const radius = this.#defaultOptions.radius;
                 const circumference = 2 * Math.PI * radius;
-
-                // Calculate the dash offset based on percentage
-                // Important: Subtract from circumference because SVG arc starts at top and goes clockwise
                 const dashOffset = circumference * (1 - percentage / 100);
-
-                // Update SVG path properties
+    
+                // Update the SVG path
                 const valuePath = elements.valuePath;
                 valuePath.style.strokeDasharray = `${circumference} ${circumference}`;
                 valuePath.style.strokeDashoffset = dashOffset;
                 valuePath.style.transition = `stroke-dashoffset ${this.#defaultOptions.animationDuration}ms ease-in-out`;
-
-                // Update text displays
-                elements.valueDisplay.textContent = count;
+    
+                // Update the value display
+                elements.valueDisplay.textContent = count; // Affiche le nombre d'hôpitaux ayant ce statut
                 elements.percentageDisplay.textContent = `(${percentage.toFixed(1)}%)`;
-
-                // Update ARIA attributes
+    
+                // Update the ARIA attributes
                 elements.wrapper.setAttribute('aria-valuenow', count);
                 elements.wrapper.setAttribute('aria-valuetext',
                     `${count} ${status} hospitals (${percentage.toFixed(1)}%)`);
@@ -257,7 +254,7 @@ class GaugeManager {
             console.error('Error updating gauges:', error);
             throw error;
         }
-    }
+    }       
 
     /**
      * Update a single gauge with new data
