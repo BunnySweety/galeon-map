@@ -315,6 +315,16 @@ body {
     border: none !important;
 }
 
+.leaflet-control-attribution {
+    position: fixed !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    background: rgba(255, 255, 255, 0.7) !important;
+    padding: 2px 5px !important;
+    font-size: 10px !important;
+    z-index: 1000;
+}
+
 /* ==========================================================================
    Legend Container
    ========================================================================== */
@@ -397,6 +407,7 @@ body {
 }
 
 .gauge-value {
+    display: none;
     stroke-linecap: round;
     fill: none;
     transition: stroke-dashoffset var(--transition-normal) ease-in-out;
@@ -420,6 +431,10 @@ body {
     transform: translate(-50%, -50%);
     font-size: 1.125rem;
     font-weight: bold;
+    z-index: 2;
+    background: transparent;
+    width: 100%;
+    text-align: center;    
     color: var(--text-color-light);
 }
 
