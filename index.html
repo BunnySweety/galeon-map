@@ -130,83 +130,59 @@
         </div>
     </div>
 
-    <!-- Chart Container for Hospital Status Gauges -->
+    <!-- Chart Container -->
     <div class="chart-container" role="complementary" aria-label="Hospital Status Statistics">
-        <!-- Deployed Status Gauge -->
+        <!-- Deployed Gauge -->
         <div class="gauge-wrapper" data-status="Deployed" role="progressbar"
             aria-label="Percentage of deployed hospitals" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-
-            <!-- SVG Gauge Circle -->
+            <div class="gauge-value">12</div>
             <svg class="gauge" viewBox="0 0 36 36">
-                <!-- Background Circle -->
                 <path class="gauge-background" d="M18 2.0845
-                     a 15.9155 15.9155 0 0 1 0 31.831
-                     a 15.9155 15.9155 0 0 1 0 -31.831" stroke="#eee" stroke-width="3" fill="none" />
-
-                <!-- Value Circle -->
-                <path class="gauge-value" d="M18 2.0845
-                     a 15.9155 15.9155 0 0 1 0 31.831
-                     a 15.9155 15.9155 0 0 1 0 -31.831" stroke="var(--status-deployed-color)" stroke-width="3"
+                    a 15.9155 15.9155 0 0 1 0 31.831
+                    a 15.9155 15.9155 0 0 1 0 -31.831" stroke="#eee" stroke-width="3" fill="none" />
+                <path class="gauge-value-path" d="M18 2.0845
+                    a 15.9155 15.9155 0 0 1 0 31.831
+                    a 15.9155 15.9155 0 0 1 0 -31.831" stroke="var(--status-deployed-color)" stroke-width="3"
                     fill="none" />
             </svg>
-
-            <!-- Gauge Text Elements -->
-            <div class="gauge-value-display" aria-hidden="true">0</div>
-            <div class="gauge-percentage" aria-hidden="true">(0%)</div>
             <div class="gauge-label" data-translate="statusDeployed">Deployed</div>
+            <div class="gauge-percentage">(80.0%)</div>
         </div>
 
-        <!-- In Progress Status Gauge -->
+        <!-- In Progress Gauge -->
         <div class="gauge-wrapper" data-status="In Progress" role="progressbar"
             aria-label="Percentage of hospitals in progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-
-            <!-- SVG Gauge Circle -->
+            <div class="gauge-value">0</div>
             <svg class="gauge" viewBox="0 0 36 36">
-                <!-- Background Circle -->
                 <path class="gauge-background" d="M18 2.0845
-                     a 15.9155 15.9155 0 0 1 0 31.831
-                     a 15.9155 15.9155 0 0 1 0 -31.831" stroke="#eee" stroke-width="3" fill="none" />
-
-                <!-- Value Circle -->
-                <path class="gauge-value" d="M18 2.0845
-                     a 15.9155 15.9155 0 0 1 0 31.831
-                     a 15.9155 15.9155 0 0 1 0 -31.831" stroke="var(--status-inprogress-color)" stroke-width="3"
+                    a 15.9155 15.9155 0 0 1 0 31.831
+                    a 15.9155 15.9155 0 0 1 0 -31.831" stroke="#eee" stroke-width="3" fill="none" />
+                <path class="gauge-value-path" d="M18 2.0845
+                    a 15.9155 15.9155 0 0 1 0 31.831
+                    a 15.9155 15.9155 0 0 1 0 -31.831" stroke="var(--status-inprogress-color)" stroke-width="3"
                     fill="none" />
             </svg>
-
-            <!-- Gauge Text Elements -->
-            <div class="gauge-value-display" aria-hidden="true">0</div>
-            <div class="gauge-percentage" aria-hidden="true">(0%)</div>
             <div class="gauge-label" data-translate="statusInProgress">In Progress</div>
+            <div class="gauge-percentage">(0.0%)</div>
         </div>
 
-        <!-- Signed Status Gauge -->
+        <!-- Signed Gauge -->
         <div class="gauge-wrapper" data-status="Signed" role="progressbar" aria-label="Percentage of signed hospitals"
             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-
-            <!-- SVG Gauge Circle -->
+            <div class="gauge-value">3</div>
             <svg class="gauge" viewBox="0 0 36 36">
-                <!-- Background Circle -->
                 <path class="gauge-background" d="M18 2.0845
-                     a 15.9155 15.9155 0 0 1 0 31.831
-                     a 15.9155 15.9155 0 0 1 0 -31.831" stroke="#eee" stroke-width="3" fill="none" />
-
-                <!-- Value Circle -->
-                <path class="gauge-value" d="M18 2.0845
-                     a 15.9155 15.9155 0 0 1 0 31.831
-                     a 15.9155 15.9155 0 0 1 0 -31.831" stroke="var(--status-signed-color)" stroke-width="3"
+                    a 15.9155 15.9155 0 0 1 0 31.831
+                    a 15.9155 15.9155 0 0 1 0 -31.831" stroke="#eee" stroke-width="3" fill="none" />
+                <path class="gauge-value-path" d="M18 2.0845
+                    a 15.9155 15.9155 0 0 1 0 31.831
+                    a 15.9155 15.9155 0 0 1 0 -31.831" stroke="var(--status-signed-color)" stroke-width="3"
                     fill="none" />
             </svg>
-
-            <!-- Gauge Text Elements -->
-            <div class="gauge-value-display" aria-hidden="true">0</div>
-            <div class="gauge-percentage" aria-hidden="true">(0%)</div>
             <div class="gauge-label" data-translate="statusSigned">Signed</div>
+            <div class="gauge-percentage">(20.0%)</div>
         </div>
     </div>
-
-    <!-- Charts container -->
-    <div class="chart-container" role="complementary" aria-label="Status statistics"></div>
 
     <!-- Loading Spinner -->
     <div id="initial-loader" class="initial-loader">
