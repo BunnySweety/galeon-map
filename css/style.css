@@ -372,11 +372,11 @@ body {
     position: fixed;
     bottom: 1rem;
     right: 1rem;
-    padding: 1rem;
+    padding: 0.75rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 1.5rem;
+    gap: 0.5rem;
     background: var(--control-background-light);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-md);
@@ -394,7 +394,7 @@ body {
     min-width: 5rem;
     max-width: 33%;
     position: relative;
-    padding: 0 0.625rem;
+    padding: 0 0.25rem;
 }
 
 /* SVG Gauge Base Styles */
@@ -437,13 +437,14 @@ body {
 .gauge-percentage {
     font-size: 0.75rem;
     text-align: center;
-    margin: 0.5rem 0;
+    margin: 0.25rem 0;
 }
 
 .gauge-label {
     font-size: 0.875rem;
     font-weight: bold;
     text-align: center;
+    margin-top: 0.25rem;
 }
 
 /* Status-specific colors */

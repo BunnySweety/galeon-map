@@ -65,7 +65,7 @@ class GaugeManager {
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svg.setAttribute('viewBox', '0 0 36 36');
             svg.classList.add('gauge');
-            svg.style.transform = 'rotate(-90deg)';
+            svg.style.transform = 'rotate(-90deg) rotateY(180deg)';
             svg.style.position = 'absolute';
             svg.style.top = '0';
             svg.style.left = '0';
@@ -138,6 +138,7 @@ class GaugeManager {
             
             // Count hospitals for each status
             hospitals.forEach(hospital => {
+                console.log('Hospital status:', hospital.status);
                 const count = counts.get(hospital.status) || 0;
                 counts.set(hospital.status, count + 1);
             });
