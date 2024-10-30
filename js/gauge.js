@@ -150,7 +150,7 @@ class GaugeManager {
                 const radius = this.#defaultOptions.radius;
                 const circumference = 2 * Math.PI * radius;
                 const dashArray = circumference;
-                const dashOffset = circumference * (1 - percentage / 100);
+                const dashOffset = circumference * percentage / 100;
 
                 const valuePath = gauge.valuePath;
                 valuePath.style.strokeDasharray = dashArray;
