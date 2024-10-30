@@ -100,18 +100,27 @@ class GaugeManager {
             valueContainer.style.left = '50%';
             valueContainer.style.transform = 'translate(-50%, -50%)';
             valueContainer.style.textAlign = 'center';
-            valueContainer.style.width = '100%';
+            valueContainer.style.zIndex = '1';
+            valueContainer.style.pointerEvents = 'none';
+            
+            svg.style.position = 'absolute';
+            svg.style.top = '0';
+            svg.style.left = '0';
+            svg.style.width = '100%';
+            svg.style.height = '100%';
 
             const valueDisplay = document.createElement('div');
             valueDisplay.classList.add('gauge-value');
-            valueDisplay.style.fontSize = '24px';
+            valueDisplay.style.fontSize = '1.5rem';
             valueDisplay.style.fontWeight = 'bold';
             valueDisplay.style.lineHeight = '1';
+            valueDisplay.style.marginBottom = '2px';
             valueDisplay.textContent = '0';
 
             const percentageDisplay = document.createElement('div');
             percentageDisplay.classList.add('gauge-percentage');
-            percentageDisplay.style.fontSize = '12px';
+            percentageDisplay.style.fontSize = '0.75rem';
+            percentageDisplay.style.opacity = '0.8';
             percentageDisplay.textContent = '(0.0%)';
 
             valueContainer.appendChild(valueDisplay);
@@ -120,9 +129,10 @@ class GaugeManager {
 
             const labelDisplay = document.createElement('div');
             labelDisplay.classList.add('gauge-label');
-            labelDisplay.style.marginTop = '8px';
+            labelDisplay.style.marginTop = '0.5rem';
             labelDisplay.style.textAlign = 'center';
             labelDisplay.textContent = status;
+            labelDisplay.style.position = 'relative';
 
             wrapper.appendChild(container);
             wrapper.appendChild(labelDisplay);
