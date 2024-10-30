@@ -502,7 +502,7 @@ class MapManager {
             }
 
             this.map = L.map(this.containerId, {
-                center: CONFIG.MAP.DEFAULT_CENTER,
+                center: CONFIG.MAP.DEFAULT_CENTER, // Toujours utiliser le centre par défaut
                 zoom: CONFIG.MAP.DEFAULT_ZOOM,
                 maxZoom: CONFIG.MAP.MAX_ZOOM,
                 minZoom: CONFIG.MAP.MIN_ZOOM,
@@ -521,17 +521,10 @@ class MapManager {
                 zoomControl.remove();
             }
 
-            this.setupPanes();
-            this.setupMarkerCluster();
+            await this.setupPanes();
+            await this.setupMarkerCluster();
             await this.updateTileLayer();
             this.setupEventListeners();
-
-            // Essayer de centrer sur la position de l'utilisateur
-            try {
-                await this.centerOnUserLocation();
-            } catch (error) {
-                console.warn('Could not center on user location, using default center');
-            }
 
             store.setState({ map: this.map });
 
