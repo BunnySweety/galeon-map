@@ -134,53 +134,19 @@ class GaugeManager {
             const total = hospitals.length;
             const counts = new Map();
 
-<<<<<<< HEAD
-            // Initialiser tous les statuts à 0
             for (const status of this.#gauges.keys()) {
                 counts.set(status, 0);
             }
 
-            // Compter les hôpitaux par statut
             hospitals.forEach(hospital => {
-=======
-            // Log pour déboguer
-            console.log('GaugeManager - Statuts disponibles:', {
-                gauges: Array.from(this.#gauges.keys()),
-                statusColors: this.#defaultOptions.statusColors
-            });            
-            
-            // Count hospitals for each status
-            hospitals.forEach(hospital => {
-                console.log('Hospital status:', {
-                    status: hospital.status,
-                    exactMatch: this.#defaultOptions.statusColors[hospital.status],
-                    gaugeExists: this.#gauges.has(hospital.status)
-                });
->>>>>>> a9c662643034b7820a62ac6b08ea3859d73ab9af
                 const count = counts.get(hospital.status) || 0;
                 counts.set(hospital.status, count + 1);
             });
 
-<<<<<<< HEAD
-            // Mettre à jour chaque jauge
             for (const [status, gauge] of this.#gauges) {
                 const count = counts.get(status) || 0;
                 const percentage = total > 0 ? (count / total * 100) : 0;
 
-=======
-            console.log('Counts par statut:', Object.fromEntries(counts));
-
-            // Update each gauge
-            for (const [status, gauge] of this.#gauges) {
-                const count = counts.get(status) || 0;
-                console.log('Mise à jour jauge:', {
-                    status,
-                    count,
-                    hasGauge: !!gauge
-                });
-                
-                const percentage = (count / total * 100) || 0;
->>>>>>> a9c662643034b7820a62ac6b08ea3859d73ab9af
                 const radius = this.#defaultOptions.radius;
                 const circumference = 2 * Math.PI * radius;
                 const dashArray = circumference;
