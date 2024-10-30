@@ -940,6 +940,29 @@ class MapManager {
         }
     }
 
+    setupEventListeners() {
+        if (!this.map) return;
+    
+        // Window events
+        window.addEventListener('resize', this.handleResize, { passive: true });
+    
+        // Map events
+        this.map.on('click', this.handleMapClick);
+        this.map.on('zoomend', this.handleZoomEnd);
+        this.map.on('moveend', this.handleMoveEnd);
+    
+        // Cluster events
+        if (this.markerClusterGroup) {
+            this.markerClusterGroup.on('clusterclick', (e) => {
+                AnalyticsManager.trackEvent('Map', 'ClusterClick', `Size: ${e.layer.getChildCount()}`);
+            });
+    
+            this.markerClusterGroup.on('animationend', () => {
+                PerformanceMonitor.endMeasure('clusterAnimation');
+            });
+        }
+    }
+
     destroy() {
         try {
             // Remove window event listeners
