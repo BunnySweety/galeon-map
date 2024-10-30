@@ -237,6 +237,7 @@ class GaugeManager {
                 // Calculate the dash offset based on percentage
                 // Important: Subtract from circumference because SVG arc starts at top and goes clockwise
                 const dashOffset = circumference * (1 - percentage / 100);
+                console.log(`Dash offset for ${status}:`, dashOffset);
 
                 // Update SVG path properties
                 const valuePath = elements.valuePath;
