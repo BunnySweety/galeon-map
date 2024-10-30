@@ -68,6 +68,11 @@ class GaugeManager {
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svg.setAttribute('viewBox', '0 0 36 36');
             svg.classList.add('gauge');
+            svg.style.position = 'absolute';
+            svg.style.top = '0';
+            svg.style.left = '0';
+            svg.style.width = '100%';
+            svg.style.height = '100%';
             svg.style.transform = 'rotate(-90deg)';
 
             const backgroundPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -96,21 +101,21 @@ class GaugeManager {
 
             const valueContainer = document.createElement('div');
             valueContainer.style.position = 'absolute';
-            valueContainer.style.top = '50%';
-            valueContainer.style.left = '50%';
-            valueContainer.style.transform = 'translate(-50%, -50%)';
-            valueContainer.style.textAlign = 'center';
+            valueContainer.style.inset = '0';
+            valueContainer.style.display = 'flex';
+            valueContainer.style.alignItems = 'center';
+            valueContainer.style.justifyContent = 'center';
             valueContainer.style.zIndex = '1';
-            valueContainer.style.pointerEvents = 'none';
+            valueContainer.style.transform = 'rotate(0deg)';
             
             const valueDisplay = document.createElement('div');
             valueDisplay.classList.add('gauge-value');
             valueDisplay.style.fontSize = '1.5rem';
             valueDisplay.style.fontWeight = 'bold';
-            valueDisplay.style.lineHeight = '1';
             valueDisplay.textContent = '0';
             
             valueContainer.appendChild(valueDisplay);
+            container.appendChild(svg);
             container.appendChild(valueContainer);
             
             const percentageDisplay = document.createElement('div');
@@ -125,7 +130,6 @@ class GaugeManager {
             labelDisplay.style.marginTop = '0.5rem';
             labelDisplay.style.textAlign = 'center';
             labelDisplay.textContent = status;
-            labelDisplay.style.position = 'relative';
             
             wrapper.appendChild(container);
             wrapper.appendChild(percentageDisplay);
