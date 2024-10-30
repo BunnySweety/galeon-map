@@ -116,6 +116,10 @@ body {
                 padding var(--transition-normal);
 }
 
+.controls.hidden {
+    display: none;
+}
+
 /* Control Inputs */
 .controls select,
 .controls input {
@@ -337,10 +341,15 @@ body {
    ========================================================================== */
 .legend-container {
     position: fixed;
+    display: block;
     bottom: 1rem;
     left: 4rem;
     padding: 0.625rem;
     z-index: 1000;
+}
+
+.legend-container.hidden {
+    display: none;
 }
 
 .legend-item {
