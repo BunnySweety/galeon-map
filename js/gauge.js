@@ -129,37 +129,40 @@ class GaugeManager {
         }
     }
 
-    static async updateAllGauges(hospitals) {
+    static async updateAllGauges(hospitals = []) {
         try {
-            if (!hospitals?.length) return;
-
             const total = hospitals.length;
             const counts = new Map();
             
-            // Count hospitals for each status
+            // Initialiser tous les statuts à 0
+            for (const status of this.#gauges.keys()) {
+                counts.set(status, 0);
+            }
+            
+            // Compter les hôpitaux par statut
             hospitals.forEach(hospital => {
-                console.log('Hospital status:', hospital.status);
                 const count = counts.get(hospital.status) || 0;
                 counts.set(hospital.status, count + 1);
             });
-
-            // Update each gauge
+    
+            // Mettre à jour chaque jauge
             for (const [status, gauge] of this.#gauges) {
                 const count = counts.get(status) || 0;
-                const percentage = (count / total * 100) || 0;
+                const percentage = total > 0 ? (count / total * 100) : 0;
+                
                 const radius = this.#defaultOptions.radius;
                 const circumference = 2 * Math.PI * radius;
                 const dashArray = circumference;
                 const dashOffset = circumference * (1 - percentage / 100);
-
+    
                 const valuePath = gauge.valuePath;
                 valuePath.style.strokeDasharray = dashArray;
                 valuePath.style.strokeDashoffset = dashOffset;
                 valuePath.style.transition = `stroke-dashoffset ${this.#defaultOptions.animationDuration}ms ease-in-out`;
-
+    
                 gauge.valueDisplay.textContent = count;
                 gauge.percentageDisplay.textContent = `(${percentage.toFixed(1)}%)`;
-
+    
                 gauge.wrapper.setAttribute('aria-valuenow', count);
                 gauge.wrapper.setAttribute('aria-valuetext',
                     `${count} ${status} hospitals (${percentage.toFixed(1)}%)`);
