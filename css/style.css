@@ -428,6 +428,10 @@ body {
     pointer-events: none;
 }
 
+.gauge .gauge-value {
+    transform: rotate(90deg);
+}
+
 .gauge-value-path {
     stroke-linecap: round;
     fill: none;
