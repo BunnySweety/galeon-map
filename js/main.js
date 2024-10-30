@@ -514,8 +514,8 @@ class MapManager {
                 tap: true
             });
 
-            await this.setupPanes();
-            await this.setupMarkerCluster();
+            this.setupPanes();
+            this.setupMarkerCluster();
             await this.updateTileLayer();
             this.setupEventListeners();
 
@@ -557,62 +557,6 @@ class MapManager {
 
         this.map.addLayer(this.markerClusterGroup);
         store.setState({ markerClusterGroup: this.markerClusterGroup });
-    }
-
-    setupEventListeners() {
-        if (!this.elements) return;
-    
-        // Window events
-        window.addEventListener('resize', this.handleResize, { passive: true });
-        window.addEventListener('orientationchange', this.handleOrientationChange, { passive: true });
-        window.addEventListener('keydown', this.handleEscapeKey);
-    
-        // Element-specific events
-        Object.entries(this.elements).forEach(([id, element]) => {
-            if (!element) return;
-    
-            switch (id) {
-                case 'language-select':
-                    element.addEventListener('change', (e) => this.handleLanguageChange(e.target.value));
-                    break;
-                case 'theme-toggle':
-                    element.removeEventListener('click', this.toggleTheme);
-                    element.addEventListener('click', () => this.setDarkMode(!store.getState().darkMode));
-                    this.addKeyboardSupport(element, this.toggleTheme);
-                    break;
-                case 'legend-toggle':
-                    element.removeEventListener('click', this.toggleLegend);
-                    element.addEventListener('click', this.toggleLegend.bind(this));
-                    this.addKeyboardSupport(element, this.toggleLegend.bind(this));
-                    break;
-                case 'hamburger-menu':
-                    element.removeEventListener('click', this.toggleControls);
-                    element.addEventListener('click', this.toggleControls.bind(this));
-                    this.addKeyboardSupport(element, this.toggleControls.bind(this));
-                    break;
-            }
-        });
-    
-        // Filter inputs
-        ['continent-select', 'country-filter', 'city-filter', 'hospital-search'].forEach(id => {
-            const element = this.elements[id];
-            if (element) {
-                element.addEventListener('input', Utils.debounce(this.updateFilters, CONFIG.UI.ANIMATION.DEBOUNCE_DELAY));
-                this.setupMobileKeyboardHandling(element);
-            }
-        });
-    
-        // Status tags
-        document.querySelectorAll('.status-tag').forEach(tag => {
-            tag.addEventListener('click', (e) => this.handleStatusTagClick(e, tag));
-            this.addKeyboardSupport(tag, (e) => this.handleStatusTagClick(e, tag));
-        });
-    
-        // Location button
-        const locationButton = document.getElementById('get-location');
-        if (locationButton) {
-            locationButton.addEventListener('click', () => this.mapManager.getUserLocation());
-        }
     }
 
     handleMapClick(e) {
@@ -1287,25 +1231,58 @@ class UIManager {
      * @private
      */
     setupEventListeners() {
-        if (!this.map) return;
-
+        if (!this.elements) return;
+    
         // Window events
         window.addEventListener('resize', this.handleResize, { passive: true });
-
-        // Map events
-        this.map.on('click', this.handleMapClick);
-        this.map.on('zoomend', this.handleZoomEnd);
-        this.map.on('moveend', this.handleMoveEnd);
-
-        // Cluster events
-        if (this.markerClusterGroup) {
-            this.markerClusterGroup.on('clusterclick', (e) => {
-                AnalyticsManager.trackEvent('Map', 'ClusterClick', `Size: ${e.layer.getChildCount()}`);
-            });
-
-            this.markerClusterGroup.on('animationend', () => {
-                PerformanceMonitor.endMeasure('clusterAnimation');
-            });
+        window.addEventListener('orientationchange', this.handleOrientationChange, { passive: true });
+        window.addEventListener('keydown', this.handleEscapeKey);
+    
+        // Element-specific events
+        Object.entries(this.elements).forEach(([id, element]) => {
+            if (!element) return;
+    
+            switch (id) {
+                case 'language-select':
+                    element.addEventListener('change', (e) => this.handleLanguageChange(e.target.value));
+                    break;
+                case 'theme-toggle':
+                    element.removeEventListener('click', this.toggleTheme);
+                    element.addEventListener('click', this.toggleTheme);
+                    this.addKeyboardSupport(element, this.toggleTheme);
+                    break;
+                case 'legend-toggle':
+                    element.removeEventListener('click', this.toggleLegend);
+                    element.addEventListener('click', this.toggleLegend);
+                    this.addKeyboardSupport(element, this.toggleLegend);
+                    break;
+                case 'hamburger-menu':
+                    element.removeEventListener('click', this.toggleControls);
+                    element.addEventListener('click', this.toggleControls);
+                    this.addKeyboardSupport(element, this.toggleControls);
+                    break;
+            }
+        });
+    
+        // Filter inputs
+        ['continent-select', 'country-filter', 'city-filter', 'hospital-search'].forEach(id => {
+            const element = this.elements[id];
+            if (element) {
+                element.addEventListener('input', Utils.debounce(this.updateFilters, CONFIG.UI.ANIMATION.DEBOUNCE_DELAY));
+                this.setupMobileKeyboardHandling(element);
+            }
+        });
+    
+        // Status tags
+        document.querySelectorAll('.status-tag').forEach(tag => {
+            tag.addEventListener('click', (e) => this.handleStatusTagClick(e, tag));
+            this.addKeyboardSupport(tag, (e) => this.handleStatusTagClick(e, tag));
+        });
+    
+        // Location button
+        const locationButton = document.getElementById('get-location');
+        if (locationButton) {
+            locationButton.addEventListener('click', () => this.mapManager.getUserLocation());
         }
     }
 
