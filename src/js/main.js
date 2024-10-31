@@ -1,7 +1,7 @@
 /**
- * @fileoverview Interactive hospital map application with filtering and clustering capabilities
+ * @fileoverview Complete hospital map application with security and performance optimizations
  * @author BunnySweety
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 'use strict';
@@ -10,39 +10,10 @@
  * Import required modules
  */
 import { GaugeManager } from './gauge.js';
-import { translations } from './translations.js';
-import { hospitals } from './hospitals.js';
-
-/**
- * @typedef {Object} Hospital
- * @property {string} id - Unique hospital identifier
- * @property {string} name - Hospital name
- * @property {number} lat - Latitude
- * @property {number} lon - Longitude
- * @property {string} status - Status (Deployed, In Progress, Signed)
- * @property {string} address - Full address
- * @property {string} imageUrl - Hospital image URL
- * @property {string} website - Hospital website URL
- */
-
-/**
- * @typedef {Object} MapFilters
- * @property {string[]} activeStatus - Active status filters
- * @property {string} searchTerm - Search query
- * @property {string} continent - Selected continent
- * @property {string} country - Country filter
- * @property {string} city - City filter
- */
-
-/**
- * @typedef {Object} UserPreferences
- * @property {string} language - User's preferred language
- * @property {boolean} darkMode - Dark mode setting
- * @property {string[]} activeStatus - Active status filters
- * @property {string} continent - Selected continent
- * @property {string} country - Selected country
- * @property {string} city - Selected city
- */
+import { translations } from '../../data/translations.js';
+import { hospitals } from '../../data/hospitals.js';
+import { SecurityManager, SecurityConfig } from './security.js';
+import { PerformanceManager, PerformanceConfig } from './performance.js';
 
 /**
  * Application configuration constants
@@ -87,12 +58,16 @@ const CONFIG = {
             SPIDER_ON_MAX_ZOOM: true,
             SHOW_COVERAGE: false,
             DISABLE_CLUSTERING_AT_ZOOM: 19,
-            ANIMATE: true
+            ANIMATE: true,
+            CHUNK_SIZE: 50,
+            CHUNK_DELAY: 10,
+            CHUNK_INTERVAL: 50
         },
         BOUNDS_PADDING: [50, 50],
         TILE_LAYER: {
             LIGHT: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
             DARK: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            ATTRIBUTION: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }
     },
     STORAGE: {
@@ -108,15 +83,30 @@ const CONFIG = {
         NORTH_AMERICA: { lat: [15, 72], lon: [-170, -40] },
         SOUTH_AMERICA: { lat: [-57, 15], lon: [-110, -35] }
     },
+    PERFORMANCE: {
+        CHUNK_SIZE: 50,
+        DEBOUNCE_TIME: 250,
+        THROTTLE_TIME: 100,
+        MAX_CACHE_SIZE: 100,
+        CACHE_TTL: 3600000 // 1 hour
+    },
+    SECURITY: {
+        MAX_REQUESTS: 100,
+        TIME_WINDOW: 60000,
+        INPUT_MAX_LENGTH: 100
+    },
     ERROR_MESSAGES: {
         INIT_FAILED: 'Failed to initialize application. Please refresh the page.',
         DATA_LOAD_FAILED: 'Failed to load data. Please check your connection.',
-        INVALID_DATA: 'Invalid data received. Please contact support.'
+        INVALID_DATA: 'Invalid data received. Please contact support.',
+        RATE_LIMIT: 'Too many requests. Please try again later.',
+        INVALID_INPUT: 'Invalid input detected.',
+        INVALID_COORDINATES: 'Invalid coordinates provided.'
     }
 };
 
 /**
- * Utility functions
+ * Utility functions with enhanced security and performance
  */
 const Utils = {
     debounce(fn, wait) {
@@ -153,7 +143,10 @@ const Utils = {
     },
 
     parseAddress(address) {
-        if (!address?.trim()) {
+        const securityManager = SecurityManager.getInstance();
+        const sanitizedAddress = securityManager.sanitizeInput(address);
+        
+        if (!sanitizedAddress?.trim()) {
             return {
                 street: '',
                 city: '',
@@ -162,15 +155,14 @@ const Utils = {
             };
         }
 
-        const parts = address.split(',').map(part => part.trim());
-
+        const parts = sanitizedAddress.split(',').map(part => part.trim());
         const postalPatterns = [
-            /\b[0-9]{5}\b/, // US, FR, DE, etc.
-            /\b[A-Z][0-9][A-Z]\s?[0-9][A-Z][0-9]\b/i, // CA
-            /\b[A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2}\b/i, // UK
-            /\b[0-9]{4}\s?[A-Z]{2}\b/i, // NL
-            /\b[0-9]{4,6}\b/, // JP, CN, KR, etc.
-            /\b[A-Z0-9]{2,4}\s?[0-9]{3,4}\b/i // SG, etc.
+            /\b[0-9]{5}\b/,
+            /\b[A-Z][0-9][A-Z]\s?[0-9][A-Z][0-9]\b/i,
+            /\b[A-Z]{1,2}[0-9][A-Z0-9]?\s?[0-9][A-Z]{2}\b/i,
+            /\b[0-9]{4}\s?[A-Z]{2}\b/i,
+            /\b[0-9]{4,6}\b/,
+            /\b[A-Z0-9]{2,4}\s?[0-9]{3,4}\b/i
         ];
 
         let postalCode = '';
@@ -190,24 +182,24 @@ const Utils = {
             city = potentialCityPart;
         }
 
-        const country = parts[parts.length - 1];
-        const street = parts[0];
-
         return {
-            street,
-            city,
-            country,
-            postalCode
+            street: securityManager.sanitizeInput(parts[0] || ''),
+            city: securityManager.sanitizeInput(city),
+            country: securityManager.sanitizeInput(parts[parts.length - 1] || ''),
+            postalCode: securityManager.sanitizeInput(postalCode)
         };
     },
 
     validateCoordinates(lat, lon) {
-        return !isNaN(lat) && !isNaN(lon) &&
-            lat >= -90 && lat <= 90 &&
-            lon >= -180 && lon <= 180;
+        const securityManager = SecurityManager.getInstance();
+        return securityManager.validateCoordinates(lat, lon);
     },
 
     calculateDistance(lat1, lon1, lat2, lon2) {
+        if (!this.validateCoordinates(lat1, lon1) || !this.validateCoordinates(lat2, lon2)) {
+            throw new Error(CONFIG.ERROR_MESSAGES.INVALID_COORDINATES);
+        }
+
         const R = 6371; // Earth's radius in km
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
@@ -234,9 +226,12 @@ const Utils = {
     },
 
     showError(message, duration = 5000) {
+        const securityManager = SecurityManager.getInstance();
+        const sanitizedMessage = securityManager.sanitizeInput(message);
+        
         const errorElement = document.getElementById('error-message');
         if (errorElement) {
-            errorElement.textContent = message;
+            errorElement.textContent = sanitizedMessage;
             errorElement.style.display = 'block';
             if (duration > 0) {
                 setTimeout(() => {
@@ -248,14 +243,26 @@ const Utils = {
 
     savePreferences(preferences) {
         try {
+            const securityManager = SecurityManager.getInstance();
+            const sanitizedPreferences = Object.entries(preferences).reduce((acc, [key, value]) => {
+                acc[key] = typeof value === 'string' ? 
+                    securityManager.sanitizeInput(value) : value;
+                return acc;
+            }, {});
+
             const data = {
-                ...preferences,
+                ...sanitizedPreferences,
                 timestamp: Date.now(),
                 version: CONFIG.STORAGE.VERSION
             };
-            localStorage.setItem(CONFIG.STORAGE.PREFERENCES_KEY, JSON.stringify(data));
+            
+            localStorage.setItem(
+                CONFIG.STORAGE.PREFERENCES_KEY, 
+                JSON.stringify(data)
+            );
         } catch (error) {
             console.error('Error saving preferences:', error);
+            ErrorHandler.handle(error, 'Save Preferences');
         }
     },
 
@@ -275,67 +282,126 @@ const Utils = {
             return data;
         } catch (error) {
             console.error('Error loading preferences:', error);
+            ErrorHandler.handle(error, 'Load Preferences');
             return null;
+        }
+    },
+
+    validateAndSanitizeInput(input, type = 'text') {
+        const securityManager = SecurityManager.getInstance();
+        const sanitized = securityManager.sanitizeInput(input);
+        
+        switch(type) {
+            case 'url':
+                return securityManager.validateUrl(sanitized) ? sanitized : '';
+            case 'coordinates':
+                const [lat, lon] = sanitized.split(',').map(Number);
+                return securityManager.validateCoordinates(lat, lon) ? { lat, lon } : null;
+            case 'text':
+            default:
+                return sanitized;
+        }
+    },
+
+    async loadResourceSafely(url, options = {}) {
+        const securityManager = SecurityManager.getInstance();
+        if (!securityManager.validateUrl(url)) {
+            throw new Error('Invalid URL');
+        }
+
+        try {
+            const response = await fetch(url, {
+                ...options,
+                credentials: 'same-origin',
+                headers: {
+                    ...options.headers,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            ErrorHandler.handle(error, 'Resource Loading');
+            throw error;
         }
     }
 };
 
 /**
- * Analytics Manager
+ * Analytics Manager with enhanced tracking
  */
 class AnalyticsManager {
+    static #performanceManager = new PerformanceManager();
+    static #securityManager = SecurityManager.getInstance();
+    static #trackingEnabled = true;
+
+    static setTrackingEnabled(enabled) {
+        this.#trackingEnabled = enabled;
+    }
+
     static trackEvent(category, action, label = null, value = null) {
-        console.log('Analytics:', { category, action, label, value });
+        if (!this.#trackingEnabled) return;
+
+        this.#performanceManager.startMeasure('analytics');
+        
+        const sanitizedData = {
+            category: this.#securityManager.sanitizeInput(category),
+            action: this.#securityManager.sanitizeInput(action),
+            label: label ? this.#securityManager.sanitizeInput(label) : null,
+            value: typeof value === 'number' ? value : null
+        };
+
+        console.log('Analytics:', sanitizedData);
+        this.#performanceManager.endMeasure('analytics');
     }
 
     static trackError(error, context = '') {
-        console.error('Error:', context, error);
+        if (!this.#trackingEnabled) return;
+
+        const sanitizedError = this.#securityManager.sanitizeInput(error.message);
+        const sanitizedContext = this.#securityManager.sanitizeInput(context);
+        
+        console.error('Error:', sanitizedContext, sanitizedError);
     }
 
     static trackTiming(category, variable, time) {
-        console.log('Timing:', { category, variable, time });
+        if (!this.#trackingEnabled) return;
+
+        this.#performanceManager.startMeasure('timing');
+        const sanitizedCategory = this.#securityManager.sanitizeInput(category);
+        const sanitizedVariable = this.#securityManager.sanitizeInput(variable);
+        
+        console.log('Timing:', { 
+            category: sanitizedCategory, 
+            variable: sanitizedVariable, 
+            time 
+        });
+        
+        this.#performanceManager.endMeasure('timing');
     }
 }
 
 /**
- * Performance Monitor
- */
-class PerformanceMonitor {
-    static measures = new Map();
-
-    static startMeasure(name) {
-        this.measures.set(name, performance.now());
-    }
-
-    static endMeasure(name) {
-        const start = this.measures.get(name);
-        if (start) {
-            const duration = performance.now() - start;
-            this.measures.delete(name);
-            AnalyticsManager.trackTiming('Performance', name, duration);
-            return duration;
-        }
-        return null;
-    }
-
-    static async measureAsync(name, fn) {
-        this.startMeasure(name);
-        try {
-            const result = await fn();
-            return result;
-        } finally {
-            this.endMeasure(name);
-        }
-    }
-}
-
-/**
- * Error Handler
+ * Error Handler with enhanced tracking
  */
 class ErrorHandler {
+    static #securityManager = SecurityManager.getInstance();
+    static #performanceManager = new PerformanceManager();
+
     static handle(error, context = '') {
-        AnalyticsManager.trackError(error, context);
-        Utils.showError(error.message);
+        this.#performanceManager.startMeasure('errorHandling');
+
+        const sanitizedError = this.#securityManager.sanitizeInput(error.message);
+        const sanitizedContext = this.#securityManager.sanitizeInput(context);
+        
+        AnalyticsManager.trackError(error, sanitizedContext);
+        Utils.showError(sanitizedError);
+
+        this.#performanceManager.endMeasure('errorHandling');
     }
 
     static async wrapAsync(fn) {
@@ -349,10 +415,12 @@ class ErrorHandler {
 }
 
 /**
- * Global application store for state management
- * @class Store
+ * Global Store with enhanced security
  */
 class Store {
+    #securityManager = SecurityManager.getInstance();
+    #performanceManager = new PerformanceManager();
+    
     constructor(initialState = {}) {
         this.state = initialState;
         this.initialState = this.cloneState(initialState);
@@ -393,6 +461,8 @@ class Store {
     }
 
     setState(newState, recordHistory = true) {
+        this.#performanceManager.startMeasure('setState');
+
         if (recordHistory) {
             this.history.push(this.cloneState(this.state));
             if (this.history.length > this.maxHistoryLength) {
@@ -401,10 +471,18 @@ class Store {
         }
 
         const oldState = this.cloneState(this.state);
-        this.state = { ...this.state, ...newState };
+        
+        // Sanitize new state values
+        const sanitizedState = Object.entries(newState).reduce((acc, [key, value]) => {
+            acc[key] = typeof value === 'string' ? 
+                this.#securityManager.sanitizeInput(value) : value;
+            return acc;
+        }, {});
+
+        this.state = { ...this.state, ...sanitizedState };
 
         let hasChanged = false;
-        for (const key in newState) {
+        for (const key in sanitizedState) {
             if (oldState[key] !== this.state[key]) {
                 hasChanged = true;
                 break;
@@ -414,25 +492,34 @@ class Store {
         if (hasChanged) {
             this.notify();
         }
+
+        this.#performanceManager.endMeasure('setState');
     }
 
     getState() {
-        return this.state;
+        return this.cloneState(this.state);
     }
 
     subscribe(listener) {
+        if (typeof listener !== 'function') {
+            throw new Error('Store subscriber must be a function');
+        }
         this.listeners.add(listener);
         return () => this.listeners.delete(listener);
     }
 
     notify() {
+        this.#performanceManager.startMeasure('storeNotify');
+        
         this.listeners.forEach(listener => {
             try {
-                listener(this.state);
+                listener(this.getState());
             } catch (error) {
-                console.error('Error in store listener:', error);
+                ErrorHandler.handle(error, 'Store Listener');
             }
         });
+
+        this.#performanceManager.endMeasure('storeNotify');
     }
 
     reset() {
@@ -471,15 +558,17 @@ const store = new Store({
 });
 
 /**
- * Map Manager Class
+ * Enhanced Map Manager Class
  */
-class MapManager {
+class EnhancedMapManager {
     constructor(containerId = 'map') {
         this.containerId = containerId;
         this.map = null;
         this.markerClusterGroup = null;
         this.markers = new Map();
         this.activePopups = new Set();
+        this.securityManager = SecurityManager.getInstance();
+        this.performanceManager = new PerformanceManager();
 
         // Bind methods
         this.handleResize = this.handleResize.bind(this);
@@ -495,7 +584,7 @@ class MapManager {
     async init() {
         if (this.map) return this.map;
 
-        PerformanceMonitor.startMeasure('mapInit');
+        this.performanceManager.startMeasure('mapInit');
 
         try {
             const mapElement = document.getElementById(this.containerId);
@@ -503,28 +592,36 @@ class MapManager {
                 throw new Error(`Map container with id '${this.containerId}' not found`);
             }
 
+            // Validate map configuration
+            const validatedCenter = this.securityManager.validateCoordinates(
+                CONFIG.MAP.DEFAULT_CENTER[0], 
+                CONFIG.MAP.DEFAULT_CENTER[1]
+            ) ? CONFIG.MAP.DEFAULT_CENTER : [0, 0];
+
             this.map = L.map(this.containerId, {
-                center: CONFIG.MAP.DEFAULT_CENTER,
+                center: validatedCenter,
                 zoom: CONFIG.MAP.DEFAULT_ZOOM,
                 maxZoom: CONFIG.MAP.MAX_ZOOM,
                 minZoom: CONFIG.MAP.MIN_ZOOM,
                 zoomControl: true,
                 scrollWheelZoom: true,
                 dragging: true,
-                tap: true
+                tap: true,
+                maxBounds: SecurityConfig.VALIDATION.MAX_BOUNDS
             });
 
             this.map.zoomControl.remove();
             L.control.zoom({ position: 'topleft' }).addTo(this.map);
 
-            this.setupPanes();
-            this.setupMarkerCluster();
+            await this.setupPanes();
+            await this.setupMarkerCluster();
             await this.updateTileLayer();
             this.setupEventListeners();
+            this.setupSecurityBoundaries();
 
             store.setState({ map: this.map });
 
-            PerformanceMonitor.endMeasure('mapInit');
+            this.performanceManager.endMeasure('mapInit');
             return this.map;
         } catch (error) {
             ErrorHandler.handle(error, 'Map Initialization');
@@ -532,16 +629,33 @@ class MapManager {
         }
     }
 
-    setupPanes() {
+    setupSecurityBoundaries() {
+        this.map.setMaxBounds(SecurityConfig.VALIDATION.MAX_BOUNDS);
+        
+        this.map.on('zoomend', () => {
+            const zoom = this.map.getZoom();
+            if (zoom > SecurityConfig.VALIDATION.MAX_ZOOM_LEVEL) {
+                this.map.setZoom(SecurityConfig.VALIDATION.MAX_ZOOM_LEVEL);
+            }
+        });
+    }
+
+    async setupPanes() {
         if (!this.map) return;
 
+        this.performanceManager.startMeasure('setupPanes');
+        
         this.map.createPane('markerPane').style.zIndex = 450;
         this.map.createPane('popupPane').style.zIndex = 500;
         this.map.createPane('tooltipPane').style.zIndex = 550;
+        
+        this.performanceManager.endMeasure('setupPanes');
     }
 
-    setupMarkerCluster() {
+    async setupMarkerCluster() {
         if (!this.map) return;
+
+        this.performanceManager.startMeasure('setupCluster');
 
         this.markerClusterGroup = L.markerClusterGroup({
             maxClusterRadius: CONFIG.MAP.CLUSTER.MAX_RADIUS,
@@ -553,13 +667,19 @@ class MapManager {
             animateAddingMarkers: true,
             disableClusteringAtZoom: CONFIG.MAP.CLUSTER.DISABLE_CLUSTERING_AT_ZOOM,
             chunkedLoading: true,
-            chunkInterval: 200,
-            chunkDelay: 50,
+            chunkInterval: PerformanceConfig.MARKERS.CHUNK_INTERVAL,
+            chunkDelay: PerformanceConfig.MARKERS.CHUNK_DELAY,
             iconCreateFunction: this.createClusterIcon
         });
 
+        this.markerClusterGroup = this.performanceManager.enhanceClusterPerformance(
+            this.markerClusterGroup
+        );
+
         this.map.addLayer(this.markerClusterGroup);
         store.setState({ markerClusterGroup: this.markerClusterGroup });
+        
+        this.performanceManager.endMeasure('setupCluster');
     }
 
     setupEventListeners() {
@@ -576,7 +696,7 @@ class MapManager {
             });
 
             this.markerClusterGroup.on('animationend', () => {
-                PerformanceMonitor.endMeasure('clusterAnimation');
+                this.performanceManager.endMeasure('clusterAnimation');
             });
         }
     }
@@ -652,57 +772,41 @@ class MapManager {
         }).addTo(this.map);
     }
 
-    async addMarkers(hospitals, chunkSize = 10) {
+    async addMarkers(hospitals) {
         if (!hospitals?.length || !this.markerClusterGroup) return;
 
-        PerformanceMonitor.startMeasure('addMarkers');
+        this.performanceManager.startMeasure('addMarkers');
 
         try {
             this.markerClusterGroup.clearLayers();
             this.markers.clear();
 
-            const chunks = Array(Math.ceil(hospitals.length / chunkSize))
-                .fill()
-                .map((_, i) => hospitals.slice(i * chunkSize, (i + 1) * chunkSize));
+            // Validate and filter hospitals
+            const validHospitals = hospitals.filter(hospital => 
+                this.securityManager.validateCoordinates(hospital.lat, hospital.lon) &&
+                this.securityManager.sanitizeInput(hospital.name)
+            );
+
+            const chunks = this.performanceManager.chunkArray(
+                validHospitals,
+                PerformanceConfig.MARKERS.CHUNK_SIZE
+            );
 
             for (const chunk of chunks) {
                 await new Promise(resolve => {
-                    requestAnimationFrame(() => {
-                        const validMarkers = chunk
-                            .map(hospital => {
-                                if (!Utils.validateCoordinates(hospital.lat, hospital.lon)) {
-                                    console.warn(`Invalid coordinates for hospital ${hospital.id}`);
-                                    return null;
-                                }
+                    requestAnimationFrame(async () => {
+                        const markers = await Promise.all(
+                            chunk.map(hospital => this.createMarker(hospital))
+                        );
 
-                                const marker = L.circleMarker([hospital.lat, hospital.lon], {
-                                    radius: CONFIG.UI.MARKER.RADIUS,
-                                    fillColor: CONFIG.UI.COLORS[hospital.status.toUpperCase()],
-                                    color: "#ffffff",
-                                    weight: CONFIG.UI.MARKER.WEIGHT,
-                                    opacity: CONFIG.UI.MARKER.OPACITY,
-                                    fillOpacity: CONFIG.UI.MARKER.FILL_OPACITY,
-                                    pane: 'markerPane'
-                                });
-
-                                if (marker) {
-                                    marker.hospitalData = hospital;
-                                    this.bindPopupToMarker(marker);
-                                    this.bindTooltipToMarker(marker);
-                                    marker.on('click', () => {
-                                        AnalyticsManager.trackEvent('Marker', 'Click', hospital.name);
-                                    });
-                                    this.markers.set(hospital.id, marker);
-                                }
-
-                                return marker;
-                            })
-                            .filter(marker => marker instanceof L.CircleMarker);
-
+                        const validMarkers = markers.filter(Boolean);
+                        
                         if (validMarkers.length > 0) {
-                            this.markerClusterGroup.options.animate = false;
-                            this.markerClusterGroup.addLayers(validMarkers);
-                            this.markerClusterGroup.options.animate = true;
+                            await this.performanceManager.optimizeMarkerRendering(
+                                validMarkers,
+                                this.map,
+                                this.markerClusterGroup
+                            );
                         }
 
                         resolve();
@@ -715,15 +819,15 @@ class MapManager {
                     Array.from(this.markers.values()).map(m => m.getLatLng())
                 );
                 this.map.fitBounds(bounds, {
-                    padding: CONFIG.MAP.BOUNDS_PADDING
+                    padding: CONFIG.MAP.BOUNDS_PADDING,
+                    maxZoom: SecurityConfig.VALIDATION.MAX_ZOOM_LEVEL
                 });
             }
 
-            await GaugeManager.updateAllGauges(hospitals);
+            await GaugeManager.updateAllGauges(validHospitals);
 
-            PerformanceMonitor.endMeasure('addMarkers');
+            this.performanceManager.endMeasure('addMarkers');
         } catch (error) {
-            console.error('Error adding markers:', error);
             ErrorHandler.handle(error, 'Add Markers');
         }
     }
@@ -761,6 +865,22 @@ class MapManager {
         }
     }
 
+    updateVisibleMarkers() {
+        if (!this.map || !this.markers.size) return;
+
+        const bounds = this.map.getBounds();
+        const visibleMarkers = [];
+
+        this.markers.forEach(marker => {
+            if (bounds.contains(marker.getLatLng())) {
+                visibleMarkers.push(marker.hospitalData);
+            }
+        });
+
+        store.setState({ visibleHospitals: visibleMarkers });
+        AnalyticsManager.trackEvent('Map', 'VisibleMarkers', `Count: ${visibleMarkers.length}`);
+    }
+
     bindPopupToMarker(marker) {
         if (!marker?.hospitalData) return;
 
@@ -791,6 +911,7 @@ class MapManager {
 
         marker.on('popupclose', () => {
             this.activePopups.delete(marker);
+            AnalyticsManager.trackEvent('Popup', 'Close', marker.hospitalData.name);
         });
     }
 
@@ -807,6 +928,8 @@ class MapManager {
     }
 
     updateOpenPopups() {
+        this.performanceManager.startMeasure('updatePopups');
+        
         this.activePopups.forEach(marker => {
             if (marker.getPopup() && marker.getPopup().isOpen()) {
                 const popup = marker.getPopup();
@@ -819,6 +942,8 @@ class MapManager {
                 }
             }
         });
+
+        this.performanceManager.endMeasure('updatePopups');
     }
 
     generatePopupContent(hospital) {
@@ -831,17 +956,22 @@ class MapManager {
         container.className = 'popup-content';
 
         const address = Utils.parseAddress(hospital.address);
+        const sanitizedName = this.securityManager.sanitizeInput(hospital.name);
+        const sanitizedWebsite = this.securityManager.validateUrl(hospital.website) ? 
+            hospital.website : '#';
+        const sanitizedImageUrl = this.securityManager.validateUrl(hospital.imageUrl) ? 
+            hospital.imageUrl : CONFIG.UI.IMAGE.DEFAULT;
 
         const statusKey = `status${hospital.status.replace(/\s+/g, '')}`;
         const translatedStatus = currentTranslations[statusKey] || hospital.status;
 
         container.innerHTML = `
-            <h3 class="popup-title">${hospital.name}</h3>
+            <h3 class="popup-title">${sanitizedName}</h3>
             <div class="popup-image-wrapper">
                 <img 
                     src="${CONFIG.UI.IMAGE.DEFAULT}"
-                    data-src="${hospital.imageUrl}" 
-                    alt="${hospital.name}"
+                    data-src="${sanitizedImageUrl}" 
+                    alt="${sanitizedName}"
                     class="popup-image"
                     data-loading-state="${CONFIG.UI.IMAGE.STATES.LOADING}"
                 />
@@ -850,11 +980,12 @@ class MapManager {
                 <strong>${currentTranslations.address || 'Address'}:</strong>
                 <span class="popup-address-line">${address.street}</span>
                 ${address.postalCode || address.city ?
-                `<span class="popup-address-line">${[address.postalCode, address.city].filter(Boolean).join(' ')}</span>`
+                `<span class="popup-address-line">${[address.postalCode, address.city]
+                    .filter(Boolean).join(' ')}</span>`
                 : ''}
                 <span class="popup-address-line">${address.country}</span>
             </div>
-            <a href="${hospital.website}" 
+            <a href="${sanitizedWebsite}" 
                target="_blank" 
                rel="noopener noreferrer" 
                class="popup-link">
@@ -908,24 +1039,46 @@ class MapManager {
         }
     }
 
-    updateVisibleMarkers() {
-        if (!this.map || !this.markers.size) return;
+    async cleanup() {
+        try {
+            this.performanceManager.startMeasure('cleanup');
 
-        const bounds = this.map.getBounds();
-        const visibleMarkers = [];
+            this.activePopups.forEach(marker => {
+                if (marker.getPopup()) {
+                    marker.closePopup();
+                }
+            });
+            this.activePopups.clear();
 
-        this.markers.forEach(marker => {
-            if (bounds.contains(marker.getLatLng())) {
-                visibleMarkers.push(marker.hospitalData);
+            if (this.markers.size > 0) {
+                this.markers.forEach(marker => {
+                    marker.off();
+                    if (marker.getPopup()) marker.unbindPopup();
+                    if (marker.getTooltip()) marker.unbindTooltip();
+                });
+                this.markers.clear();
             }
-        });
 
-        store.setState({ visibleHospitals: visibleMarkers });
-        AnalyticsManager.trackEvent('Map', 'VisibleMarkers', `Count: ${visibleMarkers.length}`);
+            if (this.map) {
+                this.map.off();
+                this.map.remove();
+                this.map = null;
+            }
+
+            this.performanceManager.endMeasure('cleanup');
+            await this.performanceManager.destroy();
+
+            return true;
+        } catch (error) {
+            ErrorHandler.handle(error, 'Map Cleanup');
+            return false;
+        }
     }
 
     destroy() {
         try {
+            this.performanceManager.startMeasure('mapDestroy');
+
             window.removeEventListener('resize', this.handleResize);
             if (this.map) {
                 this.map.off('click', this.handleMapClick);
@@ -954,27 +1107,32 @@ class MapManager {
             this.markers.clear();
             this.activePopups.clear();
 
+            this.performanceManager.endMeasure('mapDestroy');
+            this.performanceManager.destroy();
+
             console.log('MapManager cleanup completed successfully');
         } catch (error) {
-            console.error('Error during MapManager cleanup:', error);
             ErrorHandler.handle(error, 'MapManager Cleanup');
         }
     }
 }
 
 /**
- * UI Manager Class - Handles all UI interactions and state
+ * Enhanced UI Manager Class
  */
-class UIManager {
+class EnhancedUIManager {
     constructor(mapManager) {
         if (!mapManager) {
             throw new Error('MapManager is required');
         }
+        
         this.mapManager = mapManager;
         this.elements = {};
         this.resizeObserver = null;
+        this.securityManager = SecurityManager.getInstance();
+        this.performanceManager = new PerformanceManager();
 
-        // Liaison des gestionnaires d'événements au contexte this
+        // Bind methods
         this.handleResize = this.handleResize.bind(this);
         this.handleOrientationChange = this.handleOrientationChange.bind(this);
         this.handleEscapeKey = this.handleEscapeKey.bind(this);
@@ -988,9 +1146,11 @@ class UIManager {
     }
 
     async init() {
+        this.performanceManager.startMeasure('uiInit');
+
         try {
             await this.initElements();
-            this.setupEventListeners();
+            this.setupEnhancedEventListeners();
             this.loadUserPreferences();
             this.setupAccessibility();
             this.setupThemeDetection();
@@ -1006,6 +1166,7 @@ class UIManager {
             });
 
             AnalyticsManager.trackEvent('UI', 'Initialize', 'Success');
+            this.performanceManager.endMeasure('uiInit');
         } catch (error) {
             ErrorHandler.handle(error, 'UI Initialization');
             throw error;
@@ -1059,56 +1220,61 @@ class UIManager {
         return true;
     }
 
-    setupEventListeners() {
-        // Window events
+    setupEnhancedEventListeners() {
         window.addEventListener('resize', this.handleResize, { passive: true });
         window.addEventListener('orientationchange', this.handleOrientationChange, { passive: true });
         window.addEventListener('keydown', this.handleEscapeKey);
 
-        // Element-specific events avec le contexte correct
-        const languageSelect = document.getElementById('language-select');
+        this.setupInputListeners();
+        this.setupButtonListeners();
+        this.setupFilterListeners();
+    }
+
+    setupInputListeners() {
+        const languageSelect = this.elements['language-select'];
         if (languageSelect) {
-            languageSelect.addEventListener('change', (e) => this.handleLanguageChange(e));
+            languageSelect.addEventListener('change', this.handleLanguageChange);
         }
 
-        const themeToggle = document.getElementById('theme-toggle');
-        if (themeToggle) {
-            themeToggle.addEventListener('click', () => this.handleThemeToggle());
-            this.addKeyboardSupport(themeToggle, () => this.handleThemeToggle());
-        }
-
-        const legendToggle = document.getElementById('legend-toggle');
-        if (legendToggle) {
-            legendToggle.addEventListener('click', () => this.handleLegendToggle());
-            this.addKeyboardSupport(legendToggle, () => this.handleLegendToggle());
-        }
-
-        const hamburgerMenu = document.getElementById('hamburger-menu');
-        if (hamburgerMenu) {
-            hamburgerMenu.addEventListener('click', () => this.handleControlsToggle());
-            this.addKeyboardSupport(hamburgerMenu, () => this.handleControlsToggle());
-        }
-
-        // Filter inputs
-        ['continent-select', 'country-filter', 'city-filter', 'hospital-search'].forEach(id => {
-            const element = document.getElementById(id);
+        ['country-filter', 'city-filter', 'hospital-search'].forEach(id => {
+            const element = this.elements[id];
             if (element) {
-                element.addEventListener('input', Utils.debounce(() => this.updateFilters(), CONFIG.UI.ANIMATION.DEBOUNCE_DELAY));
+                element.addEventListener('input', Utils.debounce(
+                    () => this.updateFilters(),
+                    CONFIG.PERFORMANCE.DEBOUNCE_TIME
+                ));
                 this.setupMobileKeyboardHandling(element);
             }
         });
+    }
 
-        // Status tags avec le contexte correct
+    setupButtonListeners() {
+        const buttonHandlers = {
+            'theme-toggle': this.handleThemeToggle,
+            'legend-toggle': this.handleLegendToggle,
+            'hamburger-menu': this.handleControlsToggle
+        };
+
+        Object.entries(buttonHandlers).forEach(([id, handler]) => {
+            const element = this.elements[id];
+            if (element) {
+                element.addEventListener('click', () => {
+                    if (this.securityManager.checkRateLimit('button-click')) {
+                        handler();
+                    } else {
+                        Utils.showError(CONFIG.ERROR_MESSAGES.RATE_LIMIT);
+                    }
+                });
+                this.addKeyboardSupport(element, handler);
+            }
+        });
+    }
+
+    setupFilterListeners() {
         document.querySelectorAll('.status-tag').forEach(tag => {
             tag.addEventListener('click', (e) => this.handleStatusTagClick(e, tag));
             this.addKeyboardSupport(tag, (e) => this.handleStatusTagClick(e, tag));
         });
-
-        // User location button
-        const locationButton = document.getElementById('get-location');
-        if (locationButton) {
-            locationButton.addEventListener('click', () => this.mapManager.getUserLocation());
-        }
     }
 
     setupAccessibility() {
@@ -1119,7 +1285,7 @@ class UIManager {
         });
 
         ['theme-toggle', 'legend-toggle', 'hamburger-menu'].forEach(id => {
-            const element = document.getElementById(id);
+            const element = this.elements[id];
             if (element) {
                 element.setAttribute('role', 'button');
                 element.setAttribute('tabindex', '0');
@@ -1150,9 +1316,9 @@ class UIManager {
                 if (this.mapManager.map) {
                     this.mapManager.map.invalidateSize();
                 }
-            }, 250));
+            }, CONFIG.PERFORMANCE.THROTTLE_TIME));
 
-            const mapContainer = document.getElementById('map');
+            const mapContainer = this.elements['map'];
             if (mapContainer) {
                 this.resizeObserver.observe(mapContainer);
             }
@@ -1183,7 +1349,7 @@ class UIManager {
     }
 
     handleLanguageChange(event) {
-        const language = event.target.value;
+        const language = this.securityManager.sanitizeInput(event.target.value);
         this.updateTranslations(language);
         
         if (this.mapManager) {
@@ -1223,8 +1389,8 @@ class UIManager {
     }
 
     handleControlsToggle() {
-        const controls = document.getElementById('controls');
-        const hamburger = document.getElementById('hamburger-menu');
+        const controls = this.elements['controls'];
+        const hamburger = this.elements['hamburger-menu'];
 
         if (!controls || !hamburger) return;
 
@@ -1250,7 +1416,7 @@ class UIManager {
         e.preventDefault();
         e.stopPropagation();
 
-        const status = tag.getAttribute('status');
+        const status = this.securityManager.sanitizeInput(tag.getAttribute('status'));
         if (!status) return;
 
         const { activeStatus } = store.getState();
@@ -1259,20 +1425,16 @@ class UIManager {
             ? activeStatus.filter(s => s !== status)
             : [...activeStatus, status];
 
-        // Mise à jour visuelle du tag
         tag.classList.toggle('active', !isActive);
         tag.setAttribute('aria-pressed', (!isActive).toString());
 
-        // Mise à jour du store
         store.setState({ activeStatus: newActiveStatus });
 
-        // Mise à jour des préférences
         Utils.savePreferences({
             ...Utils.loadPreferences(),
             activeStatus: newActiveStatus
         });
 
-        // Déclencher la mise à jour des filtres
         this.updateFilters();
 
         AnalyticsManager.trackEvent('Filter', 'StatusToggle', `${status}: ${!isActive}`);
@@ -1298,26 +1460,6 @@ class UIManager {
         Utils.savePreferences({
             ...Utils.loadPreferences(),
             darkMode: enabled
-        });
-    }
-
-    hideControls() {
-        const controls = document.getElementById('controls');
-        const hamburger = document.getElementById('hamburger-menu');
-
-        if (controls) {
-            controls.classList.add('hidden');
-        }
-        if (hamburger) {
-            hamburger.classList.remove('active');
-            hamburger.setAttribute('aria-expanded', 'false');
-        }
-
-        store.setState({
-            ui: {
-                ...store.getState().ui,
-                controlsVisible: false
-            }
         });
     }
 
@@ -1405,7 +1547,7 @@ class UIManager {
             filters
         });
     
-        const noResults = document.getElementById('no-hospitals-message');
+        const noResults = this.elements['no-hospitals-message'];
         if (noResults) {
             noResults.style.display = filteredHospitals.length === 0 ? 'block' : 'none';
         }
@@ -1414,12 +1556,17 @@ class UIManager {
     }
 
     getCurrentFilters() {
+        const searchTerm = this.elements['hospital-search']?.value;
+        const continent = this.elements['continent-select']?.value;
+        const country = this.elements['country-filter']?.value;
+        const city = this.elements['city-filter']?.value;
+
         return {
             activeStatus: store.getState().activeStatus,
-            searchTerm: document.getElementById('hospital-search')?.value?.toLowerCase() || '',
-            continent: document.getElementById('continent-select')?.value || '',
-            country: document.getElementById('country-filter')?.value?.toLowerCase() || '',
-            city: document.getElementById('city-filter')?.value?.toLowerCase() || ''
+            searchTerm: this.securityManager.sanitizeInput(searchTerm?.toLowerCase() || ''),
+            continent: this.securityManager.sanitizeInput(continent || ''),
+            country: this.securityManager.sanitizeInput(country?.toLowerCase() || ''),
+            city: this.securityManager.sanitizeInput(city?.toLowerCase() || '')
         };
     }
 
@@ -1427,16 +1574,20 @@ class UIManager {
         const { hospitals } = store.getState();
 
         return hospitals.filter(hospital => {
+            // Status filter
             if (filters.activeStatus.length && !filters.activeStatus.includes(hospital.status)) {
                 return false;
             }
 
-            if (filters.searchTerm && !hospital.name.toLowerCase().includes(filters.searchTerm.toLowerCase())) {
+            // Search term filter
+            if (filters.searchTerm && 
+                !hospital.name.toLowerCase().includes(filters.searchTerm.toLowerCase())) {
                 return false;
             }
 
             const address = Utils.parseAddress(hospital.address);
 
+            // Continent filter
             if (filters.continent) {
                 const hospitalContinent = Utils.getContinent(hospital.lat, hospital.lon);
                 if (hospitalContinent !== filters.continent) {
@@ -1444,10 +1595,12 @@ class UIManager {
                 }
             }
 
+            // Country filter
             if (filters.country && !address.country.toLowerCase().includes(filters.country.toLowerCase())) {
                 return false;
             }
 
+            // City filter
             if (filters.city && !address.city.toLowerCase().includes(filters.city.toLowerCase())) {
                 return false;
             }
@@ -1491,7 +1644,6 @@ class UIManager {
         element.addEventListener('focus', handleFocus);
         element.addEventListener('blur', handleBlur);
 
-        // Stocker les handlers pour le nettoyage
         element._mobileKeyboardHandlers = {
             focus: handleFocus,
             blur: handleBlur
@@ -1509,19 +1661,18 @@ class UIManager {
         };
 
         element.addEventListener('keydown', keyboardHandler);
-
         element._keyboardHandler = keyboardHandler;
     }
 
     clearFilters() {
         ['hospital-search', 'country-filter', 'city-filter'].forEach(id => {
-            const element = document.getElementById(id);
+            const element = this.elements[id];
             if (element) {
                 element.value = '';
             }
         });
     
-        const continentSelect = document.getElementById('continent-select');
+        const continentSelect = this.elements['continent-select'];
         if (continentSelect) {
             continentSelect.selectedIndex = 0;
         }
@@ -1558,7 +1709,7 @@ class UIManager {
             GaugeManager.updateAllGauges(hospitals);
         }
     
-        const noResults = document.getElementById('no-hospitals-message');
+        const noResults = this.elements['no-hospitals-message'];
         if (noResults) {
             noResults.style.display = 'none';
         }
@@ -1568,115 +1719,79 @@ class UIManager {
 
     destroy() {
         try {
-            // Remove window event listeners
+            this.performanceManager.startMeasure('uiDestroy');
+
             window.removeEventListener('resize', this.handleResize);
             window.removeEventListener('orientationchange', this.handleOrientationChange);
             window.removeEventListener('keydown', this.handleEscapeKey);
 
-            // Clean up ResizeObserver
             if (this.resizeObserver) {
                 this.resizeObserver.disconnect();
                 this.resizeObserver = null;
             }
 
-            // Clean up element event listeners
-            ['language-select', 'theme-toggle', 'legend-toggle', 'hamburger-menu'].forEach(id => {
-                const element = document.getElementById(id);
-                if (!element) return;
-
-                switch (id) {
-                    case 'language-select':
-                        element.removeEventListener('change', this.handleLanguageChange);
-                        break;
-                    case 'theme-toggle':
-                        element.removeEventListener('click', this.handleThemeToggle);
-                        if (element._keyboardHandler) {
-                            element.removeEventListener('keydown', element._keyboardHandler);
-                        }
-                        break;
-                    case 'legend-toggle':
-                        element.removeEventListener('click', this.handleLegendToggle);
-                        if (element._keyboardHandler) {
-                            element.removeEventListener('keydown', element._keyboardHandler);
-                        }
-                        break;
-                    case 'hamburger-menu':
-                        element.removeEventListener('click', this.handleControlsToggle);
-                        if (element._keyboardHandler) {
-                            element.removeEventListener('keydown', element._keyboardHandler);
-                        }
-                        break;
-                }
-            });
-
-            // Clean up filter input listeners
-            ['continent-select', 'country-filter', 'city-filter', 'hospital-search'].forEach(id => {
-                const element = document.getElementById(id);
-                if (!element) return;
-
-                element.removeEventListener('input', this.updateFilters);
-                if (element._mobileKeyboardHandlers) {
+            Object.values(this.elements).forEach(element => {
+                if (element?._mobileKeyboardHandlers) {
                     element.removeEventListener('focus', element._mobileKeyboardHandlers.focus);
                     element.removeEventListener('blur', element._mobileKeyboardHandlers.blur);
                 }
-            });
-
-            // Clean up status tag listeners
-            document.querySelectorAll('.status-tag').forEach(tag => {
-                tag.removeEventListener('click', this.handleStatusTagClick);
-                if (tag._keyboardHandler) {
-                    tag.removeEventListener('keydown', tag._keyboardHandler);
+                if (element?._keyboardHandler) {
+                    element.removeEventListener('keydown', element._keyboardHandler);
                 }
             });
 
-            // Clear references
             this.elements = {};
             this.mapManager = null;
 
+            this.performanceManager.endMeasure('uiDestroy');
+            this.performanceManager.destroy();
+
             console.log('UIManager cleanup completed successfully');
         } catch (error) {
-            console.error('Error during UIManager cleanup:', error);
             ErrorHandler.handle(error, 'UIManager Cleanup');
         }
     }
 }
 
 /**
- * Main application initialization
+ * Enhanced application initialization
  */
-async function initApplication() {
+async function initEnhancedApplication() {
+    const securityManager = SecurityManager.getInstance();
+    const performanceManager = new PerformanceManager();
+
     try {
-        console.log('Starting application initialization...');
-        PerformanceMonitor.startMeasure('appInit');
+        performanceManager.startMeasure('appInit');
+        console.log('Starting enhanced application initialization...');
 
         if (store.getState().isInitialized) {
             console.log('Application already initialized');
             return;
         }
 
+        // Validate critical elements
         const mapElement = document.getElementById('map');
         const controlsElement = document.getElementById('controls');
 
-        console.log('Critical elements check:', {
-            map: !!mapElement,
-            controls: !!controlsElement
-        });
-
         if (!mapElement || !controlsElement) {
-            throw new Error('Critical elements missing. Please ensure map and controls elements exist in the DOM');
+            throw new Error(CONFIG.ERROR_MESSAGES.INIT_FAILED);
         }
 
+        // Show loader
         const loader = document.getElementById('initial-loader');
         if (loader) loader.style.display = 'block';
 
-        const mapManager = new MapManager('map');
+        // Initialize managers
+        const mapManager = new EnhancedMapManager('map');
         await mapManager.init();
 
-        const uiManager = new UIManager(mapManager);
+        const uiManager = new EnhancedUIManager(mapManager);
         await uiManager.init();
 
+        // Initialize components
         await GaugeManager.initGauges();
 
+        // Load and apply user preferences
         const preferences = Utils.loadPreferences();
         if (preferences?.language) {
             uiManager.updateTranslations(preferences.language);
@@ -1685,19 +1800,26 @@ async function initApplication() {
             uiManager.setDarkMode(preferences.darkMode);
         }
 
-        await mapManager.addMarkers(hospitals);
-        await GaugeManager.updateAllGauges(hospitals);
+        // Load and display data
+        const validatedHospitals = hospitals.filter(hospital => 
+            securityManager.validateCoordinates(hospital.lat, hospital.lon) &&
+            securityManager.sanitizeInput(hospital.name)
+        );
 
+        await mapManager.addMarkers(validatedHospitals);
+        await GaugeManager.updateAllGauges(validatedHospitals);
         await applyInitialFilters(uiManager);
 
+        // Hide loader
         if (loader) loader.style.display = 'none';
 
+        // Set initialization flag
         store.setState({ isInitialized: true });
 
-        PerformanceMonitor.endMeasure('appInit');
+        performanceManager.endMeasure('appInit');
         AnalyticsManager.trackEvent('App', 'Initialize', 'Success');
 
-        console.log('Application initialized successfully');
+        console.log('Enhanced application initialized successfully');
     } catch (error) {
         console.error('Initialization error details:', error);
         ErrorHandler.handle(error, 'Application Initialization');
@@ -1705,63 +1827,80 @@ async function initApplication() {
     }
 }
 
+/**
+ * Apply initial filters from URL parameters
+ */
 async function applyInitialFilters(uiManager) {
+    const performanceManager = new PerformanceManager();
+    
     try {
+        performanceManager.startMeasure('applyFilters');
+        const securityManager = SecurityManager.getInstance();
         const params = new URLSearchParams(window.location.search);
 
+        // Apply status filters
         const statusParam = params.get('activeStatus');
         if (statusParam) {
-            const statuses = statusParam.split(',');
+            const statuses = statusParam.split(',')
+                .map(s => securityManager.sanitizeInput(s))
+                .filter(Boolean);
+            
             store.setState({ activeStatus: statuses });
             uiManager.applyStatusFilters(statuses);
         }
 
+        // Apply search term
         const searchTerm = params.get('searchTerm');
         if (searchTerm && uiManager.elements['hospital-search']) {
-            uiManager.elements['hospital-search'].value = searchTerm;
+            uiManager.elements['hospital-search'].value = 
+                securityManager.sanitizeInput(searchTerm);
         }
 
+        // Apply other filters
         ['continent', 'country', 'city'].forEach(param => {
             const value = params.get(param);
             if (value && uiManager.elements[`${param}-filter`]) {
-                uiManager.elements[`${param}-filter`].value = value;
+                uiManager.elements[`${param}-filter`].value = 
+                    securityManager.sanitizeInput(value);
             }
         });
 
         await uiManager.updateFilters();
-
+        performanceManager.endMeasure('applyFilters');
     } catch (error) {
-        console.error('Error applying initial filters:', error);
         ErrorHandler.handle(error, 'Initial Filters');
     }
 }
 
-// Initialize application when DOM and resources are ready
+// Initialize application when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('load', () => {
-            initApplication().catch(error => {
-                console.error('Initialization error:', error);
+            initEnhancedApplication().catch(error => {
+                ErrorHandler.handle(error, 'Application Load');
             });
         });
     });
 } else {
     window.addEventListener('load', () => {
-        initApplication().catch(error => {
-            console.error('Initialization error:', error);
+        initEnhancedApplication().catch(error => {
+            ErrorHandler.handle(error, 'Application Load');
         });
     });
 }
 
-// Export for module usage
+// Export enhanced modules
 export {
-    initApplication,
-    MapManager,
-    UIManager,
+    initEnhancedApplication,
+    EnhancedMapManager,
+    EnhancedUIManager,
     Utils,
     store,
     CONFIG,
+    SecurityConfig,
+    PerformanceConfig,
     AnalyticsManager,
-    PerformanceMonitor,
+    PerformanceManager,
+    SecurityManager,
     ErrorHandler
 };
