@@ -1322,21 +1322,21 @@ class UIManager {
     updateFilters() {
         const filters = this.getCurrentFilters();
         store.setState({ filters });
-
+    
         const filteredHospitals = this.filterHospitals(filters);
-
+    
         if (this.mapManager) {
-            this.mapManager.updateMarkerVisibility(filteredHospitals);
+            this.mapManager.updateVisibleMarkers(filteredHospitals);
         }
         
         GaugeManager.updateAllGauges(filteredHospitals);
         this.updateURLParams(filters);
-
+    
         Utils.savePreferences({
             ...Utils.loadPreferences(),
             filters
         });
-
+    
         AnalyticsManager.trackEvent('Filter', 'Update', `Results: ${filteredHospitals.length}`);
     }
 
