@@ -437,14 +437,14 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: bold;
     text-align: center;
     z-index: 2;
 }
 
 .gauge-percentage {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     text-align: center;
     margin: 0.25rem 0;
 }
