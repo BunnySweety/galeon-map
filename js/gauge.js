@@ -109,6 +109,7 @@ class GaugeManager {
             const labelDisplay = document.createElement('div');
             labelDisplay.classList.add('gauge-label');
             labelDisplay.textContent = status;
+            labelDisplay.setAttribute('data-translate', `gauges${status}`);
 
             wrapper.appendChild(gaugeContainer);
             wrapper.appendChild(percentageDisplay);
