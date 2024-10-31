@@ -65,7 +65,7 @@ class GaugeManager {
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svg.setAttribute('viewBox', '0 0 36 36');
             svg.classList.add('gauge');
-            svg.style.transform = 'rotate(-90deg)';
+            svg.style.transform = 'rotate(0deg)';
             svg.style.position = 'absolute';
             svg.style.top = '0';
             svg.style.left = '0';
@@ -150,7 +150,7 @@ class GaugeManager {
                 const radius = this.#defaultOptions.radius;
                 const circumference = 2 * Math.PI * radius;
                 const dashArray = circumference;
-                const dashOffset = circumference * percentage / 100;
+                const dashOffset = circumference * (1 - percentage / 100);
 
                 const valuePath = gauge.valuePath;
                 valuePath.style.strokeDasharray = dashArray;
