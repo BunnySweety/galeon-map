@@ -218,6 +218,46 @@ class PerformanceManager {
   }
 
   /**
+   * Optimize the performance of an image resource based on its size and load time.   *
+   * @param {PerformanceEntry} entry - The performance entry object containing image resource details.
+   */
+  optimizeImage(entry) {
+    try {
+        if (!entry || !entry.name) return;
+        
+        const url = entry.name;
+        const size = entry.transferSize || 0;
+        const loadTime = entry.duration || 0;
+
+        if (size > PerformanceConfig.IMAGES.MAX_SIZE || 
+            loadTime > PerformanceConfig.IMAGES.MAX_LOAD_TIME) {
+            console.warn('Image performance issue:', {
+                url,
+                size: `${(size / 1024).toFixed(2)}KB`,
+                loadTime: `${loadTime.toFixed(2)}ms`
+            });
+        }
+
+        if (url.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+            const img = document.querySelector(`img[src="${url}"]`);
+            if (img && this.intersectionObserver) {
+                this.intersectionObserver.observe(img);
+            }
+        }
+    } catch (error) {
+        console.error('Error optimizing image:', error);
+    }
+}
+
+static PERFORMANCE_CONFIG = {
+    IMAGES: {
+        MAX_SIZE: 500 * 1024, // 500KB
+        MAX_LOAD_TIME: 3000,  // 3 secondes
+        ...PerformanceConfig.IMAGES
+    }
+};
+
+  /**
    * Cleanup
    */
   destroy() {

@@ -56,6 +56,34 @@ class ServiceWorkerManager {
             window.location.reload();
         }
     }
+
+    async requestPeriodicSyncPermission() {
+        if (!('permissions' in navigator)) return false;
+        
+        try {
+            const status = await navigator.permissions.query({
+                name: 'periodic-background-sync'
+            });
+            
+            if (status.state === 'granted') {
+                return true;
+            }
+            
+            // Informer l'utilisateur
+            const result = confirm(
+                'Voulez-vous autoriser les mises à jour en arrière-plan ? ' +
+                'Cela permet de maintenir l\'application à jour même en mode hors ligne.'
+            );
+            
+            if (result) {
+                // La permission sera demandée par le navigateur
+                return true;
+            }
+        } catch (error) {
+            console.log('Periodic sync not supported:', error);
+        }
+        return false;
+    }
 }
 
 /**
