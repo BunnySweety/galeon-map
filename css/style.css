@@ -682,11 +682,6 @@ body.dark-mode .marker-cluster div {
     margin-left: 0.25rem;
 }
 
-/* Dark mode adjustments */
-body.dark-mode .popup-title {
-    color: var(--text-color-dark);
-}
-
 /* ==========================================================================
    System Messages
    ========================================================================== */
