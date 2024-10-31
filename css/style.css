@@ -516,6 +516,7 @@ body.dark-mode .leaflet-control-zoom-out:hover {
     font-weight: bold;
     text-align: center;
     margin-top: 0.25rem;
+    white-space: nowrap;
 }
 
 /* Status-specific colors */
@@ -607,7 +608,7 @@ body.dark-mode .marker-cluster div {
 /* ==========================================================================
    Popup Styles
    ========================================================================== */
-.leaflet-popup-content-wrapper {
+   .leaflet-popup-content-wrapper {
     background-color: var(--control-background-light);
     color: var(--text-color-light);
     border-radius: var(--radius-md);
@@ -615,14 +616,14 @@ body.dark-mode .marker-cluster div {
     border: none;
     box-shadow: var(--shadow-lg);
     width: 100%;
-    min-width: 12.5rem;
+    min-width: 15rem;
     max-width: 18.75rem;
     text-align: center;
 }
 
 .leaflet-popup-content {
-    margin: 0.5rem;
-    padding: 0.9rem;
+    margin: 0;
+    padding: 0.9375rem;
     width: auto !important;
     text-align: center;
 }
@@ -635,13 +636,12 @@ body.dark-mode .marker-cluster div {
     display: flex;
     flex-direction: column;
     text-align: center;
-    gap: 0.5rem;
 }
 
 .popup-title {
     font-size: 1rem;
     font-weight: bold;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.625rem;
     color: var(--hyperlink-color);
 }
 
@@ -649,13 +649,13 @@ body.dark-mode .marker-cluster div {
     display: block;
     max-width: 100%;
     height: auto;
-    margin-bottom: 0.25rem;
+    margin: 0 auto 0.625rem;
 }
 
 .popup-address,
 .popup-link,
 .popup-status {
-    margin: 0.25rem 0;
+    margin: 0.5rem 0;
     font-size: 0.875rem;
     text-align: center;
     width: 100%;
@@ -663,8 +663,7 @@ body.dark-mode .marker-cluster div {
 
 .popup-address-line {
     display: block;
-    margin: 0.125rem 0;
-    line-height: 1.2;
+    margin: 0.2rem 0;
 }
 
 .popup-link {
