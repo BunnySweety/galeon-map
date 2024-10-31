@@ -14,23 +14,26 @@ const STATIC_ASSETS = [
     '/',
     '/index.html',
     '/css/style.css',
-    '/js/main.js',
-    '/js/translations.js',
-    '/js/hospitals.js',
-    '/js/gauge.js',
-    '/js/legacy-bundle.js',
+    '/src/js/main.js',
+    '/src/js/security.js',
+    '/src/js/performance.js',
+    '/data/translations.js',
+    '/data/hospitals.js',
+    '/src/js/gauge.js',
+    '/src/js/legacy-bundle.js',
     '/manifest.json',
-    '/assets/favicon-32x32.png',
-    '/assets/favicon-16x16.png',
-    '/assets/apple-touch-icon.png'
+    '/assets/images/favicon-32x32.png',
+    '/assets/images/favicon-16x16.png',
+    '/assets/images/apple-touch-icon.png',
+    '/assets/images/placeholder.png'
 ];
 
 const CDN_ASSETS = [
-    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css',
-    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css',
-    'https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css',
-    'https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js',
+    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+    'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css',
+    'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css',
+    'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js',
     'https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
 ];
@@ -70,10 +73,18 @@ const utils = {
 
 // Cache strategies
 const strategies = {
-    // Network first with cache fallback
     async networkFirst(request) {
         try {
-            const response = await fetch(request);
+            const networkTimeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Network timeout')), 5000);
+            });
+
+            const networkPromise = fetch(request);
+            const response = await Promise.race([
+                networkPromise,
+                networkTimeoutPromise
+            ]);
+
             if (response.ok) {
                 const cache = await caches.open(CONFIG.CACHE_NAME);
                 await cache.put(request, response.clone());
@@ -86,27 +97,30 @@ const strategies = {
             if (cachedResponse) {
                 return cachedResponse;
             }
-            // Return offline page for HTML requests
             if (request.headers.get('Accept').includes('text/html')) {
-                return caches.match(CONFIG.OFFLINE_URL);
+                const offlineResponse = await caches.match(CONFIG.OFFLINE_URL);
+                if (offlineResponse) {
+                    return offlineResponse;
+                }
             }
             throw error;
         }
     },
 
-    // Cache first with network fallback
     async cacheFirst(request) {
-        const cachedResponse = await caches.match(request);
-        if (cachedResponse) {
-            return cachedResponse;
-        }
         try {
+            const cachedResponse = await caches.match(request);
+            if (cachedResponse) {
+                return cachedResponse;
+            }
+
             const response = await fetch(request);
             if (response.ok) {
                 const cache = await caches.open(CONFIG.CACHE_NAME);
                 await cache.put(request, response.clone());
+                return response;
             }
-            return response;
+            throw new Error('Network response was not ok');
         } catch (error) {
             utils.error('Cache first strategy failed:', error);
             throw error;
@@ -151,15 +165,30 @@ self.addEventListener('install', event => {
 // Activate event handler
 self.addEventListener('activate', event => {
     async function cleanOldCaches() {
-        const cacheNames = await caches.keys();
-        const oldCacheNames = cacheNames.filter(
-            name => name !== CONFIG.CACHE_NAME && name !== CONFIG.API_CACHE_NAME
-        );
-        await Promise.all(oldCacheNames.map(name => caches.delete(name)));
-        utils.log('Old caches cleaned up');
+        try {
+            const cacheNames = await caches.keys();
+            const oldCacheNames = cacheNames.filter(
+                name => {
+                    const isCacheVersionOld = name.includes('galeon-map-cache-v') && 
+                                           name !== CONFIG.CACHE_NAME;
+                    const isApiCacheVersionOld = name.includes('galeon-map-api-cache-v') && 
+                                               name !== CONFIG.API_CACHE_NAME;
+                    return isCacheVersionOld || isApiCacheVersionOld;
+                }
+            );
+            await Promise.all(oldCacheNames.map(name => caches.delete(name)));
+            utils.log('Old caches cleaned up:', oldCacheNames);
+        } catch (error) {
+            utils.error('Cache cleanup failed:', error);
+        }
     }
 
-    event.waitUntil(cleanOldCaches());
+    event.waitUntil(
+        Promise.all([
+            cleanOldCaches(),
+            self.clients.claim()
+        ])
+    );
 });
 
 // Fetch event handler
@@ -225,3 +254,21 @@ self.addEventListener('notificationclick', event => {
             })
     );
 });
+
+const PERIODIC_SYNC_TAG = 'periodic-cache-update';
+const SYNC_INTERVAL = 24 * 60 * 60 * 1000; // 24 heures
+
+self.addEventListener('periodicsync', event => {
+    if (event.tag === PERIODIC_SYNC_TAG) {
+        event.waitUntil(updateStaticCache());
+    }
+});
+
+async function updateStaticCache() {
+    try {
+        await cacheStaticAssets();
+        utils.log('Cache updated via periodic sync');
+    } catch (error) {
+        utils.error('Periodic cache update failed:', error);
+    }
+}

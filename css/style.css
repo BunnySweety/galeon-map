@@ -772,6 +772,39 @@ body.dark-mode .marker-cluster div {
 }
 
 /* ==========================================================================
+   Offline status
+   ========================================================================== */
+
+body.offline {
+    /* Style quand l'application est hors ligne */
+    position: relative;
+}
+
+body.offline::before {
+    content: 'Mode hors ligne';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 8px;
+    background-color: #ff9800;
+    color: white;
+    text-align: center;
+    z-index: 9999;
+}
+
+/* Disable interactions when offline */
+body.offline .controls button:not(.offline-enabled),
+body.offline .controls input:not(.offline-enabled) {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+body.offline .controls button:not(.offline-enabled):hover {
+    background-color: initial;
+}
+
+/* ==========================================================================
    Dark Mode Styles
    ========================================================================== */
 body.dark-mode {

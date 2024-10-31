@@ -16,6 +16,79 @@ import { SecurityManager, SecurityConfig } from './security.js';
 import { PerformanceManager, PerformanceConfig } from './performance.js';
 
 /**
+ * Service Worker Manager
+ */
+class ServiceWorkerManager {
+    constructor() {
+        this.registration = null;
+        this.setupServiceWorker();
+    }
+
+    async setupServiceWorker() {
+        if (!('serviceWorker' in navigator)) return;
+
+        try {
+            this.registration = await navigator.serviceWorker.register('/sw.js');
+            this.handleUpdates();
+        } catch (error) {
+            console.error('ServiceWorker registration failed:', error);
+        }
+    }
+
+    handleUpdates() {
+        if (!this.registration) return;
+
+        this.registration.addEventListener('updatefound', () => {
+            const newWorker = this.registration.installing;
+            
+            newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    this.showUpdateNotification();
+                }
+            });
+        });
+    }
+
+    showUpdateNotification() {
+        const shouldUpdate = confirm('A new version is available. Would you like to update ?');
+        if (shouldUpdate) {
+            this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            window.location.reload();
+        }
+    }
+}
+
+/**
+ * Network Manager
+ */
+class NetworkManager {
+    constructor() {
+        this.setupNetworkListeners();
+    }
+
+    setupNetworkListeners() {
+        window.addEventListener('online', this.handleOnline.bind(this));
+        window.addEventListener('offline', this.handleOffline.bind(this));
+    }
+
+    handleOnline() {
+        document.body.classList.remove('offline');
+        // Notification optionnelle
+        Utils.showError('Internet connection restored', 3000);
+    }
+
+    handleOffline() {
+        document.body.classList.add('offline');
+        // Notification optionnelle
+        Utils.showError('You are offline. Some features may be limited', 5000);
+    }
+}
+
+// Initialize managers
+const swManager = new ServiceWorkerManager();
+const networkManager = new NetworkManager();
+
+/**
  * Application configuration constants
  * @constant
  */
@@ -1763,6 +1836,10 @@ async function initEnhancedApplication() {
     try {
         performanceManager.startMeasure('appInit');
         console.log('Starting enhanced application initialization...');
+
+        if (!navigator.onLine) {
+            document.body.classList.add('offline');
+        }        
 
         if (store.getState().isInitialized) {
             console.log('Application already initialized');
