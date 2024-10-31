@@ -471,7 +471,7 @@ const store = new Store({
 });
 
 /**
- * Map Manager
+ * Map Manager Class
  */
 class MapManager {
     constructor(containerId = 'map') {
@@ -479,6 +479,7 @@ class MapManager {
         this.map = null;
         this.markerClusterGroup = null;
         this.markers = new Map();
+        this.activePopups = new Set();
 
         // Bind methods
         this.handleResize = this.handleResize.bind(this);
@@ -488,6 +489,7 @@ class MapManager {
         this.createClusterIcon = this.createClusterIcon.bind(this);
         this.updateVisibleMarkers = this.updateVisibleMarkers.bind(this);
         this.updateTileLayer = this.updateTileLayer.bind(this);
+        this.updateOpenPopups = this.updateOpenPopups.bind(this);
     }
 
     async init() {
@@ -502,7 +504,7 @@ class MapManager {
             }
 
             this.map = L.map(this.containerId, {
-                center: CONFIG.MAP.DEFAULT_CENTER, // Toujours utiliser le centre par défaut
+                center: CONFIG.MAP.DEFAULT_CENTER,
                 zoom: CONFIG.MAP.DEFAULT_ZOOM,
                 maxZoom: CONFIG.MAP.MAX_ZOOM,
                 minZoom: CONFIG.MAP.MIN_ZOOM,
@@ -526,41 +528,6 @@ class MapManager {
             return this.map;
         } catch (error) {
             ErrorHandler.handle(error, 'Map Initialization');
-            throw error;
-        }
-    }
-
-    async centerOnUserLocation() {
-        if (!this.map) return;
-
-        try {
-            const position = await new Promise((resolve, reject) => {
-                if (!navigator.geolocation) {
-                    reject(new Error('Geolocation not supported'));
-                    return;
-                }
-
-                navigator.geolocation.getCurrentPosition(resolve, reject, {
-                    enableHighAccuracy: false,
-                    timeout: 5000,
-                    maximumAge: 0
-                });
-            });
-
-            const { latitude: lat, longitude: lng } = position.coords;
-
-            if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-                this.map.setView([lat, lng], CONFIG.MAP.DEFAULT_ZOOM, {
-                    animate: true,
-                    duration: 1
-                });
-                AnalyticsManager.trackEvent('Map', 'AutoCenter', 'Success');
-            } else {
-                throw new Error('Invalid coordinates received from geolocation');
-            }
-        } catch (error) {
-            console.warn('Geolocation failed:', error.message);
-            AnalyticsManager.trackEvent('Map', 'AutoCenter', 'Failed');
             throw error;
         }
     }
@@ -598,15 +565,11 @@ class MapManager {
     setupEventListeners() {
         if (!this.map) return;
 
-        // Window events
         window.addEventListener('resize', this.handleResize, { passive: true });
-
-        // Map events
         this.map.on('click', this.handleMapClick);
         this.map.on('zoomend', this.handleZoomEnd);
         this.map.on('moveend', this.handleMoveEnd);
 
-        // Cluster events
         if (this.markerClusterGroup) {
             this.markerClusterGroup.on('clusterclick', (e) => {
                 AnalyticsManager.trackEvent('Map', 'ClusterClick', `Size: ${e.layer.getChildCount()}`);
@@ -689,11 +652,6 @@ class MapManager {
         }).addTo(this.map);
     }
 
-    /**
-     * Add markers for all hospitals
-     * @param {Array} hospitals List of hospitals
-     * @param {number} chunkSize Size of chunks to create
-     */
     async addMarkers(hospitals, chunkSize = 10) {
         if (!hospitals?.length || !this.markerClusterGroup) return;
 
@@ -737,33 +695,6 @@ class MapManager {
         }
     }
 
-    async processMarkerChunk(chunk) {
-        return new Promise(resolve => {
-            requestAnimationFrame(() => {
-                const markers = chunk.map(hospital => {
-                    if (!Utils.validateCoordinates(hospital.lat, hospital.lon)) {
-                        console.warn(`Invalid coordinates for hospital ${hospital.id}`);
-                        return null;
-                    }
-
-                    const marker = this.createMarker(hospital);
-                    if (marker) {
-                        this.markers.set(hospital.id, marker);
-                    }
-                    return marker;
-                }).filter(Boolean);
-
-                this.markerClusterGroup?.addLayers(markers);
-                resolve();
-            });
-        });
-    }
-
-    /**
-    * Create a marker for a hospital
-    * @param {Object} hospital Les données de l'hôpital
-    * @returns {L.CircleMarker|null} Le marqueur créé ou null en cas d'erreur
-    */
     createMarker(hospital) {
         if (!Utils.validateCoordinates(hospital.lat, hospital.lon)) {
             console.warn(`Invalid coordinates for hospital ${hospital.id}`);
@@ -811,14 +742,22 @@ class MapManager {
             closeOnClick: false
         });
 
-        marker.bindPopup(() => this.generatePopupContent(marker.hospitalData));
+        marker.bindPopup(() => {
+            const content = this.generatePopupContent(marker.hospitalData);
+            return content;
+        });
 
-        marker.on('popupopen', () => {
-            const popupElement = marker.getPopup().getElement();
+        marker.on('popupopen', (e) => {
+            const popupElement = e.popup.getElement();
             if (popupElement) {
+                this.activePopups.add(marker);
                 this.initializePopupImage(popupElement);
                 AnalyticsManager.trackEvent('Popup', 'Open', marker.hospitalData.name);
             }
+        });
+
+        marker.on('popupclose', () => {
+            this.activePopups.delete(marker);
         });
     }
 
@@ -831,6 +770,21 @@ class MapManager {
             offset: [0, -10],
             opacity: 0.9,
             className: 'hospital-tooltip'
+        });
+    }
+
+    updateOpenPopups() {
+        this.activePopups.forEach(marker => {
+            if (marker.getPopup() && marker.getPopup().isOpen()) {
+                const popup = marker.getPopup();
+                const newContent = this.generatePopupContent(marker.hospitalData);
+                popup.setContent(newContent);
+                
+                const popupElement = popup.getElement();
+                if (popupElement) {
+                    this.initializePopupImage(popupElement);
+                }
+            }
         });
     }
 
@@ -918,20 +872,6 @@ class MapManager {
         }
     }
 
-    calculateDistanceToUserLocation(hospital) {
-        const { userLocation } = store.getState();
-        if (!userLocation || !hospital) return null;
-
-        const distance = Utils.calculateDistance(
-            userLocation.lat,
-            userLocation.lng,
-            hospital.lat,
-            hospital.lon
-        );
-
-        return Math.round(distance * 10) / 10;
-    }
-
     updateVisibleMarkers() {
         if (!this.map || !this.markers.size) return;
 
@@ -948,60 +888,14 @@ class MapManager {
         AnalyticsManager.trackEvent('Map', 'VisibleMarkers', `Count: ${visibleMarkers.length}`);
     }
 
-    fitMarkersInView(markers = null) {
-        if (!this.map) return;
-
-        const markerArray = markers || Array.from(this.markers.values());
-        if (markerArray.length === 0) return;
-
-        const bounds = L.latLngBounds(markerArray.map(m => m.getLatLng()));
-        this.map.fitBounds(bounds, {
-            padding: CONFIG.MAP.BOUNDS_PADDING,
-            maxZoom: this.map.getZoom()
-        });
-    }
-
-    async getUserLocation() {
-        try {
-            const position = await Utils.getCurrentPosition();
-            const { latitude: lat, longitude: lng } = position.coords;
-
-            store.setState({ userLocation: { lat, lng } });
-
-            if (!this.map) return;
-
-            // Add or update user marker
-            if (!this.userMarker) {
-                this.userMarker = L.marker([lat, lng], {
-                    icon: L.divIcon({
-                        className: 'user-location-marker',
-                        html: '<div class="pulse"></div>'
-                    })
-                }).addTo(this.map);
-            } else {
-                this.userMarker.setLatLng([lat, lng]);
-            }
-
-            this.map.setView([lat, lng], CONFIG.MAP.DEFAULT_ZOOM);
-            AnalyticsManager.trackEvent('Location', 'Get', 'Success');
-        } catch (error) {
-            ErrorHandler.handle(error, 'Geolocation');
-            throw error;
-        }
-    }
-
     destroy() {
         try {
-            // Remove window event listeners
             window.removeEventListener('resize', this.handleResize);
-
             if (this.map) {
-                // Remove map event listeners
                 this.map.off('click', this.handleMapClick);
                 this.map.off('zoomend', this.handleZoomEnd);
                 this.map.off('moveend', this.handleMoveEnd);
 
-                // Clean up markers
                 if (this.markerClusterGroup) {
                     this.markerClusterGroup.clearLayers();
                     this.map.removeLayer(this.markerClusterGroup);
@@ -1011,20 +905,18 @@ class MapManager {
                     this.map.removeLayer(this.userMarker);
                 }
 
-                // Remove tile layer
                 if (this.map.currentTileLayer) {
                     this.map.removeLayer(this.map.currentTileLayer);
                 }
 
-                // Remove map
                 this.map.remove();
             }
 
-            // Clear references
             this.map = null;
             this.markerClusterGroup = null;
             this.userMarker = null;
             this.markers.clear();
+            this.activePopups.clear();
 
             console.log('MapManager cleanup completed successfully');
         } catch (error) {
@@ -1032,20 +924,10 @@ class MapManager {
             ErrorHandler.handle(error, 'MapManager Cleanup');
         }
     }
-
-    // Debugging method
-    debug() {
-        return {
-            map: this.map,
-            markers: this.markers,
-            markerClusterGroup: this.markerClusterGroup,
-            userMarker: this.userMarker
-        };
-    }
 }
 
 /**
- * UI Manager
+ * UI Manager Class
  */
 class UIManager {
     constructor(mapManager) {
@@ -1056,132 +938,16 @@ class UIManager {
         this.elements = {};
         this.resizeObserver = null;
 
-        // Définition des gestionnaires d'événements
-        this.handleResize = () => {
-            this.updateLayout();
-            AnalyticsManager.trackEvent('UI', 'Resize', `Width: ${window.innerWidth}`);
-        };
-
-        this.handleOrientationChange = () => {
-            setTimeout(() => {
-                this.updateLayout();
-            }, 100);
-        };
-
-        this.handleEscapeKey = (e) => {
-            if (e.key === 'Escape') {
-                if (this.mapManager.map) {
-                    this.mapManager.map.closePopup();
-                }
-                if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
-                    this.hideControls();
-                }
-                document.activeElement?.blur();
-            }
-        };
-
-        this.handleLanguageChange = (language) => {
-            this.updateTranslations(language);
-            Utils.savePreferences({
-                ...Utils.loadPreferences(),
-                language
-            });
-            AnalyticsManager.trackEvent('UI', 'LanguageChange', language);
-        };
-
-        this.handleThemeToggle = () => {
-            const { darkMode } = store.getState();
-            this.setDarkMode(!darkMode);
-            AnalyticsManager.trackEvent('UI', 'ThemeToggle', !darkMode ? 'Dark' : 'Light');
-        };
-
-        this.handleLegendToggle = () => {
-            const { ui } = store.getState();
-            const newLegendVisible = !ui.legendVisible;
-
-            const legendContainer = document.querySelector('.legend-container');
-            if (legendContainer) {
-                legendContainer.classList.toggle('hidden', !newLegendVisible);
-            }
-
-            store.setState({
-                ui: { ...ui, legendVisible: newLegendVisible }
-            });
-
-            AnalyticsManager.trackEvent('UI', 'LegendToggle', newLegendVisible ? 'Show' : 'Hide');
-        };
-
-        this.handleControlsToggle = () => {
-            const controls = document.getElementById('controls');
-            const hamburger = document.getElementById('hamburger-menu');
-
-            if (!controls || !hamburger) return;
-
-            const isVisible = !controls.classList.contains('hidden');
-
-            controls.classList.toggle('hidden', isVisible);
-            hamburger.classList.toggle('active', !isVisible);
-            hamburger.setAttribute('aria-expanded', (!isVisible).toString());
-
-            store.setState({
-                ui: {
-                    ...store.getState().ui,
-                    controlsVisible: !isVisible
-                }
-            });
-
-            AnalyticsManager.trackEvent('UI', 'ControlsToggle', isVisible ? 'Hide' : 'Show');
-        };
-
-        this.handleStatusTagClick = (e, tag) => {
-            if (!tag) return;
-
-            e.preventDefault();
-            e.stopPropagation();
-
-            const status = tag.getAttribute('status');
-            if (!status) return;
-
-            const { activeStatus } = store.getState();
-            const isActive = activeStatus.includes(status);
-
-            const newActiveStatus = isActive
-                ? activeStatus.filter(s => s !== status)
-                : [...activeStatus, status];
-
-            tag.classList.toggle('active', !isActive);
-            tag.setAttribute('aria-pressed', (!isActive).toString());
-
-            store.setState({ activeStatus: newActiveStatus });
-            Utils.savePreferences({
-                ...Utils.loadPreferences(),
-                activeStatus: newActiveStatus
-            });
-
-            this.updateFilters();
-            AnalyticsManager.trackEvent('Filter', 'StatusToggle', `${status}: ${!isActive}`);
-        };
-
-        this.updateFilters = () => {
-            const filters = this.getCurrentFilters();
-            store.setState({ filters });
-
-            const filteredHospitals = this.filterHospitals(filters);
-
-            this.updateMarkerVisibility(filteredHospitals);
-            GaugeManager.updateAllGauges(filteredHospitals);
-            this.updateURLParams(filters);
-
-            Utils.savePreferences({
-                ...Utils.loadPreferences(),
-                filters
-            });
-
-            AnalyticsManager.trackEvent('Filter', 'Update', `Results: ${filteredHospitals.length}`);
-        };
-
-        // Initialisation
-        this.init();
+        // Liaison des gestionnaires d'événements au contexte this
+        this.handleResize = this.handleResize.bind(this);
+        this.handleOrientationChange = this.handleOrientationChange.bind(this);
+        this.handleEscapeKey = this.handleEscapeKey.bind(this);
+        this.handleLanguageChange = this.handleLanguageChange.bind(this);
+        this.handleThemeToggle = this.handleThemeToggle.bind(this);
+        this.handleLegendToggle = this.handleLegendToggle.bind(this);
+        this.handleControlsToggle = this.handleControlsToggle.bind(this);
+        this.handleStatusTagClick = this.handleStatusTagClick.bind(this);
+        this.updateFilters = this.updateFilters.bind(this);
     }
 
     async init() {
@@ -1210,8 +976,6 @@ class UIManager {
     }
 
     async initElements() {
-        console.log('Initializing UI elements...');
-
         const elements = [
             'map',
             'language-select',
@@ -1233,7 +997,6 @@ class UIManager {
             const element = document.getElementById(id);
             if (element) {
                 this.elements[id] = element;
-                console.log(`Found element: ${id}`);
             } else {
                 console.warn(`Element with id '${id}' not found`);
             }
@@ -1268,7 +1031,7 @@ class UIManager {
         // Element-specific events
         const languageSelect = document.getElementById('language-select');
         if (languageSelect) {
-            languageSelect.addEventListener('change', (e) => this.handleLanguageChange(e.target.value));
+            languageSelect.addEventListener('change', this.handleLanguageChange);
         }
 
         const themeToggle = document.getElementById('theme-toggle');
@@ -1359,139 +1122,115 @@ class UIManager {
         }
     }
 
-    setupMobileKeyboardHandling(element) {
-        if (!element) return;
+    handleResize() {
+        this.updateLayout();
+        AnalyticsManager.trackEvent('UI', 'Resize', `Width: ${window.innerWidth}`);
+    }
 
-        element.addEventListener('focus', () => {
+    handleOrientationChange() {
+        setTimeout(() => {
+            this.updateLayout();
+        }, 100);
+    }
+
+    handleEscapeKey(e) {
+        if (e.key === 'Escape') {
+            if (this.mapManager.map) {
+                this.mapManager.map.closePopup();
+            }
             if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
-                document.body.classList.add('keyboard-open');
-                this.mapManager.map?.invalidateSize();
+                this.hideControls();
             }
-        });
-
-        element.addEventListener('blur', () => {
-            if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
-                document.body.classList.remove('keyboard-open');
-                this.mapManager.map?.invalidateSize();
-            }
-        });
-    }
-
-    addKeyboardSupport(element, handler) {
-        if (!element || !handler) return;
-
-        element.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handler(e);
-            }
-        });
-    }
-
-    getCurrentFilters() {
-        return {
-            activeStatus: store.getState().activeStatus,
-            searchTerm: document.getElementById('hospital-search')?.value?.toLowerCase() || '',
-            continent: document.getElementById('continent-select')?.value || '',
-            country: document.getElementById('country-filter')?.value?.toLowerCase() || '',
-            city: document.getElementById('city-filter')?.value?.toLowerCase() || ''
-        };
-    }
-
-    filterHospitals(filters) {
-        const { hospitals } = store.getState();
-        console.log('Filtres actifs:', {
-            activeStatus: filters.activeStatus,
-            totalHospitals: hospitals.length
-        });
-
-        const filteredHospitals = hospitals.filter(hospital => {
-            if (filters.activeStatus.length && !filters.activeStatus.includes(hospital.status)) {
-                console.log('Hospital filtered out:', {
-                    hospitalStatus: hospital.status,
-                    activeFilters: filters.activeStatus,
-                    matched: filters.activeStatus.includes(hospital.status)
-                });
-                return false;
-            }
-
-            if (filters.searchTerm && !hospital.name.toLowerCase().includes(filters.searchTerm.toLowerCase())) {
-                return false;
-            }
-
-            const address = Utils.parseAddress(hospital.address);
-
-            if (filters.continent) {
-                const hospitalContinent = Utils.getContinent(hospital.lat, hospital.lon);
-                if (hospitalContinent !== filters.continent) {
-                    return false;
-                }
-            }
-
-            if (filters.country && !address.country.toLowerCase().includes(filters.country.toLowerCase())) {
-                return false;
-            }
-
-            if (filters.city && !address.city.toLowerCase().includes(filters.city.toLowerCase())) {
-                return false;
-            }
-
-            return true;
-        });
-
-        console.log('Résultat du filtrage:', {
-            total: filteredHospitals.length,
-            statuses: [...new Set(filteredHospitals.map(h => h.status))]
-        });
-
-        return filteredHospitals;
-    }
-
-    updateMarkerVisibility(filteredHospitals) {
-        try {
-            if (!this.mapManager?.markerClusterGroup) return;
-
-            this.mapManager.markerClusterGroup.clearLayers();
-
-            const noResults = document.getElementById('no-hospitals-message');
-            if (noResults) {
-                noResults.style.display = filteredHospitals.length === 0 ? 'block' : 'none';
-            }
-
-            const markers = filteredHospitals
-                .map(hospital => this.mapManager.markers.get(hospital.id))
-                .filter(marker => marker instanceof L.CircleMarker);
-
-            if (markers.length > 0) {
-                this.mapManager.markerClusterGroup.addLayers(markers);
-
-                if (this.mapManager.map) {
-                    const bounds = L.latLngBounds(markers.map(m => m.getLatLng()));
-                    this.mapManager.map.fitBounds(bounds, {
-                        padding: CONFIG.MAP.BOUNDS_PADDING,
-                        maxZoom: this.mapManager.map.getZoom()
-                    });
-                }
-            }
-        } catch (error) {
-            console.error('Error updating marker visibility:', error);
-            ErrorHandler.handle(error, 'Marker Visibility Update');
+            document.activeElement?.blur();
         }
     }
 
-    updateURLParams(filters) {
-        const params = new URLSearchParams(window.location.search);
+    handleLanguageChange(event) {
+        const language = event.target.value;
+        this.updateTranslations(language);
+        
+        if (this.mapManager) {
+            this.mapManager.updateOpenPopups();
+        }
+        
+        Utils.savePreferences({
+            ...Utils.loadPreferences(),
+            language
+        });
+        AnalyticsManager.trackEvent('UI', 'LanguageChange', language);
+    }
 
-        Object.entries(filters).forEach(([key, value]) => {
-            if (value && (typeof value === 'string' || Array.isArray(value))) {
-                params.set(key, Array.isArray(value) ? value.join(',') : value);
-            } else {
-                params.delete(key);
+    handleThemeToggle() {
+        const { darkMode } = store.getState();
+        this.setDarkMode(!darkMode);
+        AnalyticsManager.trackEvent('UI', 'ThemeToggle', !darkMode ? 'Dark' : 'Light');
+    }
+
+    handleLegendToggle() {
+        const { ui } = store.getState();
+        const newLegendVisible = !ui.legendVisible;
+
+        const legendContainer = document.querySelector('.legend-container');
+        if (legendContainer) {
+            legendContainer.classList.toggle('hidden', !newLegendVisible);
+        }
+
+        store.setState({
+            ui: { ...ui, legendVisible: newLegendVisible }
+        });
+
+        AnalyticsManager.trackEvent('UI', 'LegendToggle', newLegendVisible ? 'Show' : 'Hide');
+    }
+
+    handleControlsToggle() {
+        const controls = document.getElementById('controls');
+        const hamburger = document.getElementById('hamburger-menu');
+
+        if (!controls || !hamburger) return;
+
+        const isVisible = !controls.classList.contains('hidden');
+
+        controls.classList.toggle('hidden', isVisible);
+        hamburger.classList.toggle('active', !isVisible);
+        hamburger.setAttribute('aria-expanded', (!isVisible).toString());
+
+        store.setState({
+            ui: {
+                ...store.getState().ui,
+                controlsVisible: !isVisible
             }
         });
 
-        const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
-        window.history.replaceState({}, '', newUrl);
+        AnalyticsManager.trackEvent('UI', 'ControlsToggle', isVisible ? 'Hide' : 'Show');
+    }
+
+    handleStatusTagClick(e, tag) {
+        if (!tag) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const status = tag.getAttribute('status');
+        if (!status) return;
+
+        const { activeStatus } = store.getState();
+        const isActive = activeStatus.includes(status);
+
+        const newActiveStatus = isActive
+            ? activeStatus.filter(s => s !== status)
+            : [...activeStatus, status];
+
+        tag.classList.toggle('active', !isActive);
+        tag.setAttribute('aria-pressed', (!isActive).toString());
+
+        store.setState({ activeStatus: newActiveStatus });
+        Utils.savePreferences({
+            ...Utils.loadPreferences(),
+            activeStatus: newActiveStatus
+        });
+
+        this.updateFilters();
+        AnalyticsManager.trackEvent('Filter', 'StatusToggle', `${status}: ${!isActive}`);
     }
 
     updateLayout() {
@@ -1577,6 +1316,114 @@ class UIManager {
             const isActive = statuses.includes(status);
             tag.classList.toggle('active', isActive);
             tag.setAttribute('aria-pressed', isActive.toString());
+        });
+    }
+
+    updateFilters() {
+        const filters = this.getCurrentFilters();
+        store.setState({ filters });
+
+        const filteredHospitals = this.filterHospitals(filters);
+
+        if (this.mapManager) {
+            this.mapManager.updateMarkerVisibility(filteredHospitals);
+        }
+        
+        GaugeManager.updateAllGauges(filteredHospitals);
+        this.updateURLParams(filters);
+
+        Utils.savePreferences({
+            ...Utils.loadPreferences(),
+            filters
+        });
+
+        AnalyticsManager.trackEvent('Filter', 'Update', `Results: ${filteredHospitals.length}`);
+    }
+
+    getCurrentFilters() {
+        return {
+            activeStatus: store.getState().activeStatus,
+            searchTerm: document.getElementById('hospital-search')?.value?.toLowerCase() || '',
+            continent: document.getElementById('continent-select')?.value || '',
+            country: document.getElementById('country-filter')?.value?.toLowerCase() || '',
+            city: document.getElementById('city-filter')?.value?.toLowerCase() || ''
+        };
+    }
+
+    filterHospitals(filters) {
+        const { hospitals } = store.getState();
+
+        return hospitals.filter(hospital => {
+            if (filters.activeStatus.length && !filters.activeStatus.includes(hospital.status)) {
+                return false;
+            }
+
+            if (filters.searchTerm && !hospital.name.toLowerCase().includes(filters.searchTerm.toLowerCase())) {
+                return false;
+            }
+
+            const address = Utils.parseAddress(hospital.address);
+
+            if (filters.continent) {
+                const hospitalContinent = Utils.getContinent(hospital.lat, hospital.lon);
+                if (hospitalContinent !== filters.continent) {
+                    return false;
+                }
+            }
+
+            if (filters.country && !address.country.toLowerCase().includes(filters.country.toLowerCase())) {
+                return false;
+            }
+
+            if (filters.city && !address.city.toLowerCase().includes(filters.city.toLowerCase())) {
+                return false;
+            }
+
+            return true;
+        });
+    }
+
+    updateURLParams(filters) {
+        const params = new URLSearchParams(window.location.search);
+
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value && (typeof value === 'string' || Array.isArray(value))) {
+                params.set(key, Array.isArray(value) ? value.join(',') : value);
+            } else {
+                params.delete(key);
+            }
+        });
+
+        const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+        window.history.replaceState({}, '', newUrl);
+    }
+
+    setupMobileKeyboardHandling(element) {
+        if (!element) return;
+
+        element.addEventListener('focus', () => {
+            if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
+                document.body.classList.add('keyboard-open');
+                this.mapManager.map?.invalidateSize();
+            }
+        });
+
+        element.addEventListener('blur', () => {
+            if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
+                document.body.classList.remove('keyboard-open');
+                this.mapManager.map?.invalidateSize();
+            }
+        });
+    }
+
+    addKeyboardSupport(element, handler) {
+        if (!element || !handler) return;
+
+        element.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handler(e);
+            }
         });
     }
 
@@ -1676,22 +1523,13 @@ class UIManager {
 
             // Clear references
             this.elements = {};
+            this.mapManager = null;
 
             console.log('UIManager cleanup completed successfully');
         } catch (error) {
             console.error('Error during UIManager cleanup:', error);
             ErrorHandler.handle(error, 'UIManager Cleanup');
         }
-    }
-
-    // Debug method
-    debug() {
-        return {
-            elements: this.elements,
-            mapManager: this.mapManager,
-            resizeObserver: this.resizeObserver,
-            state: store.getState()
-        };
     }
 }
 
