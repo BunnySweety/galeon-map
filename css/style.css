@@ -111,7 +111,7 @@ body {
     left: 4rem;
     z-index: 1000;
     padding: 1rem;
-    width: 350px;
+    width: 360px;
     transition: width var(--transition-normal),
                 padding var(--transition-normal);
 }
