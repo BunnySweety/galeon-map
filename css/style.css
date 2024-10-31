@@ -328,6 +328,8 @@ body {
 
 .leaflet-control-zoom-in,
 .leaflet-control-zoom-out {
+    display: block !important;
+    visibility: visible !important;
     width: 2.5rem !important;
     height: 2.5rem !important;
     line-height: 2.5rem !important;
@@ -341,6 +343,14 @@ body {
     align-items: center;
     justify-content: center;
     transition: all var(--transition-normal);
+}
+
+.leaflet-control-zoom-in {
+    top: 7rem;
+}
+
+.leaflet-control-zoom-out {
+    top: 9rem;
 }
 
 .leaflet-control-zoom-in:hover,
