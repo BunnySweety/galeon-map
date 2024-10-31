@@ -513,9 +513,7 @@ class MapManager {
             });
 
             this.map.zoomControl.remove();
-            L.control.zoom({
-                position: 'topleft'
-            }).addTo(this.map);
+            L.control.zoom({ position: 'topleft' }).addTo(this.map);
 
             this.setupPanes();
             this.setupMarkerCluster();

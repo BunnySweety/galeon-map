@@ -319,11 +319,11 @@ body {
 }
 
 .leaflet-control-zoom {
+    display: block;
     position: fixed !important;
     top: 8rem;
     left: 1rem;
     margin: 0 !important;
-    border: none !important;
 }
 
 .leaflet-control-zoom-in,
