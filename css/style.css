@@ -343,11 +343,11 @@ body {
 }
 
 .leaflet-control-zoom-in {
-    top: 3rem;
+    top: 5rem;
 }
 
 .leaflet-control-zoom-out {
-    top: 5rem;
+    top: 7.5rem;
 }
 
 .leaflet-control-zoom-in:hover,
