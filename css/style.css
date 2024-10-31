@@ -641,7 +641,7 @@ body.dark-mode .marker-cluster div {
 .popup-title {
     font-size: 1rem;
     font-weight: bold;
-    margin-bottom: 0.625rem;
+    margin-bottom: 0.5rem;
     color: var(--hyperlink-color);
 }
 
@@ -649,13 +649,13 @@ body.dark-mode .marker-cluster div {
     display: block;
     max-width: 100%;
     height: auto;
-    margin: 0 auto 0.625rem;
+    margin: 0 auto 0.5rem;
 }
 
 .popup-address,
 .popup-link,
 .popup-status {
-    margin: 0.5rem 0;
+    margin: 0.25rem 0;
     font-size: 0.875rem;
     text-align: center;
     width: 100%;
