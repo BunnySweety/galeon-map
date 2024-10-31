@@ -28,7 +28,7 @@ class ServiceWorkerManager {
         if (!('serviceWorker' in navigator)) return;
 
         try {
-            this.registration = await navigator.serviceWorker.register('/sw.js');
+            this.registration = await navigator.serviceWorker.register('./src/js/sw.js');
             this.handleUpdates();
         } catch (error) {
             console.error('ServiceWorker registration failed:', error);
