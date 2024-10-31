@@ -439,11 +439,11 @@ body.dark-mode .leaflet-control-zoom-out:hover {
 /* ==========================================================================
    Chart Container and Gauges
    ========================================================================== */
-   .chart-container {
+.chart-container {
     position: fixed;
     bottom: 1rem;
     right: 1rem;
-    padding: 0.75rem;
+    padding: 0.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -491,7 +491,7 @@ body.dark-mode .leaflet-control-zoom-out:hover {
     position: relative;
     width: 80px;
     height: 80px;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.125rem;
 }
 
 .gauge-value {
@@ -615,14 +615,14 @@ body.dark-mode .marker-cluster div {
     border: none;
     box-shadow: var(--shadow-lg);
     width: 100%;
-    min-width: 15rem;
+    min-width: 12.5rem;
     max-width: 18.75rem;
     text-align: center;
 }
 
 .leaflet-popup-content {
-    margin: 0;
-    padding: 0.9375rem;
+    margin: 0.5rem;
+    padding: 0;
     width: auto !important;
     text-align: center;
 }
@@ -635,12 +635,13 @@ body.dark-mode .marker-cluster div {
     display: flex;
     flex-direction: column;
     text-align: center;
+    gap: 0.5rem;
 }
 
 .popup-title {
     font-size: 1rem;
     font-weight: bold;
-    margin-bottom: 0.625rem;
+    margin-bottom: 0.25rem;
     color: var(--hyperlink-color);
 }
 
@@ -648,13 +649,13 @@ body.dark-mode .marker-cluster div {
     display: block;
     max-width: 100%;
     height: auto;
-    margin: 0 auto 0.625rem;
+    margin-bottom: 0.25rem;
 }
 
 .popup-address,
 .popup-link,
 .popup-status {
-    margin: 0.5rem 0;
+    margin: 0.25rem 0;
     font-size: 0.875rem;
     text-align: center;
     width: 100%;
@@ -662,7 +663,8 @@ body.dark-mode .marker-cluster div {
 
 .popup-address-line {
     display: block;
-    margin: 0.2rem 0;
+    margin: 0.125rem 0;
+    line-height: 1.2;
 }
 
 .popup-link {
