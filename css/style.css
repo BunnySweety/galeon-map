@@ -111,7 +111,7 @@ body {
     left: 4rem;
     z-index: 1000;
     padding: 1rem;
-    width: 400px;
+    width: 360px;
     background: var(--control-background-light);
     border: 1px solid var(--control-border-light);
     border-radius: var(--radius-md);
@@ -228,7 +228,7 @@ body {
     flex-wrap: wrap;
     gap: 0.5rem;
     margin-top: 0.5rem;
-    justify-content: flex-start;
+    justify-content: center;
     width: 100%;
 }
 
@@ -854,7 +854,7 @@ body.dark-mode .controls input:hover {
     /* Controls adjustments */
     .controls {
         width: calc(100% - 5rem);
-        max-width: 400px;
+        max-width: 360px;
         padding: 0.75rem;
         left: 3.5rem;
     }
