@@ -138,7 +138,8 @@ body {
 
 /* Full width inputs */
 .controls input[type="text"] {
-    grid-column: 1 / -1;
+    width: 100%;
+    max-width: 250px;
 }
 
 /* Input states */
