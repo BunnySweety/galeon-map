@@ -586,7 +586,8 @@ body.dark-mode .gauge-label {
 /* Dark mode adjustments */
 body.dark-mode .marker-cluster div {
     background-color: var(--control-background-dark);
-    border-color: var(--control-border-dark);
+    border-color: var(--control-border-light);
+    color: var(--text-color-dark);
 }
 
 /* ==========================================================================
