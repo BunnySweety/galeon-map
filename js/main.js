@@ -670,19 +670,52 @@ class MapManager {
                     requestAnimationFrame(() => {
                         const validMarkers = chunk
                             .map(hospital => {
-                                const marker = this.createMarker(hospital);
+                                if (!Utils.validateCoordinates(hospital.lat, hospital.lon)) {
+                                    console.warn(`Invalid coordinates for hospital ${hospital.id}`);
+                                    return null;
+                                }
+
+                                const marker = L.circleMarker([hospital.lat, hospital.lon], {
+                                    radius: CONFIG.UI.MARKER.RADIUS,
+                                    fillColor: CONFIG.UI.COLORS[hospital.status.toUpperCase()],
+                                    color: "#ffffff",
+                                    weight: CONFIG.UI.MARKER.WEIGHT,
+                                    opacity: CONFIG.UI.MARKER.OPACITY,
+                                    fillOpacity: CONFIG.UI.MARKER.FILL_OPACITY,
+                                    pane: 'markerPane'
+                                });
+
                                 if (marker) {
+                                    marker.hospitalData = hospital;
+                                    this.bindPopupToMarker(marker);
+                                    this.bindTooltipToMarker(marker);
+                                    marker.on('click', () => {
+                                        AnalyticsManager.trackEvent('Marker', 'Click', hospital.name);
+                                    });
                                     this.markers.set(hospital.id, marker);
                                 }
+
                                 return marker;
                             })
                             .filter(marker => marker instanceof L.CircleMarker);
 
                         if (validMarkers.length > 0) {
+                            this.markerClusterGroup.options.animate = false;
                             this.markerClusterGroup.addLayers(validMarkers);
+                            this.markerClusterGroup.options.animate = true;
                         }
+
                         resolve();
                     });
+                });
+            }
+
+            if (this.markers.size > 0) {
+                const bounds = L.latLngBounds(
+                    Array.from(this.markers.values()).map(m => m.getLatLng())
+                );
+                this.map.fitBounds(bounds, {
+                    padding: CONFIG.MAP.BOUNDS_PADDING
                 });
             }
 
@@ -1334,40 +1367,46 @@ class UIManager {
     updateFilters() {
         const filters = this.getCurrentFilters();
         store.setState({ filters });
-
+    
         const filteredHospitals = this.filterHospitals(filters);
-
-        // Mettre à jour les marqueurs visibles
+    
         if (this.mapManager?.markerClusterGroup) {
             this.mapManager.markerClusterGroup.clearLayers();
             
-            // Pour chaque hôpital filtré, ajouter son marqueur
+            const markersToAdd = [];
+            
             filteredHospitals.forEach(hospital => {
                 const marker = this.mapManager.markers.get(hospital.id);
-                if (marker) {
-                    this.mapManager.markerClusterGroup.addLayer(marker);
+                if (marker && marker instanceof L.CircleMarker) {
+                    markersToAdd.push(marker);
                 }
             });
+    
+            if (markersToAdd.length > 0) {
+                this.mapManager.markerClusterGroup.addLayers(markersToAdd);
+    
+                const bounds = L.latLngBounds(markersToAdd.map(m => m.getLatLng()));
+                this.mapManager.map.fitBounds(bounds, {
+                    padding: CONFIG.MAP.BOUNDS_PADDING,
+                    maxZoom: this.mapManager.map.getZoom()
+                });
+            }
         }
-
-        // Mettre à jour les jauges
+    
         GaugeManager.updateAllGauges(filteredHospitals);
         
-        // Mise à jour des paramètres d'URL
         this.updateURLParams(filters);
-
-        // Sauvegarder les préférences
+    
         Utils.savePreferences({
             ...Utils.loadPreferences(),
             filters
         });
-
-        // Afficher/masquer le message "pas de résultats"
+    
         const noResults = document.getElementById('no-hospitals-message');
         if (noResults) {
             noResults.style.display = filteredHospitals.length === 0 ? 'block' : 'none';
         }
-
+    
         AnalyticsManager.trackEvent('Filter', 'Update', `Results: ${filteredHospitals.length}`);
     }
 
@@ -1468,59 +1507,59 @@ class UIManager {
 
         element.addEventListener('keydown', keyboardHandler);
 
-        // Stocker le handler pour le nettoyage
         element._keyboardHandler = keyboardHandler;
     }
 
     clearFilters() {
-        // Reset input values
         ['hospital-search', 'country-filter', 'city-filter'].forEach(id => {
             const element = document.getElementById(id);
             if (element) {
                 element.value = '';
             }
         });
-
-        // Reset continent select
+    
         const continentSelect = document.getElementById('continent-select');
         if (continentSelect) {
             continentSelect.selectedIndex = 0;
         }
-
-        // Reset status tags
+    
         document.querySelectorAll('.status-tag').forEach(tag => {
             tag.classList.remove('active');
             tag.setAttribute('aria-pressed', 'false');
         });
-
-        // Reset store state
+    
         store.setState({ activeStatus: [] });
-
-        // Reset markers
+    
         if (this.mapManager?.markerClusterGroup) {
             this.mapManager.markerClusterGroup.clearLayers();
             
             const { hospitals } = store.getState();
+            const markersToAdd = [];
+            
             hospitals.forEach(hospital => {
                 const marker = this.mapManager.markers.get(hospital.id);
-                if (marker) {
-                    this.mapManager.markerClusterGroup.addLayer(marker);
+                if (marker && marker instanceof L.CircleMarker) {
+                    markersToAdd.push(marker);
                 }
             });
+    
+            if (markersToAdd.length > 0) {
+                this.mapManager.markerClusterGroup.addLayers(markersToAdd);
+                
+                const bounds = L.latLngBounds(markersToAdd.map(m => m.getLatLng()));
+                this.mapManager.map.fitBounds(bounds, {
+                    padding: CONFIG.MAP.BOUNDS_PADDING
+                });
+            }
+    
+            GaugeManager.updateAllGauges(hospitals);
         }
-
-        // Hide no results message
+    
         const noResults = document.getElementById('no-hospitals-message');
         if (noResults) {
             noResults.style.display = 'none';
         }
-
-        // Reset map view
-        if (this.mapManager) {
-            this.mapManager.fitMarkersInView();
-        }
-
-        // Track event
+    
         AnalyticsManager.trackEvent('Filter', 'Clear');
     }
 
@@ -1605,7 +1644,6 @@ class UIManager {
 async function initApplication() {
     try {
         console.log('Starting application initialization...');
-
         PerformanceMonitor.startMeasure('appInit');
 
         if (store.getState().isInitialized) {
@@ -1613,7 +1651,6 @@ async function initApplication() {
             return;
         }
 
-        // Check critical elements
         const mapElement = document.getElementById('map');
         const controlsElement = document.getElementById('controls');
 
@@ -1626,38 +1663,38 @@ async function initApplication() {
             throw new Error('Critical elements missing. Please ensure map and controls elements exist in the DOM');
         }
 
-        // Show loader
         const loader = document.getElementById('initial-loader');
         if (loader) loader.style.display = 'block';
 
-        // Initialize managers
         const mapManager = new MapManager('map');
         await mapManager.init();
 
         const uiManager = new UIManager(mapManager);
+        await uiManager.init();
+
         await GaugeManager.initGauges();
 
-        // Load preferences and apply initial state
         const preferences = Utils.loadPreferences();
         if (preferences?.language) {
             uiManager.updateTranslations(preferences.language);
         }
+        if (preferences?.darkMode !== undefined) {
+            uiManager.setDarkMode(preferences.darkMode);
+        }
 
         await mapManager.addMarkers(hospitals);
         await GaugeManager.updateAllGauges(hospitals);
+
         await applyInitialFilters(uiManager);
 
-        // Hide loader
         if (loader) loader.style.display = 'none';
 
-        // Mark as initialized
         store.setState({ isInitialized: true });
 
         PerformanceMonitor.endMeasure('appInit');
         AnalyticsManager.trackEvent('App', 'Initialize', 'Success');
 
         console.log('Application initialized successfully');
-
     } catch (error) {
         console.error('Initialization error details:', error);
         ErrorHandler.handle(error, 'Application Initialization');
@@ -1666,34 +1703,34 @@ async function initApplication() {
 }
 
 async function applyInitialFilters(uiManager) {
-    const params = new URLSearchParams(window.location.search);
+    try {
+        const params = new URLSearchParams(window.location.search);
 
-    const statusParam = params.get('activeStatus');
-    if (statusParam) {
-        const statuses = statusParam.split(',');
-        store.setState({ activeStatus: statuses });
-
-        document.querySelectorAll('.status-tag').forEach(tag => {
-            const status = tag.getAttribute('status');
-            const isActive = statuses.includes(status);
-            tag.classList.toggle('active', isActive);
-            tag.setAttribute('aria-pressed', isActive.toString());
-        });
-    }
-
-    const searchTerm = params.get('searchTerm');
-    if (searchTerm && uiManager.elements['hospital-search']) {
-        uiManager.elements['hospital-search'].value = searchTerm;
-    }
-
-    ['continent', 'country', 'city'].forEach(param => {
-        const value = params.get(param);
-        if (value && uiManager.elements[`${param}-filter`]) {
-            uiManager.elements[`${param}-filter`].value = value;
+        const statusParam = params.get('activeStatus');
+        if (statusParam) {
+            const statuses = statusParam.split(',');
+            store.setState({ activeStatus: statuses });
+            uiManager.applyStatusFilters(statuses);
         }
-    });
 
-    uiManager.updateFilters();
+        const searchTerm = params.get('searchTerm');
+        if (searchTerm && uiManager.elements['hospital-search']) {
+            uiManager.elements['hospital-search'].value = searchTerm;
+        }
+
+        ['continent', 'country', 'city'].forEach(param => {
+            const value = params.get(param);
+            if (value && uiManager.elements[`${param}-filter`]) {
+                uiManager.elements[`${param}-filter`].value = value;
+            }
+        });
+
+        await uiManager.updateFilters();
+
+    } catch (error) {
+        console.error('Error applying initial filters:', error);
+        ErrorHandler.handle(error, 'Initial Filters');
+    }
 }
 
 // Initialize application when DOM and resources are ready
