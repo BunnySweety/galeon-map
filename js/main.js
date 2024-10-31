@@ -512,7 +512,10 @@ class MapManager {
                 tap: true
             });
 
-            this.map.zoomControl.setPosition('topleft');
+            this.map.zoomControl.remove();
+            L.control.zoom({
+                position: 'topleft'
+            }).addTo(this.map);
 
             this.setupPanes();
             this.setupMarkerCluster();
@@ -547,7 +550,7 @@ class MapManager {
             });
 
             const { latitude: lat, longitude: lng } = position.coords;
-            
+
             if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
                 this.map.setView([lat, lng], CONFIG.MAP.DEFAULT_ZOOM, {
                     animate: true,
@@ -1097,16 +1100,16 @@ class UIManager {
         this.handleLegendToggle = () => {
             const { ui } = store.getState();
             const newLegendVisible = !ui.legendVisible;
-            
+
             const legendContainer = document.querySelector('.legend-container');
             if (legendContainer) {
                 legendContainer.classList.toggle('hidden', !newLegendVisible);
             }
-            
+
             store.setState({
                 ui: { ...ui, legendVisible: newLegendVisible }
             });
-            
+
             AnalyticsManager.trackEvent('UI', 'LegendToggle', newLegendVisible ? 'Show' : 'Hide');
         };
 
@@ -1117,11 +1120,11 @@ class UIManager {
             if (!controls || !hamburger) return;
 
             const isVisible = !controls.classList.contains('hidden');
-            
+
             controls.classList.toggle('hidden', isVisible);
             hamburger.classList.toggle('active', !isVisible);
             hamburger.setAttribute('aria-expanded', (!isVisible).toString());
-            
+
             store.setState({
                 ui: {
                     ...store.getState().ui,
