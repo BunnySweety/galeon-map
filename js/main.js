@@ -927,7 +927,7 @@ class MapManager {
 }
 
 /**
- * UI Manager Class
+ * UI Manager Class - Handles all UI interactions and state
  */
 class UIManager {
     constructor(mapManager) {
@@ -948,6 +948,7 @@ class UIManager {
         this.handleControlsToggle = this.handleControlsToggle.bind(this);
         this.handleStatusTagClick = this.handleStatusTagClick.bind(this);
         this.updateFilters = this.updateFilters.bind(this);
+        this.clearFilters = this.clearFilters.bind(this);
     }
 
     async init() {
@@ -1028,40 +1029,40 @@ class UIManager {
         window.addEventListener('orientationchange', this.handleOrientationChange, { passive: true });
         window.addEventListener('keydown', this.handleEscapeKey);
 
-        // Element-specific events
+        // Element-specific events avec le contexte correct
         const languageSelect = document.getElementById('language-select');
         if (languageSelect) {
-            languageSelect.addEventListener('change', this.handleLanguageChange);
+            languageSelect.addEventListener('change', (e) => this.handleLanguageChange(e));
         }
 
         const themeToggle = document.getElementById('theme-toggle');
         if (themeToggle) {
-            themeToggle.addEventListener('click', this.handleThemeToggle);
-            this.addKeyboardSupport(themeToggle, this.handleThemeToggle);
+            themeToggle.addEventListener('click', () => this.handleThemeToggle());
+            this.addKeyboardSupport(themeToggle, () => this.handleThemeToggle());
         }
 
         const legendToggle = document.getElementById('legend-toggle');
         if (legendToggle) {
-            legendToggle.addEventListener('click', this.handleLegendToggle);
-            this.addKeyboardSupport(legendToggle, this.handleLegendToggle);
+            legendToggle.addEventListener('click', () => this.handleLegendToggle());
+            this.addKeyboardSupport(legendToggle, () => this.handleLegendToggle());
         }
 
         const hamburgerMenu = document.getElementById('hamburger-menu');
         if (hamburgerMenu) {
-            hamburgerMenu.addEventListener('click', this.handleControlsToggle);
-            this.addKeyboardSupport(hamburgerMenu, this.handleControlsToggle);
+            hamburgerMenu.addEventListener('click', () => this.handleControlsToggle());
+            this.addKeyboardSupport(hamburgerMenu, () => this.handleControlsToggle());
         }
 
         // Filter inputs
         ['continent-select', 'country-filter', 'city-filter', 'hospital-search'].forEach(id => {
             const element = document.getElementById(id);
             if (element) {
-                element.addEventListener('input', Utils.debounce(this.updateFilters, CONFIG.UI.ANIMATION.DEBOUNCE_DELAY));
+                element.addEventListener('input', Utils.debounce(() => this.updateFilters(), CONFIG.UI.ANIMATION.DEBOUNCE_DELAY));
                 this.setupMobileKeyboardHandling(element);
             }
         });
 
-        // Status tags
+        // Status tags avec le contexte correct
         document.querySelectorAll('.status-tag').forEach(tag => {
             tag.addEventListener('click', (e) => this.handleStatusTagClick(e, tag));
             this.addKeyboardSupport(tag, (e) => this.handleStatusTagClick(e, tag));
@@ -1157,13 +1158,16 @@ class UIManager {
             ...Utils.loadPreferences(),
             language
         });
+        
         AnalyticsManager.trackEvent('UI', 'LanguageChange', language);
     }
 
     handleThemeToggle() {
         const { darkMode } = store.getState();
-        this.setDarkMode(!darkMode);
-        AnalyticsManager.trackEvent('UI', 'ThemeToggle', !darkMode ? 'Dark' : 'Light');
+        const newDarkMode = !darkMode;
+        
+        this.setDarkMode(newDarkMode);
+        AnalyticsManager.trackEvent('UI', 'ThemeToggle', newDarkMode ? 'Dark' : 'Light');
     }
 
     handleLegendToggle() {
@@ -1215,21 +1219,26 @@ class UIManager {
 
         const { activeStatus } = store.getState();
         const isActive = activeStatus.includes(status);
-
         const newActiveStatus = isActive
             ? activeStatus.filter(s => s !== status)
             : [...activeStatus, status];
 
+        // Mise à jour visuelle du tag
         tag.classList.toggle('active', !isActive);
         tag.setAttribute('aria-pressed', (!isActive).toString());
 
+        // Mise à jour du store
         store.setState({ activeStatus: newActiveStatus });
+
+        // Mise à jour des préférences
         Utils.savePreferences({
             ...Utils.loadPreferences(),
             activeStatus: newActiveStatus
         });
 
+        // Déclencher la mise à jour des filtres
         this.updateFilters();
+
         AnalyticsManager.trackEvent('Filter', 'StatusToggle', `${status}: ${!isActive}`);
     }
 
@@ -1245,7 +1254,10 @@ class UIManager {
     setDarkMode(enabled) {
         document.body.classList.toggle('dark-mode', enabled);
         store.setState({ darkMode: enabled });
-        this.mapManager.updateTileLayer();
+        
+        if (this.mapManager) {
+            this.mapManager.updateTileLayer();
+        }
 
         Utils.savePreferences({
             ...Utils.loadPreferences(),
@@ -1322,21 +1334,40 @@ class UIManager {
     updateFilters() {
         const filters = this.getCurrentFilters();
         store.setState({ filters });
-    
+
         const filteredHospitals = this.filterHospitals(filters);
-    
-        if (this.mapManager) {
-            this.mapManager.updateVisibleMarkers(filteredHospitals);
+
+        // Mettre à jour les marqueurs visibles
+        if (this.mapManager?.markerClusterGroup) {
+            this.mapManager.markerClusterGroup.clearLayers();
+            
+            // Pour chaque hôpital filtré, ajouter son marqueur
+            filteredHospitals.forEach(hospital => {
+                const marker = this.mapManager.markers.get(hospital.id);
+                if (marker) {
+                    this.mapManager.markerClusterGroup.addLayer(marker);
+                }
+            });
         }
-        
+
+        // Mettre à jour les jauges
         GaugeManager.updateAllGauges(filteredHospitals);
+        
+        // Mise à jour des paramètres d'URL
         this.updateURLParams(filters);
-    
+
+        // Sauvegarder les préférences
         Utils.savePreferences({
             ...Utils.loadPreferences(),
             filters
         });
-    
+
+        // Afficher/masquer le message "pas de résultats"
+        const noResults = document.getElementById('no-hospitals-message');
+        if (noResults) {
+            noResults.style.display = filteredHospitals.length === 0 ? 'block' : 'none';
+        }
+
         AnalyticsManager.trackEvent('Filter', 'Update', `Results: ${filteredHospitals.length}`);
     }
 
@@ -1401,42 +1432,60 @@ class UIManager {
     setupMobileKeyboardHandling(element) {
         if (!element) return;
 
-        element.addEventListener('focus', () => {
+        const handleFocus = () => {
             if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
                 document.body.classList.add('keyboard-open');
                 this.mapManager.map?.invalidateSize();
             }
-        });
+        };
 
-        element.addEventListener('blur', () => {
+        const handleBlur = () => {
             if (window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT) {
                 document.body.classList.remove('keyboard-open');
                 this.mapManager.map?.invalidateSize();
             }
-        });
+        };
+
+        element.addEventListener('focus', handleFocus);
+        element.addEventListener('blur', handleBlur);
+
+        // Stocker les handlers pour le nettoyage
+        element._mobileKeyboardHandlers = {
+            focus: handleFocus,
+            blur: handleBlur
+        };
     }
 
     addKeyboardSupport(element, handler) {
         if (!element || !handler) return;
 
-        element.addEventListener('keydown', (e) => {
+        const keyboardHandler = (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 handler(e);
             }
-        });
+        };
+
+        element.addEventListener('keydown', keyboardHandler);
+
+        // Stocker le handler pour le nettoyage
+        element._keyboardHandler = keyboardHandler;
     }
 
     clearFilters() {
         // Reset input values
         ['hospital-search', 'country-filter', 'city-filter'].forEach(id => {
             const element = document.getElementById(id);
-            if (element) element.value = '';
+            if (element) {
+                element.value = '';
+            }
         });
 
         // Reset continent select
         const continentSelect = document.getElementById('continent-select');
-        if (continentSelect) continentSelect.selectedIndex = 0;
+        if (continentSelect) {
+            continentSelect.selectedIndex = 0;
+        }
 
         // Reset status tags
         document.querySelectorAll('.status-tag').forEach(tag => {
@@ -1448,9 +1497,10 @@ class UIManager {
         store.setState({ activeStatus: [] });
 
         // Reset markers
-        const { hospitals } = store.getState();
         if (this.mapManager?.markerClusterGroup) {
             this.mapManager.markerClusterGroup.clearLayers();
+            
+            const { hospitals } = store.getState();
             hospitals.forEach(hospital => {
                 const marker = this.mapManager.markers.get(hospital.id);
                 if (marker) {
@@ -1461,7 +1511,9 @@ class UIManager {
 
         // Hide no results message
         const noResults = document.getElementById('no-hospitals-message');
-        if (noResults) noResults.style.display = 'none';
+        if (noResults) {
+            noResults.style.display = 'none';
+        }
 
         // Reset map view
         if (this.mapManager) {
@@ -1485,7 +1537,7 @@ class UIManager {
                 this.resizeObserver = null;
             }
 
-            // Remove element event listeners
+            // Clean up element event listeners
             ['language-select', 'theme-toggle', 'legend-toggle', 'hamburger-menu'].forEach(id => {
                 const element = document.getElementById(id);
                 if (!element) return;
@@ -1496,29 +1548,43 @@ class UIManager {
                         break;
                     case 'theme-toggle':
                         element.removeEventListener('click', this.handleThemeToggle);
+                        if (element._keyboardHandler) {
+                            element.removeEventListener('keydown', element._keyboardHandler);
+                        }
                         break;
                     case 'legend-toggle':
                         element.removeEventListener('click', this.handleLegendToggle);
+                        if (element._keyboardHandler) {
+                            element.removeEventListener('keydown', element._keyboardHandler);
+                        }
                         break;
                     case 'hamburger-menu':
                         element.removeEventListener('click', this.handleControlsToggle);
+                        if (element._keyboardHandler) {
+                            element.removeEventListener('keydown', element._keyboardHandler);
+                        }
                         break;
                 }
             });
 
-            // Remove filter input listeners
+            // Clean up filter input listeners
             ['continent-select', 'country-filter', 'city-filter', 'hospital-search'].forEach(id => {
                 const element = document.getElementById(id);
-                if (element) {
-                    element.removeEventListener('input', this.updateFilters);
-                    element.removeEventListener('focus', this.setupMobileKeyboardHandling);
-                    element.removeEventListener('blur', this.setupMobileKeyboardHandling);
+                if (!element) return;
+
+                element.removeEventListener('input', this.updateFilters);
+                if (element._mobileKeyboardHandlers) {
+                    element.removeEventListener('focus', element._mobileKeyboardHandlers.focus);
+                    element.removeEventListener('blur', element._mobileKeyboardHandlers.blur);
                 }
             });
 
-            // Remove status tag listeners
+            // Clean up status tag listeners
             document.querySelectorAll('.status-tag').forEach(tag => {
                 tag.removeEventListener('click', this.handleStatusTagClick);
+                if (tag._keyboardHandler) {
+                    tag.removeEventListener('keydown', tag._keyboardHandler);
+                }
             });
 
             // Clear references
