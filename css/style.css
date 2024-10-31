@@ -102,43 +102,45 @@ body {
 /* ==========================================================================
    Controls Panel
    ========================================================================== */
-   .controls {
+.controls {
     position: absolute;
-    display: grid;
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 0.75rem;
     top: 1rem;
     left: 4rem;
     z-index: 1000;
     padding: 1rem;
     width: 400px;
-    transition: width var(--transition-normal),
-                padding var(--transition-normal);
+    background: var(--control-background-light);
+    border: 1px solid var(--control-border-light);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
 }
 
-/* Two-column layout for selects */
-.controls .select-group {
+/* Select Group */
+.select-group {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 0.75rem;
     width: 100%;
 }
 
-/* Full width for text inputs */
-.controls .input-group {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
+/* Input Group */
+.input-group {
     width: 100%;
 }
 
-.controls.hidden {
-    display: none;
+.input-group .filter-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
 }
 
-/* Control Inputs */
+/* Control Inputs Base Styles */
 .controls select,
 .controls input {
+    width: 100%;
     height: 36px;
     padding: 0.5rem 1rem;
     border: 1px solid var(--control-border-light);
@@ -148,13 +150,10 @@ body {
     font-size: 0.875rem;
     transition: all var(--transition-fast);
     box-sizing: border-box;
-    width: 100%;
 }
 
-/* Full width inputs */
-.controls input[type="text"] {
-    width: 100%;
-    max-width: 250px;
+.controls.hidden {
+    display: none;
 }
 
 /* Input states */
@@ -836,6 +835,8 @@ body.dark-mode .controls input:hover {
     }
 
     /* Font size standardization */
+    .controls select,
+    .controls input,
     .status-tag,
     .legend-text,
     .gauge-value,
@@ -847,7 +848,6 @@ body.dark-mode .controls input:hover {
 
     .controls select,
     .controls input {
-        font-size: 0.875rem;
         height: 40px;
     }
 
@@ -932,63 +932,80 @@ body.dark-mode .controls input:hover {
     #hamburger-menu,
     #legend-toggle,
     #theme-toggle {
-        top: 1.25rem;
         left: calc(1rem + env(safe-area-inset-left));
     }
 
     .controls {
-        top: 0.625rem;
         left: calc(3.75rem + env(safe-area-inset-left));
     }
 
     .chart-container {
         right: calc(0.625rem + env(safe-area-inset-right)) !important;
-        transform: none;
-        width: 35% !important;
+        bottom: calc(1rem + env(safe-area-inset-bottom));
     }
 
     .legend-container {
         left: calc(3.75rem + env(safe-area-inset-left)) !important;
-        right: auto !important;
+        bottom: calc(1rem + env(safe-area-inset-bottom));
     }
 
     body.landscape-mode #legend-toggle {
-        top: 4.375rem !important;
         left: calc(1rem + env(safe-area-inset-left)) !important;
-        bottom: auto !important;
     }
 
     body.landscape-mode .chart-container {
         right: calc(1rem + env(safe-area-inset-right)) !important;
-        left: auto;
-        transform: none;
-        max-width: 21.875rem;
+        bottom: calc(1rem + env(safe-area-inset-bottom));
     }
 
     body.landscape-mode .legend-container {
-        bottom: 0.625rem;
-        left: calc(1rem + env(safe-area-inset-left));
-        right: auto;
+        left: calc(1rem + env(safe-area-inset-left)) !important;
+        bottom: calc(0.625rem + env(safe-area-inset-bottom));
     }
 }
 
 /* Small screens */
-@media (max-width: 30rem) {
+@media (max-width: 30rem) { /* 480px */
     .controls .select-group {
         grid-template-columns: 1fr;
+    }
+
+    .controls {
+        width: calc(100% - 5rem - env(safe-area-inset-left) - env(safe-area-inset-right));
+        left: calc(3.5rem + env(safe-area-inset-left));
+        padding-left: max(0.75rem, env(safe-area-inset-left));
+        padding-right: max(0.75rem, env(safe-area-inset-right));
+    }
+
+    #hamburger-menu { 
+        left: calc(1rem + env(safe-area-inset-left)); 
+    }
+
+    #theme-toggle { 
+        right: calc(1rem + env(safe-area-inset-right)); 
+    }
+
+    .legend-container {
+        left: calc(0.625rem + env(safe-area-inset-left));
+        bottom: calc(1rem + env(safe-area-inset-bottom));
+    }
+
+    .chart-container {
+        bottom: calc(1rem + env(safe-area-inset-bottom));
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
     }
 }
 
 @media (max-width: 20rem) { /* 320px */
     html {
         font-size: 12px;
-        width: calc(100% - 3rem);
-        padding: 0.5rem;
     }
 
     .controls {
-        width: calc(100% - 3rem);
+        width: calc(100% - 3rem - env(safe-area-inset-left) - env(safe-area-inset-right));
         padding: 0.5rem;
+        padding-left: max(0.5rem, env(safe-area-inset-left));
+        padding-right: max(0.5rem, env(safe-area-inset-right));
     }
 
     #hamburger-menu,
@@ -1004,7 +1021,9 @@ body.dark-mode .controls input:hover {
     .chart-container {
         max-width: 15rem;
         padding: 0.5rem;
+        padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
         gap: 0.5rem;
+        bottom: calc(1rem + env(safe-area-inset-bottom));
     }
 
     .gauge {

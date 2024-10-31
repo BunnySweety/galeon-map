@@ -50,45 +50,49 @@
 
     <!-- Controls -->
     <div id="controls" class="controls" role="complementary" aria-label="Map controls">
-        <!-- Language Selection -->
-        <select id="language-select">
-            <option value="en">English</option>
-            <option value="fr">Français</option>
-            <option value="es">Español</option>
-            <option value="zh">中文</option>
-            <option value="ar">العربية</option>
-            <option value="hi">हिन्दी</option>
-            <option value="bn">বাংলা</option>
-            <option value="pt">Português</option>
-            <option value="ru">Русский</option>
-            <option value="ja">日本語</option>
-            <option value="de">Deutsch</option>
-            <option value="ko">한국어</option>
-            <option value="vi">Tiếng Việt</option>
-            <option value="tr">Türkçe</option>
-            <option value="fa">فارسی</option>
-            <option value="ur">اردو</option>
-            <option value="it">Italiano</option>
-            <option value="pl">Polski</option>
-            <option value="nl">Nederlands</option>
-        </select>
+        <div class="select-group">
+            <!-- Language Selection -->
+            <select id="language-select">
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+                <option value="es">Español</option>
+                <option value="zh">中文</option>
+                <option value="ar">العربية</option>
+                <option value="hi">हिन्दी</option>
+                <option value="bn">বাংলা</option>
+                <option value="pt">Português</option>
+                <option value="ru">Русский</option>
+                <option value="ja">日本語</option>
+                <option value="de">Deutsch</option>
+                <option value="ko">한국어</option>
+                <option value="vi">Tiếng Việt</option>
+                <option value="tr">Türkçe</option>
+                <option value="fa">فارسی</option>
+                <option value="ur">اردو</option>
+                <option value="it">Italiano</option>
+                <option value="pl">Polski</option>
+                <option value="nl">Nederlands</option>
+            </select>
 
-        <!-- Continent Selection -->
-        <select id="continent-select" aria-label="Select continent">
-            <option value="" data-translate="continent">Continent</option>
-            <option value="Europe" data-translate="europe">Europe</option>
-            <option value="North America" data-translate="northAmerica">North America</option>
-            <option value="South America" data-translate="southAmerica">South America</option>
-            <option value="Asia" data-translate="asia">Asia</option>
-            <option value="Africa" data-translate="africa">Africa</option>
-            <option value="Oceania" data-translate="oceania">Oceania</option>
-        </select>
+            <!-- Continent Selection -->
+            <select id="continent-select" aria-label="Select continent">
+                <option value="" data-translate="continent">Continent</option>
+                <option value="Europe" data-translate="europe">Europe</option>
+                <option value="North America" data-translate="northAmerica">North America</option>
+                <option value="South America" data-translate="southAmerica">South America</option>
+                <option value="Asia" data-translate="asia">Asia</option>
+                <option value="Africa" data-translate="africa">Africa</option>
+                <option value="Oceania" data-translate="oceania">Oceania</option>
+            </select>
+        </div>
 
-        <!-- Filters -->
-        <div class="filter-container">
-            <input type="text" id="country-filter" placeholder="Filter by country" data-translate="filterCountry" aria-label="Filter by country">
-            <input type="text" id="city-filter" placeholder="Filter by city" data-translate="filterCity" aria-label="Filter by city">
-            <input type="text" id="hospital-search" placeholder="Search hospitals" data-translate="searchHospital" aria-label="Search hospitals">
+        <div class="input-group">
+            <!-- Filters -->
+            <div class="filter-container">
+                <input type="text" id="country-filter" placeholder="Filter by country" data-translate="filterCountry" aria-label="Filter by country">
+                <input type="text" id="city-filter" placeholder="Filter by city" data-translate="filterCity" aria-label="Filter by city">
+                <input type="text" id="hospital-search" placeholder="Search hospitals" data-translate="searchHospital" aria-label="Search hospitals">
+            </div>
         </div>
 
         <!-- Status Tags -->
