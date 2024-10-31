@@ -326,6 +326,31 @@ body {
     border: none !important;
 }
 
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    line-height: 2.5rem !important;
+    border-radius: 50%;
+    font-size: 1.25rem;
+    background-color: var(--control-background-light);
+    color: var(--text-color-light);
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-normal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-normal);
+}
+
+.leaflet-control-zoom-in:hover,
+.leaflet-control-zoom-out:hover {
+    background-color: var(--hover-background-light);
+    color: var(--text-color-light);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
 .leaflet-control-attribution {
     position: fixed !important;
     bottom: 0 !important;
@@ -334,6 +359,20 @@ body {
     padding: 2px 5px !important;
     font-size: 10px !important;
     z-index: 1000;
+}
+
+/* Dark mode adjustments */
+body.dark-mode .leaflet-control-zoom-in,
+body.dark-mode .leaflet-control-zoom-out {
+    background-color: var(--control-background-dark);
+    color: var(--text-color-dark);
+    box-shadow: var(--shadow-md);
+}
+
+body.dark-mode .leaflet-control-zoom-in:hover,
+body.dark-mode .leaflet-control-zoom-out:hover {
+    background-color: var(--hover-background-dark);
+    box-shadow: var(--shadow-lg);
 }
 
 /* ==========================================================================
