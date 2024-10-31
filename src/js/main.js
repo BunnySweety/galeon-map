@@ -875,31 +875,37 @@ class EnhancedMapManager {
 
     async addMarkers(hospitals) {
         if (!hospitals?.length || !this.markerClusterGroup) return;
-
+    
         this.performanceManager.startMeasure('addMarkers');
-
+    
         try {
             this.markerClusterGroup.clearLayers();
             this.markers.clear();
-
+    
             // Validate and filter hospitals
             const validHospitals = hospitals.filter(hospital => 
                 this.securityManager.validateCoordinates(hospital.lat, hospital.lon) &&
                 this.securityManager.sanitizeInput(hospital.name)
             );
-
+    
             const chunks = this.performanceManager.chunkArray(
                 validHospitals,
                 PerformanceConfig.MARKERS.CHUNK_SIZE
             );
-
+    
             for (const chunk of chunks) {
                 await new Promise(resolve => {
                     requestAnimationFrame(async () => {
                         const markers = await Promise.all(
-                            chunk.map(hospital => this.createMarker(hospital))
+                            chunk.map(async hospital => {
+                                const marker = await this.createMarker(hospital);
+                                if (marker) {
+                                    this.markers.set(hospital.id, marker);
+                                }
+                                return marker;
+                            })
                         );
-
+    
                         const validMarkers = markers.filter(Boolean);
                         
                         if (validMarkers.length > 0) {
@@ -909,12 +915,14 @@ class EnhancedMapManager {
                                 this.markerClusterGroup
                             );
                         }
-
+    
                         resolve();
                     });
                 });
             }
-
+    
+            console.log(`Added ${this.markers.size} markers`);
+    
             if (this.markers.size > 0) {
                 const bounds = L.latLngBounds(
                     Array.from(this.markers.values()).map(m => m.getLatLng())
@@ -924,12 +932,13 @@ class EnhancedMapManager {
                     maxZoom: SecurityConfig.VALIDATION.MAX_ZOOM_LEVEL
                 });
             }
-
+    
             await GaugeManager.updateAllGauges(validHospitals);
-
+    
             this.performanceManager.endMeasure('addMarkers');
         } catch (error) {
             ErrorHandler.handle(error, 'Add Markers');
+            console.error('Error details:', error);
         }
     }
 
@@ -938,7 +947,7 @@ class EnhancedMapManager {
             console.warn(`Invalid coordinates for hospital ${hospital.id}`);
             return null;
         }
-
+    
         try {
             const marker = L.circleMarker([hospital.lat, hospital.lon], {
                 radius: CONFIG.UI.MARKER.RADIUS,
@@ -949,16 +958,16 @@ class EnhancedMapManager {
                 fillOpacity: CONFIG.UI.MARKER.FILL_OPACITY,
                 pane: 'markerPane'
             });
-
+    
             marker.hospitalData = hospital;
-
+    
             this.bindPopupToMarker(marker);
             this.bindTooltipToMarker(marker);
-
+    
             marker.on('click', () => {
                 AnalyticsManager.trackEvent('Marker', 'Click', hospital.name);
             });
-
+    
             return marker;
         } catch (error) {
             console.error('Error creating marker:', error);
