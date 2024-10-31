@@ -832,6 +832,9 @@ class MapManager {
 
         const address = Utils.parseAddress(hospital.address);
 
+        const statusKey = `status${hospital.status.replace(/\s+/g, '')}`;
+        const translatedStatus = currentTranslations[statusKey] || hospital.status;
+
         container.innerHTML = `
             <h3 class="popup-title">${hospital.name}</h3>
             <div class="popup-image-wrapper">
@@ -860,7 +863,7 @@ class MapManager {
             <div class="popup-status">
                 <span>${currentTranslations.status || 'Status'}:</span>
                 <span class="status-tag status-${hospital.status.toLowerCase().replace(/\s+/g, '-')} active">
-                    ${hospital.status}
+                    ${translatedStatus}
                 </span>
             </div>
         `;
