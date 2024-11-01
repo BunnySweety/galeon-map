@@ -1,124 +1,80 @@
 /**
  * @fileoverview Complete hospital map application with security and performance optimizations
+ * @description This is the main entry point for the hospital map application.
+ * It handles map rendering, markers, clustering, data management, and user interactions.
+ * 
  * @author BunnySweety
  * @version 2.0.0
+ * @license MIT
+ * @since 1.0.0
+ * 
+ * @requires module:gauge
+ * @requires module:translations
+ * @requires module:hospitals
+ * @requires module:security
+ * @requires module:performance
+ * @requires Leaflet
+ * @requires module:leaflet.markercluster
  */
 
 'use strict';
 
-/**
- * Import required modules
- */
 import { GaugeManager } from './gauge.js';
 import { translations } from '../../data/translations.js';
 import { hospitals } from '../../data/hospitals.js';
-import { SecurityManager, SecurityConfig } from './security.js';
+import { EnhancedSecurityManager, SecurityConfig } from './security.js';
 import { PerformanceManager, PerformanceConfig } from './performance.js';
 
 /**
- * Service Worker Manager
+ * @typedef {Object} UIConfig
+ * @property {number} MOBILE_BREAKPOINT - Mobile breakpoint width in pixels
+ * @property {string} DEFAULT_LANGUAGE - Default application language
+ * @property {Object.<string, string>} COLORS - Color codes for different statuses
+ * @property {Object} IMAGE - Image related configurations
+ * @property {Object} MARKER - Marker styling configurations
+ * @property {Object} ANIMATION - Animation timing configurations
  */
-class ServiceWorkerManager {
-    constructor() {
-        this.registration = null;
-        this.setupServiceWorker();
-    }
-
-    async setupServiceWorker() {
-        if (!('serviceWorker' in navigator)) return;
-
-        try {
-            this.registration = await navigator.serviceWorker.register('./src/js/sw.js');
-            this.handleUpdates();
-        } catch (error) {
-            console.error('ServiceWorker registration failed:', error);
-        }
-    }
-
-    handleUpdates() {
-        if (!this.registration) return;
-
-        this.registration.addEventListener('updatefound', () => {
-            const newWorker = this.registration.installing;
-            
-            newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    this.showUpdateNotification();
-                }
-            });
-        });
-    }
-
-    showUpdateNotification() {
-        const shouldUpdate = confirm('A new version is available. Would you like to update ?');
-        if (shouldUpdate) {
-            this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-            window.location.reload();
-        }
-    }
-
-    async requestPeriodicSyncPermission() {
-        if (!('permissions' in navigator)) return false;
-        
-        try {
-            const status = await navigator.permissions.query({
-                name: 'periodic-background-sync'
-            });
-            
-            if (status.state === 'granted') {
-                return true;
-            }
-            
-            // Informer l'utilisateur
-            const result = confirm(
-                'Voulez-vous autoriser les mises à jour en arrière-plan ? ' +
-                'Cela permet de maintenir l\'application à jour même en mode hors ligne.'
-            );
-            
-            if (result) {
-                // La permission sera demandée par le navigateur
-                return true;
-            }
-        } catch (error) {
-            console.log('Periodic sync not supported:', error);
-        }
-        return false;
-    }
-}
 
 /**
- * Network Manager
+ * @typedef {Object} MapConfig
+ * @property {Array<number>} DEFAULT_CENTER - Default map center coordinates [lat, lon]
+ * @property {number} DEFAULT_ZOOM - Default zoom level
+ * @property {number} MAX_ZOOM - Maximum allowed zoom level
+ * @property {number} MIN_ZOOM - Minimum allowed zoom level
+ * @property {Object} CLUSTER - Marker clustering configurations
+ * @property {Array<number>} BOUNDS_PADDING - Padding for map bounds
+ * @property {Object} TILE_LAYER - Map tile layer configurations
  */
-class NetworkManager {
-    constructor() {
-        this.setupNetworkListeners();
-    }
 
-    setupNetworkListeners() {
-        window.addEventListener('online', this.handleOnline.bind(this));
-        window.addEventListener('offline', this.handleOffline.bind(this));
-    }
+/**
+ * @typedef {Object} RegionBounds
+ * @property {Array<number>} lat - Latitude range [min, max]
+ * @property {Array<number>} lon - Longitude range [min, max]
+ */
 
-    handleOnline() {
-        document.body.classList.remove('offline');
-        // Notification optionnelle
-        Utils.showError('Internet connection restored', 3000);
-    }
-
-    handleOffline() {
-        document.body.classList.add('offline');
-        // Notification optionnelle
-        Utils.showError('You are offline. Some features may be limited', 5000);
-    }
-}
-
-// Initialize managers
-const swManager = new ServiceWorkerManager();
-const networkManager = new NetworkManager();
+/**
+ * @typedef {Object} Hospital
+ * @property {string} id - Unique identifier of the hospital
+ * @property {string} name - Name of the hospital
+ * @property {number} lat - Latitude coordinate
+ * @property {number} lon - Longitude coordinate
+ * @property {string} status - Current status ('Deployed', 'In Progress', 'Signed')
+ * @property {string} address - Full address of the hospital
+ * @property {string} [website] - Hospital website URL
+ * @property {string} [imageUrl] - URL of the hospital image
+ */
 
 /**
  * Application configuration constants
  * @constant
+ * @type {Object}
+ * @property {UIConfig} UI - User interface configurations
+ * @property {MapConfig} MAP - Map related configurations
+ * @property {Object} STORAGE - Storage related configurations
+ * @property {Object.<string, RegionBounds>} REGIONS - Geographic region boundaries
+ * @property {Object} PERFORMANCE - Performance related configurations
+ * @property {Object} SECURITY - Security related configurations
+ * @property {Object.<string, string>} ERROR_MESSAGES - Application error messages
  */
 const CONFIG = {
     UI: {
@@ -207,9 +163,168 @@ const CONFIG = {
 };
 
 /**
- * Utility functions with enhanced security and performance
+ * Service Worker Manager class
+ * Handles service worker registration, updates, and periodic sync
+ * 
+ * @class
+ * @since 1.0.0
+ */
+class ServiceWorkerManager {
+    /**
+     * Creates an instance of ServiceWorkerManager
+     * @constructor
+     * @example
+     * const swManager = new ServiceWorkerManager();
+     */
+    constructor() {
+        /**
+         * Service Worker registration instance
+         * @private
+         * @type {ServiceWorkerRegistration|null}
+         */
+        this.registration = null;
+
+        this.setupServiceWorker();
+    }
+
+    /**
+     * Sets up the service worker
+     * @async
+     * @private
+     * @returns {Promise<void>}
+     * @throws {Error} When service worker registration fails
+     */
+    async setupServiceWorker() {
+        if (!('serviceWorker' in navigator)) return;
+
+        try {
+            this.registration = await navigator.serviceWorker.register('./src/js/sw.js');
+            this.handleUpdates();
+        } catch (error) {
+            console.error('ServiceWorker registration failed:', error);
+        }
+    }
+
+    /**
+     * Handles service worker updates
+     * @private
+     * @returns {void}
+     */
+    handleUpdates() {
+        if (!this.registration) return;
+
+        this.registration.addEventListener('updatefound', () => {
+            const newWorker = this.registration.installing;
+
+            newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    this.showUpdateNotification();
+                }
+            });
+        });
+    }
+
+    /**
+     * Shows update notification to user
+     * @private
+     * @returns {void}
+     */
+    showUpdateNotification() {
+        const shouldUpdate = confirm('A new version is available. Would you like to update?');
+        if (shouldUpdate) {
+            this.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            window.location.reload();
+        }
+    }
+
+    /**
+     * Requests permission for periodic background sync
+     * @async
+     * @returns {Promise<boolean>} Whether permission was granted
+     */
+    async requestPeriodicSyncPermission() {
+        if (!('permissions' in navigator)) return false;
+
+        try {
+            const status = await navigator.permissions.query({
+                name: 'periodic-background-sync'
+            });
+
+            if (status.state === 'granted') return true;
+
+            const result = confirm(
+                'Would you like to enable background updates? ' +
+                'This helps keep the application up-to-date even when offline.'
+            );
+
+            return result;
+        } catch (error) {
+            console.log('Periodic sync not supported:', error);
+            return false;
+        }
+    }
+}
+
+/**
+ * Network Manager class
+ * Handles network status monitoring and related UI updates
+ * 
+ * @class
+ * @since 1.0.0
+ */
+class NetworkManager {
+    /**
+     * Creates an instance of NetworkManager
+     * @constructor
+     * @example
+     * const networkManager = new NetworkManager();
+     */
+    constructor() {
+        this.setupNetworkListeners();
+    }
+
+    /**
+     * Sets up network status event listeners
+     * @private
+     * @returns {void}
+     */
+    setupNetworkListeners() {
+        window.addEventListener('online', this.handleOnline.bind(this));
+        window.addEventListener('offline', this.handleOffline.bind(this));
+    }
+
+    /**
+     * Handles online event
+     * @private
+     * @returns {void}
+     */
+    handleOnline() {
+        document.body.classList.remove('offline');
+        Utils.showError('Internet connection restored', 3000);
+    }
+
+    /**
+     * Handles offline event
+     * @private
+     * @returns {void}
+     */
+    handleOffline() {
+        document.body.classList.add('offline');
+        Utils.showError('You are offline. Some features may be limited', 5000);
+    }
+}
+
+/**
+ * Utility functions namespace
+ * @namespace
  */
 const Utils = {
+    /**
+     * Debounces function execution
+     * @param {Function} fn - Function to debounce
+     * @param {number} wait - Wait time in milliseconds
+     * @returns {Function} Debounced function
+     */
     debounce(fn, wait) {
         let timeout;
         return function (...args) {
@@ -218,6 +333,12 @@ const Utils = {
         };
     },
 
+    /**
+     * Throttles function execution
+     * @param {Function} fn - Function to throttle
+     * @param {number} limit - Time limit in milliseconds
+     * @returns {Function} Throttled function
+     */
     throttle(fn, limit) {
         let inThrottle;
         return function (...args) {
@@ -229,10 +350,21 @@ const Utils = {
         };
     },
 
+    /**
+     * Formats number with locale
+     * @param {number} num - Number to format
+     * @returns {string} Formatted number
+     */
     formatNumber(num) {
         return new Intl.NumberFormat().format(num);
     },
 
+    /**
+     * Gets continent based on coordinates
+     * @param {number} lat - Latitude
+     * @param {number} lon - Longitude
+     * @returns {string} Continent name or 'Unknown'
+     */
     getContinent(lat, lon) {
         for (const [name, bounds] of Object.entries(CONFIG.REGIONS)) {
             if (lat >= bounds.lat[0] && lat <= bounds.lat[1] &&
@@ -243,10 +375,19 @@ const Utils = {
         return 'Unknown';
     },
 
+    /**
+     * Parses address string into components
+     * @param {string} address - Address string to parse
+     * @returns {Object} Parsed address components
+     * @property {string} street - Street address
+     * @property {string} city - City name
+     * @property {string} country - Country name
+     * @property {string} postalCode - Postal code
+     */
     parseAddress(address) {
-        const securityManager = SecurityManager.getInstance();
+        const securityManager = new EnhancedSecurityManager();
         const sanitizedAddress = securityManager.sanitizeInput(address);
-        
+
         if (!sanitizedAddress?.trim()) {
             return {
                 street: '',
@@ -257,6 +398,8 @@ const Utils = {
         }
 
         const parts = sanitizedAddress.split(',').map(part => part.trim());
+
+        // Postal code patterns for different countries
         const postalPatterns = [
             /\b[0-9]{5}\b/,
             /\b[A-Z][0-9][A-Z]\s?[0-9][A-Z][0-9]\b/i,
@@ -291,11 +434,26 @@ const Utils = {
         };
     },
 
+    /**
+     * Validates coordinates
+     * @param {number} lat - Latitude
+     * @param {number} lon - Longitude
+     * @returns {boolean} Whether coordinates are valid
+     */
     validateCoordinates(lat, lon) {
-        const securityManager = SecurityManager.getInstance();
+        const securityManager = new EnhancedSecurityManager();
         return securityManager.validateCoordinates(lat, lon);
     },
 
+    /**
+     * Calculates distance between two points
+     * @param {number} lat1 - First latitude
+     * @param {number} lon1 - First longitude
+     * @param {number} lat2 - Second latitude
+     * @param {number} lon2 - Second longitude
+     * @returns {number} Distance in kilometers
+     * @throws {Error} If coordinates are invalid
+     */
     calculateDistance(lat1, lon1, lat2, lon2) {
         if (!this.validateCoordinates(lat1, lon1) || !this.validateCoordinates(lat2, lon2)) {
             throw new Error(CONFIG.ERROR_MESSAGES.INVALID_COORDINATES);
@@ -311,6 +469,12 @@ const Utils = {
         return R * c;
     },
 
+    /**
+     * Gets current geolocation position
+     * @async
+     * @returns {Promise<GeolocationPosition>} Current position
+     * @throws {Error} If geolocation is not supported or permission denied
+     */
     async getCurrentPosition() {
         return new Promise((resolve, reject) => {
             if (!navigator.geolocation) {
@@ -326,10 +490,15 @@ const Utils = {
         });
     },
 
+    /**
+     * Shows error message
+     * @param {string} message - Error message to display
+     * @param {number} [duration=5000] - Duration in milliseconds
+     */
     showError(message, duration = 5000) {
-        const securityManager = SecurityManager.getInstance();
+        const securityManager = new EnhancedSecurityManager();
         const sanitizedMessage = securityManager.sanitizeInput(message);
-        
+
         const errorElement = document.getElementById('error-message');
         if (errorElement) {
             errorElement.textContent = sanitizedMessage;
@@ -342,11 +511,16 @@ const Utils = {
         }
     },
 
+    /**
+     * Saves user preferences to local storage
+     * @param {Object} preferences - User preferences to save
+     * @throws {Error} If saving fails
+     */
     savePreferences(preferences) {
         try {
-            const securityManager = SecurityManager.getInstance();
+            const securityManager = new EnhancedSecurityManager();
             const sanitizedPreferences = Object.entries(preferences).reduce((acc, [key, value]) => {
-                acc[key] = typeof value === 'string' ? 
+                acc[key] = typeof value === 'string' ?
                     securityManager.sanitizeInput(value) : value;
                 return acc;
             }, {});
@@ -356,17 +530,21 @@ const Utils = {
                 timestamp: Date.now(),
                 version: CONFIG.STORAGE.VERSION
             };
-            
+
             localStorage.setItem(
-                CONFIG.STORAGE.PREFERENCES_KEY, 
+                CONFIG.STORAGE.PREFERENCES_KEY,
                 JSON.stringify(data)
             );
         } catch (error) {
-            console.error('Error saving preferences:', error);
             ErrorHandler.handle(error, 'Save Preferences');
+            throw error;
         }
     },
 
+    /**
+     * Loads user preferences from local storage
+     * @returns {Object|null} User preferences or null if not found/invalid
+     */
     loadPreferences() {
         try {
             const saved = localStorage.getItem(CONFIG.STORAGE.PREFERENCES_KEY);
@@ -382,17 +560,22 @@ const Utils = {
 
             return data;
         } catch (error) {
-            console.error('Error loading preferences:', error);
             ErrorHandler.handle(error, 'Load Preferences');
             return null;
         }
     },
 
+    /**
+     * Validates and sanitizes input
+     * @param {string} input - Input to validate
+     * @param {string} [type='text'] - Type of input
+     * @returns {string|Object|null} Sanitized input
+     */
     validateAndSanitizeInput(input, type = 'text') {
-        const securityManager = SecurityManager.getInstance();
+        const securityManager = new EnhancedSecurityManager();
         const sanitized = securityManager.sanitizeInput(input);
-        
-        switch(type) {
+
+        switch (type) {
             case 'url':
                 return securityManager.validateUrl(sanitized) ? sanitized : '';
             case 'coordinates':
@@ -404,8 +587,16 @@ const Utils = {
         }
     },
 
+    /**
+     * Safely loads resources with security checks
+     * @async
+     * @param {string} url - URL to load
+     * @param {Object} [options={}] - Fetch options
+     * @returns {Promise<Object>} Loaded resource
+     * @throws {Error} If URL is invalid or request fails
+     */
     async loadResourceSafely(url, options = {}) {
-        const securityManager = SecurityManager.getInstance();
+        const securityManager = new EnhancedSecurityManager();
         if (!securityManager.validateUrl(url)) {
             throw new Error('Invalid URL');
         }
@@ -433,104 +624,81 @@ const Utils = {
 };
 
 /**
- * Analytics Manager with enhanced tracking
- */
-class AnalyticsManager {
-    static #performanceManager = new PerformanceManager();
-    static #securityManager = SecurityManager.getInstance();
-    static #trackingEnabled = true;
-
-    static setTrackingEnabled(enabled) {
-        this.#trackingEnabled = enabled;
-    }
-
-    static trackEvent(category, action, label = null, value = null) {
-        if (!this.#trackingEnabled) return;
-
-        this.#performanceManager.startMeasure('analytics');
-        
-        const sanitizedData = {
-            category: this.#securityManager.sanitizeInput(category),
-            action: this.#securityManager.sanitizeInput(action),
-            label: label ? this.#securityManager.sanitizeInput(label) : null,
-            value: typeof value === 'number' ? value : null
-        };
-
-        console.log('Analytics:', sanitizedData);
-        this.#performanceManager.endMeasure('analytics');
-    }
-
-    static trackError(error, context = '') {
-        if (!this.#trackingEnabled) return;
-
-        const sanitizedError = this.#securityManager.sanitizeInput(error.message);
-        const sanitizedContext = this.#securityManager.sanitizeInput(context);
-        
-        console.error('Error:', sanitizedContext, sanitizedError);
-    }
-
-    static trackTiming(category, variable, time) {
-        if (!this.#trackingEnabled) return;
-
-        this.#performanceManager.startMeasure('timing');
-        const sanitizedCategory = this.#securityManager.sanitizeInput(category);
-        const sanitizedVariable = this.#securityManager.sanitizeInput(variable);
-        
-        console.log('Timing:', { 
-            category: sanitizedCategory, 
-            variable: sanitizedVariable, 
-            time 
-        });
-        
-        this.#performanceManager.endMeasure('timing');
-    }
-}
-
-/**
- * Error Handler with enhanced tracking
- */
-class ErrorHandler {
-    static #securityManager = SecurityManager.getInstance();
-    static #performanceManager = new PerformanceManager();
-
-    static handle(error, context = '') {
-        this.#performanceManager.startMeasure('errorHandling');
-
-        const sanitizedError = this.#securityManager.sanitizeInput(error.message);
-        const sanitizedContext = this.#securityManager.sanitizeInput(context);
-        
-        AnalyticsManager.trackError(error, sanitizedContext);
-        Utils.showError(sanitizedError);
-
-        this.#performanceManager.endMeasure('errorHandling');
-    }
-
-    static async wrapAsync(fn) {
-        try {
-            return await fn();
-        } catch (error) {
-            this.handle(error);
-            throw error;
-        }
-    }
-}
-
-/**
- * Global Store with enhanced security
+ * Store class for state management
+ * Manages application state with history tracking and change notifications
+ * 
+ * @class
+ * @since 1.0.0
  */
 class Store {
-    #securityManager = SecurityManager.getInstance();
+    /**
+     * Security manager instance
+     * @private
+     * @type {SecurityManager}
+     */
+    #securityManager = new EnhancedSecurityManager();
+
+    /**
+     * Performance manager instance
+     * @private
+     * @type {PerformanceManager}
+     */
     #performanceManager = new PerformanceManager();
-    
+
+    /**
+     * Creates a store instance
+     * @constructor
+     * @param {Object} [initialState={}] - Initial state
+     * @example
+     * const store = new Store({
+     *   user: null,
+     *   settings: { theme: 'light' }
+     * });
+     */
     constructor(initialState = {}) {
+        /**
+         * Current state
+         * @type {Object}
+         */
         this.state = initialState;
+
+        /**
+         * Initial state backup
+         * @type {Object}
+         * @private
+         */
         this.initialState = this.cloneState(initialState);
+
+        /**
+         * State change listeners
+         * @type {Set<Function>}
+         * @private
+         */
         this.listeners = new Set();
+
+        /**
+         * State history
+         * @type {Array<Object>}
+         * @private
+         */
         this.history = [];
+
+        /**
+         * Maximum history length
+         * @type {number}
+         * @private
+         */
         this.maxHistoryLength = 10;
     }
 
+    /**
+     * Deep clones state objects, handling special cases
+     * @private
+     * @param {*} obj - Object to clone
+     * @returns {*} Cloned object
+     */
     cloneState(obj) {
+        // Handle special Leaflet objects
         if (obj instanceof L.Map ||
             obj instanceof L.MarkerClusterGroup ||
             obj instanceof L.Layer ||
@@ -538,22 +706,27 @@ class Store {
             return obj;
         }
 
+        // Handle null and non-objects
         if (obj === null || typeof obj !== 'object') {
             return obj;
         }
 
+        // Handle Date objects
         if (obj instanceof Date) {
             return new Date(obj);
         }
 
+        // Handle Arrays
         if (obj instanceof Array) {
             return obj.map(item => this.cloneState(item));
         }
 
+        // Handle Maps
         if (obj instanceof Map) {
             return new Map([...obj].map(([key, value]) => [key, this.cloneState(value)]));
         }
 
+        // Handle plain objects
         const cloned = {};
         for (const [key, value] of Object.entries(obj)) {
             cloned[key] = this.cloneState(value);
@@ -561,46 +734,67 @@ class Store {
         return cloned;
     }
 
+    /**
+     * Updates state and notifies listeners
+     * @param {Object} newState - State updates
+     * @param {boolean} [recordHistory=true] - Whether to record in history
+     * @throws {Error} If state update validation fails
+     */
     setState(newState, recordHistory = true) {
         this.#performanceManager.startMeasure('setState');
 
-        if (recordHistory) {
-            this.history.push(this.cloneState(this.state));
-            if (this.history.length > this.maxHistoryLength) {
-                this.history.shift();
+        try {
+            if (recordHistory) {
+                this.history.push(this.cloneState(this.state));
+                if (this.history.length > this.maxHistoryLength) {
+                    this.history.shift();
+                }
             }
-        }
 
-        const oldState = this.cloneState(this.state);
-        
-        // Sanitize new state values
-        const sanitizedState = Object.entries(newState).reduce((acc, [key, value]) => {
-            acc[key] = typeof value === 'string' ? 
-                this.#securityManager.sanitizeInput(value) : value;
-            return acc;
-        }, {});
+            const oldState = this.cloneState(this.state);
 
-        this.state = { ...this.state, ...sanitizedState };
+            // Sanitize new state values
+            const sanitizedState = Object.entries(newState).reduce((acc, [key, value]) => {
+                acc[key] = typeof value === 'string' ?
+                    this.#securityManager.sanitizeInput(value) : value;
+                return acc;
+            }, {});
 
-        let hasChanged = false;
-        for (const key in sanitizedState) {
-            if (oldState[key] !== this.state[key]) {
-                hasChanged = true;
-                break;
+            this.state = { ...this.state, ...sanitizedState };
+
+            let hasChanged = false;
+            for (const key in sanitizedState) {
+                if (oldState[key] !== this.state[key]) {
+                    hasChanged = true;
+                    break;
+                }
             }
-        }
 
-        if (hasChanged) {
-            this.notify();
-        }
+            if (hasChanged) {
+                this.notify();
+            }
 
-        this.#performanceManager.endMeasure('setState');
+            this.#performanceManager.endMeasure('setState');
+        } catch (error) {
+            ErrorHandler.handle(error, 'State Update');
+            throw error;
+        }
     }
 
+    /**
+     * Gets current state
+     * @returns {Object} Current state clone
+     */
     getState() {
         return this.cloneState(this.state);
     }
 
+    /**
+     * Subscribes to state changes
+     * @param {Function} listener - Listener function
+     * @returns {Function} Unsubscribe function
+     * @throws {Error} If listener is not a function
+     */
     subscribe(listener) {
         if (typeof listener !== 'function') {
             throw new Error('Store subscriber must be a function');
@@ -609,9 +803,13 @@ class Store {
         return () => this.listeners.delete(listener);
     }
 
+    /**
+     * Notifies all listeners of state changes
+     * @private
+     */
     notify() {
         this.#performanceManager.startMeasure('storeNotify');
-        
+
         this.listeners.forEach(listener => {
             try {
                 listener(this.getState());
@@ -623,6 +821,9 @@ class Store {
         this.#performanceManager.endMeasure('storeNotify');
     }
 
+    /**
+     * Resets store to initial state
+     */
     reset() {
         this.history = [];
         this.setState(this.initialState, false);
@@ -631,6 +832,7 @@ class Store {
 
 /**
  * Global store instance
+ * @type {Store}
  */
 const store = new Store({
     map: null,
@@ -642,6 +844,8 @@ const store = new Store({
     translations: translations,
     isInitialized: false,
     hospitals: hospitals,
+    visibleHospitals: [],
+    currentZoom: CONFIG.MAP.DEFAULT_ZOOM,
     filters: {
         continent: '',
         country: '',
@@ -650,38 +854,336 @@ const store = new Store({
         statuses: []
     },
     ui: {
-        controlsVisible: false,
+        controlsVisible: window.innerWidth > CONFIG.UI.MOBILE_BREAKPOINT,
         legendVisible: true,
         selectedHospital: null,
         loading: false,
-        error: null
+        error: null,
+        mobileKeyboardVisible: false
+    },
+    preferences: {
+        language: null,
+        darkMode: null,
+        activeStatus: [],
+        lastVisitedLocation: null
+    },
+    stats: {
+        totalHospitals: 0,
+        deployedCount: 0,
+        inProgressCount: 0,
+        signedCount: 0,
+        visibleCount: 0
+    },
+    performance: {
+        lastUpdateTime: null,
+        markerUpdateCount: 0,
+        filterUpdateCount: 0
     }
 });
 
 /**
- * Enhanced Map Manager Class
+ * Error Handler class
+ * Centralized error handling and tracking
+ * 
+ * @class
+ * @static
+ * @since 1.0.0
+ */
+class ErrorHandler {
+    /**
+     * Security manager instance
+     * @private
+     * @static
+     * @type {SecurityManager}
+     */
+    static #securityManager = new EnhancedSecurityManager();
+
+    /**
+     * Performance manager instance
+     * @private
+     * @static
+     * @type {PerformanceManager}
+     */
+    static #performanceManager = new PerformanceManager();
+
+    /**
+     * Handles application errors
+     * @static
+     * @param {Error} error - Error object
+     * @param {string} [context=''] - Error context
+     * @returns {void}
+     */
+    static handle(error, context = '') {
+        this.#performanceManager.startMeasure('errorHandling');
+
+        const sanitizedError = this.#securityManager.sanitizeInput(error.message);
+        const sanitizedContext = this.#securityManager.sanitizeInput(context);
+
+        AnalyticsManager.trackError(error, sanitizedContext);
+        Utils.showError(sanitizedError);
+
+        this.#performanceManager.endMeasure('errorHandling');
+    }
+
+    /**
+     * Wraps async function with error handling
+     * @static
+     * @async
+     * @template T
+     * @param {function(): Promise<T>} fn - Async function to wrap
+     * @returns {Promise<T>}
+     * @throws {Error} Rethrows caught error after handling
+     */
+    static async wrapAsync(fn) {
+        try {
+            return await fn();
+        } catch (error) {
+            this.handle(error);
+            throw error;
+        }
+    }
+}
+
+/**
+ * Analytics Manager class
+ * Handles event tracking and analytics
+ * 
+ * @class
+ * @static
+ * @since 1.0.0
+ */
+class AnalyticsManager {
+    /**
+     * Performance manager instance
+     * @private
+     * @static
+     * @type {PerformanceManager}
+     */
+    static #performanceManager = new PerformanceManager();
+
+    /**
+     * Security manager instance
+     * @private
+     * @static
+     * @type {SecurityManager}
+     */
+    static #securityManager = new EnhancedSecurityManager();
+
+    /**
+     * Whether tracking is enabled
+     * @private
+     * @static
+     * @type {boolean}
+     */
+    static #trackingEnabled = true;
+
+    /**
+     * Enables or disables tracking
+     * @static
+     * @param {boolean} enabled - Whether tracking should be enabled
+     * @returns {void}
+     */
+    static setTrackingEnabled(enabled) {
+        this.#trackingEnabled = enabled;
+    }
+
+    /**
+     * Tracks an event
+     * @static
+     * @param {string} category - Event category
+     * @param {string} action - Event action
+     * @param {string} [label=null] - Event label
+     * @param {number} [value=null] - Event value
+     * @returns {void}
+     */
+    static trackEvent(category, action, label = null, value = null) {
+        if (!this.#trackingEnabled) return;
+
+        this.#performanceManager.startMeasure('analytics');
+
+        const sanitizedData = {
+            category: this.#securityManager.sanitizeInput(category),
+            action: this.#securityManager.sanitizeInput(action),
+            label: label ? this.#securityManager.sanitizeInput(label) : null,
+            value: typeof value === 'number' ? value : null
+        };
+
+        console.log('Analytics:', sanitizedData);
+        this.#performanceManager.endMeasure('analytics');
+    }
+
+    /**
+     * Tracks an error
+     * @static
+     * @param {Error} error - Error to track
+     * @param {string} [context=''] - Error context
+     * @returns {void}
+     */
+    static trackError(error, context = '') {
+        if (!this.#trackingEnabled) return;
+
+        const sanitizedError = this.#securityManager.sanitizeInput(error.message);
+        const sanitizedContext = this.#securityManager.sanitizeInput(context);
+
+        console.error('Error:', sanitizedContext, sanitizedError);
+    }
+
+    /**
+     * Tracks timing information
+     * @static
+     * @param {string} category - Timing category
+     * @param {string} variable - Timing variable
+     * @param {number} time - Time value in milliseconds
+     * @returns {void}
+     */
+    static trackTiming(category, variable, time) {
+        if (!this.#trackingEnabled) return;
+
+        this.#performanceManager.startMeasure('timing');
+
+        const sanitizedCategory = this.#securityManager.sanitizeInput(category);
+        const sanitizedVariable = this.#securityManager.sanitizeInput(variable);
+
+        console.log('Timing:', {
+            category: sanitizedCategory,
+            variable: sanitizedVariable,
+            time
+        });
+
+        this.#performanceManager.endMeasure('timing');
+    }
+}
+
+/**
+ * Enhanced Map Manager class
+ * Manages the map instance and all map-related operations
+ * 
+ * @class
+ * @since 1.0.0
  */
 class EnhancedMapManager {
+    /**
+     * Creates an EnhancedMapManager instance
+     * @constructor
+     * @param {string} [containerId='map'] - Map container element ID
+     */
     constructor(containerId = 'map') {
+        /**
+         * Map container element ID
+         * @type {string}
+         */
         this.containerId = containerId;
+
+        /**
+         * Leaflet map instance
+         * @type {L.Map|null}
+         */
         this.map = null;
+
+        /**
+         * Marker cluster group instance
+         * @type {L.MarkerClusterGroup|null}
+         */
         this.markerClusterGroup = null;
+
+        /**
+         * Map of markers
+         * @type {Map<string, L.CircleMarker>}
+         */
         this.markers = new Map();
+
+        /**
+         * Set of active popups
+         * @type {Set<L.CircleMarker>}
+         */
         this.activePopups = new Set();
-        this.securityManager = SecurityManager.getInstance();
+
+        /**
+         * Security manager instance
+         * @type {SecurityManager}
+         */
+        this.securityManager = new EnhancedSecurityManager();
+
+        /**
+         * Performance manager instance
+         * @type {PerformanceManager}
+         */
         this.performanceManager = new PerformanceManager();
+
+        // Security and performance limits
+        /**
+         * Maximum number of markers allowed
+         * @type {number}
+         */
+        this.MAX_MARKERS = 10000;
+
+        /**
+         * Maximum number of active popups allowed
+         * @type {number}
+         */
+        this.MAX_ACTIVE_POPUPS = 10;
+
+        /**
+         * Threshold for marker cleanup
+         * @type {number}
+         */
+        this.MARKER_CLEANUP_THRESHOLD = 5000;
+
+        /**
+         * Interval for popup updates
+         * @type {number}
+         */
+        this.POPUP_UPDATE_INTERVAL = 1000;
+
+        /**
+         * Maximum attempts for tile loading
+         * @type {number}
+         */
+        this.TILE_RETRY_ATTEMPTS = 3;
+
+        /**
+         * Delay between tile retry attempts
+         * @type {number}
+         */
+        this.TILE_RETRY_DELAY = 1000;
+
+        // Async operation queue
+        /**
+         * Queue for marker operations
+         * @type {Array}
+         * @private
+         */
+        this.markerQueue = [];
+
+        /**
+         * Whether the queue is being processed
+         * @type {boolean}
+         * @private
+         */
+        this.isProcessingQueue = false;
+
+        // Marker icon cache
+        /**
+         * Cache for marker icons
+         * @type {Map}
+         * @private
+         */
+        this.markerIconCache = new Map();
 
         // Bind methods
         this.handleResize = this.handleResize.bind(this);
         this.handleMapClick = this.handleMapClick.bind(this);
         this.handleZoomEnd = this.handleZoomEnd.bind(this);
         this.handleMoveEnd = this.handleMoveEnd.bind(this);
-        this.createClusterIcon = this.createClusterIcon.bind(this);
-        this.updateVisibleMarkers = this.updateVisibleMarkers.bind(this);
-        this.updateTileLayer = this.updateTileLayer.bind(this);
-        this.updateOpenPopups = this.updateOpenPopups.bind(this);
+        this.processMarkerQueue = this.processMarkerQueue.bind(this);
     }
 
+    /**
+     * Initializes the map
+     * @async
+     * @returns {Promise<L.Map>} Initialized map instance
+     * @throws {Error} If map initialization fails
+     */
     async init() {
         if (this.map) return this.map;
 
@@ -695,7 +1197,7 @@ class EnhancedMapManager {
 
             // Validate map configuration
             const validatedCenter = this.securityManager.validateCoordinates(
-                CONFIG.MAP.DEFAULT_CENTER[0], 
+                CONFIG.MAP.DEFAULT_CENTER[0],
                 CONFIG.MAP.DEFAULT_CENTER[1]
             ) ? CONFIG.MAP.DEFAULT_CENTER : [0, 0];
 
@@ -714,9 +1216,12 @@ class EnhancedMapManager {
             this.map.zoomControl.remove();
             L.control.zoom({ position: 'topleft' }).addTo(this.map);
 
-            await this.setupPanes();
-            await this.setupMarkerCluster();
-            await this.updateTileLayer();
+            await Promise.all([
+                this.setupPanes(),
+                this.setupMarkerCluster(),
+                this.updateTileLayer()
+            ]);
+
             this.setupEventListeners();
             this.setupSecurityBoundaries();
 
@@ -730,9 +1235,13 @@ class EnhancedMapManager {
         }
     }
 
+    /**
+     * Sets up map security boundaries
+     * @private
+     */
     setupSecurityBoundaries() {
         this.map.setMaxBounds(SecurityConfig.VALIDATION.MAX_BOUNDS);
-        
+
         this.map.on('zoomend', () => {
             const zoom = this.map.getZoom();
             if (zoom > SecurityConfig.VALIDATION.MAX_ZOOM_LEVEL) {
@@ -741,48 +1250,105 @@ class EnhancedMapManager {
         });
     }
 
+    /**
+     * Sets up map panes
+     * @async
+     * @private
+     */
     async setupPanes() {
         if (!this.map) return;
 
         this.performanceManager.startMeasure('setupPanes');
-        
+
         this.map.createPane('markerPane').style.zIndex = 450;
         this.map.createPane('popupPane').style.zIndex = 500;
         this.map.createPane('tooltipPane').style.zIndex = 550;
-        
+
         this.performanceManager.endMeasure('setupPanes');
     }
 
+    /**
+     * Sets up marker cluster group
+     * @async
+     * @private
+     * @returns {Promise<boolean>} Success status
+     */
     async setupMarkerCluster() {
-        if (!this.map) return;
+        if (!this.map) return false;
 
         this.performanceManager.startMeasure('setupCluster');
 
-        this.markerClusterGroup = L.markerClusterGroup({
-            maxClusterRadius: CONFIG.MAP.CLUSTER.MAX_RADIUS,
-            spiderfyOnMaxZoom: CONFIG.MAP.CLUSTER.SPIDER_ON_MAX_ZOOM,
-            showCoverageOnHover: CONFIG.MAP.CLUSTER.SHOW_COVERAGE,
-            zoomToBoundsOnClick: true,
-            removeOutsideVisibleBounds: true,
-            animate: CONFIG.MAP.CLUSTER.ANIMATE,
-            animateAddingMarkers: true,
-            disableClusteringAtZoom: CONFIG.MAP.CLUSTER.DISABLE_CLUSTERING_AT_ZOOM,
-            chunkedLoading: true,
-            chunkInterval: PerformanceConfig.MARKERS.CHUNK_INTERVAL,
-            chunkDelay: PerformanceConfig.MARKERS.CHUNK_DELAY,
-            iconCreateFunction: this.createClusterIcon
-        });
+        try {
+            if (this.markerClusterGroup) {
+                this.map.removeLayer(this.markerClusterGroup);
+                this.markerClusterGroup = null;
+            }
 
-        this.markerClusterGroup = this.performanceManager.enhanceClusterPerformance(
-            this.markerClusterGroup
-        );
+            this.markerClusterGroup = L.markerClusterGroup({
+                maxClusterRadius: CONFIG.MAP.CLUSTER.MAX_RADIUS,
+                spiderfyOnMaxZoom: CONFIG.MAP.CLUSTER.SPIDER_ON_MAX_ZOOM,
+                showCoverageOnHover: CONFIG.MAP.CLUSTER.SHOW_COVERAGE,
+                zoomToBoundsOnClick: true,
+                removeOutsideVisibleBounds: true,
+                animate: CONFIG.MAP.CLUSTER.ANIMATE,
+                animateAddingMarkers: true,
+                disableClusteringAtZoom: CONFIG.MAP.CLUSTER.DISABLE_CLUSTERING_AT_ZOOM,
+                chunkedLoading: true,
+                chunkInterval: PerformanceConfig.MARKERS.CHUNK_INTERVAL,
+                chunkDelay: PerformanceConfig.MARKERS.CHUNK_DELAY,
+                iconCreateFunction: this.createClusterIcon.bind(this)
+            });
 
-        this.map.addLayer(this.markerClusterGroup);
-        store.setState({ markerClusterGroup: this.markerClusterGroup });
-        
-        this.performanceManager.endMeasure('setupCluster');
+            this.setupClusterEventListeners();
+
+            if (!this.map.hasLayer(this.markerClusterGroup)) {
+                this.map.addLayer(this.markerClusterGroup);
+            }
+
+            this.markerClusterGroup = this.performanceManager.enhanceClusterPerformance(
+                this.markerClusterGroup
+            );
+
+            store.setState({ markerClusterGroup: this.markerClusterGroup });
+
+            this.performanceManager.endMeasure('setupCluster');
+            return true;
+        } catch (error) {
+            ErrorHandler.handle(error, 'Setup Marker Cluster');
+            return false;
+        }
     }
 
+    /**
+     * Sets up cluster event listeners
+     * @private
+     */
+    setupClusterEventListeners() {
+        this.markerClusterGroup.on('error', (error) => {
+            ErrorHandler.handle(error, 'Marker Cluster Error');
+        });
+
+        this.markerClusterGroup.on('clusterclick', (e) => {
+            const clusterSize = e.layer.getChildCount();
+            if (clusterSize > this.MARKER_CLEANUP_THRESHOLD) {
+                e.layer.zoomToBounds({
+                    padding: CONFIG.MAP.BOUNDS_PADDING,
+                    maxZoom: Math.min(this.map.getZoom() + 2, CONFIG.MAP.MAX_ZOOM)
+                });
+            }
+            AnalyticsManager.trackEvent('Map', 'ClusterClick', `Size: ${clusterSize}`);
+        });
+
+        this.markerClusterGroup.on('animationend', () => {
+            this.performanceManager.endMeasure('clusterAnimation');
+            this.checkAndOptimizeMarkers();
+        });
+    }
+
+    /**
+     * Sets up map event listeners
+     * @private
+     */
     setupEventListeners() {
         if (!this.map) return;
 
@@ -795,13 +1361,14 @@ class EnhancedMapManager {
             this.markerClusterGroup.on('clusterclick', (e) => {
                 AnalyticsManager.trackEvent('Map', 'ClusterClick', `Size: ${e.layer.getChildCount()}`);
             });
-
-            this.markerClusterGroup.on('animationend', () => {
-                this.performanceManager.endMeasure('clusterAnimation');
-            });
         }
     }
 
+    /**
+     * Handles map clicks
+     * @private
+     * @param {L.MouseEvent} e - Click event
+     */
     handleMapClick(e) {
         if (!this.map) return;
 
@@ -814,14 +1381,26 @@ class EnhancedMapManager {
         AnalyticsManager.trackEvent('Map', 'Click', `${e.latlng.lat},${e.latlng.lng}`);
     }
 
+    /**
+     * Handles zoom end events
+     * @private
+     */
     handleZoomEnd() {
         if (!this.map) return;
 
         const zoom = this.map.getZoom();
         AnalyticsManager.trackEvent('Map', 'Zoom', `Level: ${zoom}`);
         store.setState({ currentZoom: zoom });
+
+        requestAnimationFrame(() => {
+            this.checkAndOptimizeMarkers();
+        });
     }
 
+    /**
+     * Handles map move end events
+     * @private
+     */
     handleMoveEnd() {
         if (!this.map) return;
 
@@ -832,12 +1411,23 @@ class EnhancedMapManager {
         this.updateVisibleMarkers();
     }
 
+    /**
+     * Handles window resize events
+     * @private
+     */
     handleResize() {
         if (this.map) {
             this.map.invalidateSize();
+            this.checkAndOptimizeMarkers();
         }
     }
 
+    /**
+     * Creates a cluster icon
+     * @private
+     * @param {L.MarkerCluster} cluster - Marker cluster
+     * @returns {L.DivIcon} Cluster icon
+     */
     createClusterIcon(cluster) {
         const count = cluster.getChildCount();
         let size = 'small';
@@ -845,109 +1435,208 @@ class EnhancedMapManager {
         if (count > 100) size = 'large';
         else if (count > 10) size = 'medium';
 
-        return L.divIcon({
+        const iconKey = `cluster-${size}-${count}`;
+
+        if (this.markerIconCache.has(iconKey)) {
+            return this.markerIconCache.get(iconKey);
+        }
+
+        const icon = L.divIcon({
             html: `<div class="cluster-icon cluster-${size}">${count}</div>`,
             className: `marker-cluster marker-cluster-${size}`,
             iconSize: L.point(40, 40)
         });
+
+        this.markerIconCache.set(iconKey, icon);
+        return icon;
     }
 
+    /**
+     * Updates the map tile layer
+     * @async
+     * @returns {Promise<boolean>} Success status
+     */
     async updateTileLayer() {
-        if (!this.map) return;
+        if (!this.map) return false;
 
-        const { darkMode } = store.getState();
+        try {
+            const { darkMode } = store.getState();
 
-        if (this.map.currentTileLayer) {
-            this.map.removeLayer(this.map.currentTileLayer);
+            if (this.map.currentTileLayer) {
+                this.map.removeLayer(this.map.currentTileLayer);
+            }
+
+            const tileUrl = darkMode ? CONFIG.MAP.TILE_LAYER.DARK : CONFIG.MAP.TILE_LAYER.LIGHT;
+
+            this.map.currentTileLayer = L.tileLayer(tileUrl, {
+                maxZoom: CONFIG.MAP.MAX_ZOOM,
+                attribution: CONFIG.MAP.TILE_LAYER.ATTRIBUTION,
+                tileSize: 256,
+                updateWhenIdle: true,
+                updateWhenZooming: false,
+                keepBuffer: 2
+            });
+
+            this.setupTileLayerErrorHandling();
+            this.map.addLayer(this.map.currentTileLayer);
+
+            return true;
+        } catch (error) {
+            ErrorHandler.handle(error, 'Update Tile Layer');
+            return false;
         }
-
-        const tileUrl = darkMode ? CONFIG.MAP.TILE_LAYER.DARK : CONFIG.MAP.TILE_LAYER.LIGHT;
-
-        this.map.currentTileLayer = L.tileLayer(tileUrl, {
-            maxZoom: CONFIG.MAP.MAX_ZOOM,
-            attribution: CONFIG.MAP.TILE_LAYER.ATTRIBUTION,
-            tileSize: 256,
-            updateWhenIdle: true,
-            updateWhenZooming: false,
-            keepBuffer: 2
-        }).addTo(this.map);
     }
 
+    /**
+     * Sets up tile layer error handling
+     * @private
+     */
+    setupTileLayerErrorHandling() {
+        let retryCount = new Map();
+
+        this.map.currentTileLayer.on('tileerror', (error) => {
+            const tileUrl = error.tile.src;
+            const currentRetry = retryCount.get(tileUrl) || 0;
+
+            if (currentRetry < this.TILE_RETRY_ATTEMPTS) {
+                retryCount.set(tileUrl, currentRetry + 1);
+                setTimeout(() => {
+                    if (error.tile?.parentNode) {
+                        error.tile.src = tileUrl;
+                    }
+                }, this.TILE_RETRY_DELAY * (currentRetry + 1));
+            } else {
+                console.warn('Max tile retry attempts reached for:', tileUrl);
+                retryCount.delete(tileUrl);
+                ErrorHandler.handle(new Error('Tile loading failed'), 'Tile Layer');
+            }
+        });
+
+        this.map.currentTileLayer.on('load', () => {
+            retryCount.clear();
+        });
+    }
+
+    /**
+     * Adds multiple hospital markers to the map
+     * @async
+     * @param {Array<Object>} hospitals - Hospital data array
+     * @returns {Promise<number>} Number of markers added
+     */
     async addMarkers(hospitals) {
-        if (!hospitals?.length || !this.markerClusterGroup) return;
-    
+        if (!hospitals?.length || !this.markerClusterGroup) return 0;
+
         this.performanceManager.startMeasure('addMarkers');
-    
+        console.log('Starting addMarkers with', hospitals.length, 'hospitals');
+
         try {
-            this.markerClusterGroup.clearLayers();
-            this.markers.clear();
-    
-            // Validate and filter hospitals
-            const validHospitals = hospitals.filter(hospital => 
-                this.securityManager.validateCoordinates(hospital.lat, hospital.lon) &&
-                this.securityManager.sanitizeInput(hospital.name)
-            );
-    
+            if (hospitals.length > this.MAX_MARKERS) {
+                console.warn(`Limiting markers from ${hospitals.length} to ${this.MAX_MARKERS}`);
+                hospitals = hospitals.slice(0, this.MAX_MARKERS);
+            }
+
+            await this.clearAllMarkers();
+            const validHospitals = this.validateHospitals(hospitals);
+            console.log('Valid hospitals:', validHospitals.length);
+
             const chunks = this.performanceManager.chunkArray(
                 validHospitals,
                 PerformanceConfig.MARKERS.CHUNK_SIZE
             );
-    
+
             for (const chunk of chunks) {
-                await new Promise(resolve => {
-                    requestAnimationFrame(async () => {
-                        const markers = await Promise.all(
-                            chunk.map(async hospital => {
-                                const marker = await this.createMarker(hospital);
-                                if (marker) {
-                                    this.markers.set(hospital.id, marker);
-                                }
-                                return marker;
-                            })
-                        );
-    
-                        const validMarkers = markers.filter(Boolean);
-                        
-                        if (validMarkers.length > 0) {
-                            await this.performanceManager.optimizeMarkerRendering(
-                                validMarkers,
-                                this.map,
-                                this.markerClusterGroup
-                            );
-                        }
-    
-                        resolve();
-                    });
-                });
+                await this.processMarkerChunk(chunk);
             }
-    
-            console.log(`Added ${this.markers.size} markers`);
-    
+
+            console.log('Final marker count:', this.markers.size);
+
             if (this.markers.size > 0) {
-                const bounds = L.latLngBounds(
-                    Array.from(this.markers.values()).map(m => m.getLatLng())
-                );
-                this.map.fitBounds(bounds, {
-                    padding: CONFIG.MAP.BOUNDS_PADDING,
-                    maxZoom: SecurityConfig.VALIDATION.MAX_ZOOM_LEVEL
-                });
+                await this.fitMarkersToView();
             }
-    
+
             await GaugeManager.updateAllGauges(validHospitals);
-    
+
             this.performanceManager.endMeasure('addMarkers');
+            return this.markers.size;
         } catch (error) {
             ErrorHandler.handle(error, 'Add Markers');
-            console.error('Error details:', error);
+            return 0;
         }
     }
 
-    createMarker(hospital) {
-        if (!Utils.validateCoordinates(hospital.lat, hospital.lon)) {
-            console.warn(`Invalid coordinates for hospital ${hospital.id}`);
+    /**
+     * Validates hospitals data
+     * @private
+     * @param {Array<Object>} hospitals - Hospitals to validate
+     * @returns {Array<Object>} Valid hospitals
+     */
+    validateHospitals(hospitals) {
+        return hospitals.filter(hospital => {
+            if (!hospital?.id) {
+                console.warn('Hospital missing ID');
+                return false;
+            }
+
+            const requiredFields = ['lat', 'lon', 'name', 'status'];
+            const missingFields = requiredFields.filter(field => !hospital[field]);
+
+            if (missingFields.length > 0) {
+                console.warn(`Hospital ${hospital.id} missing fields:`, missingFields);
+                return false;
+            }
+
+            return this.securityManager.validateCoordinates(hospital.lat, hospital.lon) &&
+                this.securityManager.sanitizeInput(hospital.name);
+        });
+    }
+
+    /**
+     * Processes a chunk of markers
+     * @private
+     * @async
+     * @param {Array<Object>} chunk - Chunk of hospital data
+     * @returns {Promise<void>}
+     */
+    async processMarkerChunk(chunk) {
+        return new Promise(resolve => {
+            requestAnimationFrame(async () => {
+                const markers = await Promise.all(
+                    chunk.map(async hospital => {
+                        const marker = await this.createMarker(hospital);
+                        if (marker) {
+                            this.markers.set(hospital.id, marker);
+                        }
+                        return marker;
+                    })
+                );
+
+                const validMarkers = markers.filter(Boolean);
+
+                if (validMarkers.length > 0) {
+                    await this.performanceManager.optimizeMarkerRendering(
+                        validMarkers,
+                        this.map,
+                        this.markerClusterGroup
+                    );
+                }
+
+                resolve();
+            });
+        });
+    }
+
+    /**
+     * Creates a single marker
+     * @private
+     * @async
+     * @param {Object} hospital - Hospital data
+     * @returns {Promise<L.CircleMarker|null>} Created marker
+     */
+    async createMarker(hospital) {
+        if (!this.validateHospitalData(hospital)) {
             return null;
         }
-    
+
         try {
             const marker = L.circleMarker([hospital.lat, hospital.lon], {
                 radius: CONFIG.UI.MARKER.RADIUS,
@@ -958,61 +1647,123 @@ class EnhancedMapManager {
                 fillOpacity: CONFIG.UI.MARKER.FILL_OPACITY,
                 pane: 'markerPane'
             });
-    
+
             marker.hospitalData = hospital;
-    
-            this.bindPopupToMarker(marker);
-            this.bindTooltipToMarker(marker);
-    
-            marker.on('click', () => {
-                AnalyticsManager.trackEvent('Marker', 'Click', hospital.name);
-            });
-    
+
+            await Promise.all([
+                this.bindPopupToMarker(marker),
+                this.bindTooltipToMarker(marker)
+            ]);
+
+            this.setupMarkerEventListeners(marker);
+
             return marker;
         } catch (error) {
-            console.error('Error creating marker:', error);
+            ErrorHandler.handle(error, `Create Marker for hospital ${hospital.id}`);
             return null;
         }
     }
 
-    updateVisibleMarkers() {
-        if (!this.map || !this.markers.size) return;
+    /**
+     * Validates individual hospital data
+     * @private
+     * @param {Object} hospital - Hospital data to validate
+     * @returns {boolean} Whether data is valid
+     */
+    validateHospitalData(hospital) {
+        if (!hospital?.id) {
+            console.warn('Hospital missing ID');
+            return false;
+        }
 
-        const bounds = this.map.getBounds();
-        const visibleMarkers = [];
+        const requiredFields = ['lat', 'lon', 'name', 'status'];
+        const missingFields = requiredFields.filter(field => !hospital[field]);
 
-        this.markers.forEach(marker => {
-            if (bounds.contains(marker.getLatLng())) {
-                visibleMarkers.push(marker.hospitalData);
-            }
-        });
+        if (missingFields.length > 0) {
+            console.warn(`Hospital ${hospital.id} missing fields:`, missingFields);
+            return false;
+        }
 
-        store.setState({ visibleHospitals: visibleMarkers });
-        AnalyticsManager.trackEvent('Map', 'VisibleMarkers', `Count: ${visibleMarkers.length}`);
+        if (!Utils.validateCoordinates(hospital.lat, hospital.lon)) {
+            console.warn(`Invalid coordinates for hospital ${hospital.id}`);
+            return false;
+        }
+
+        return true;
     }
 
-    bindPopupToMarker(marker) {
+    /**
+     * Sets up marker event listeners
+     * @private
+     * @param {L.CircleMarker} marker - Marker to setup
+     * @returns {L.CircleMarker} Configured marker
+     */
+    setupMarkerEventListeners(marker) {
+        marker.on('click', () => {
+            if (this.activePopups.size >= this.MAX_ACTIVE_POPUPS) {
+                const oldestPopup = Array.from(this.activePopups)[0];
+                oldestPopup.closePopup();
+            }
+            AnalyticsManager.trackEvent('Marker', 'Click', marker.hospitalData.name);
+        });
+
+        marker.on('mouseover', () => {
+            marker.setStyle({ weight: CONFIG.UI.MARKER.WEIGHT + 1 });
+        });
+
+        marker.on('mouseout', () => {
+            marker.setStyle({ weight: CONFIG.UI.MARKER.WEIGHT });
+        });
+
+        return marker;
+    }
+
+    /**
+     * Binds popup to marker
+     * @private
+     * @async
+     * @param {L.CircleMarker} marker - Marker to bind popup to
+     */
+    async bindPopupToMarker(marker) {
         if (!marker?.hospitalData) return;
 
-        const popup = L.popup({
-            maxWidth: 300,
-            minWidth: 200,
-            className: 'hospital-popup',
-            offset: [0, -5],
-            autoPan: true,
-            autoPanPadding: [50, 50],
-            closeButton: true,
-            closeOnClick: false
-        });
+        try {
+            if (marker.getPopup()) {
+                marker.unbindPopup();
+            }
 
-        marker.bindPopup(() => {
-            const content = this.generatePopupContent(marker.hospitalData);
-            return content;
-        });
+            const popup = L.popup({
+                maxWidth: 300,
+                minWidth: 200,
+                className: 'hospital-popup',
+                offset: [0, -5],
+                autoPan: true,
+                autoPanPadding: [50, 50],
+                closeButton: true,
+                closeOnClick: false
+            });
 
+            marker.bindPopup(() => this.generatePopupContent(marker.hospitalData));
+            this.setupPopupEventListeners(marker);
+
+        } catch (error) {
+            ErrorHandler.handle(error, 'Bind Popup to Marker');
+        }
+    }
+
+    /**
+     * Sets up popup event listeners
+     * @private
+     * @param {L.CircleMarker} marker - Marker with popup
+     */
+    setupPopupEventListeners(marker) {
         marker.on('popupopen', (e) => {
             const popupElement = e.popup.getElement();
             if (popupElement) {
+                if (this.activePopups.size >= this.MAX_ACTIVE_POPUPS) {
+                    const oldestPopup = Array.from(this.activePopups)[0];
+                    oldestPopup.closePopup();
+                }
                 this.activePopups.add(marker);
                 this.initializePopupImage(popupElement);
                 AnalyticsManager.trackEvent('Popup', 'Open', marker.hospitalData.name);
@@ -1025,6 +1776,90 @@ class EnhancedMapManager {
         });
     }
 
+    /**
+     * Generates popup content
+     * @private
+     * @param {Object} hospital - Hospital data
+     * @returns {HTMLElement} Popup content element
+     */
+    generatePopupContent(hospital) {
+        if (!hospital) return document.createElement('div');
+
+        const { translations, language } = store.getState();
+        const currentTranslations = translations[language] || translations[CONFIG.UI.DEFAULT_LANGUAGE];
+
+        const container = document.createElement('div');
+        container.className = 'popup-content';
+
+        const address = Utils.parseAddress(hospital.address);
+        const sanitizedName = this.securityManager.sanitizeInput(hospital.name);
+        const sanitizedWebsite = this.securityManager.validateUrl(hospital.website) ?
+            hospital.website : '#';
+        const sanitizedImageUrl = this.securityManager.validateUrl(hospital.imageUrl) ?
+            hospital.imageUrl : CONFIG.UI.IMAGE.DEFAULT;
+
+        const statusKey = `status${hospital.status.replace(/\s+/g, '')}`;
+        const translatedStatus = currentTranslations[statusKey] || hospital.status;
+
+        container.innerHTML = this.getPopupHTML(
+            sanitizedName,
+            sanitizedImageUrl,
+            address,
+            sanitizedWebsite,
+            translatedStatus,
+            currentTranslations
+        );
+
+        return container;
+    }
+
+    /**
+     * Gets HTML content for popup
+     * @private
+     * @param {Object} params - Popup content parameters
+     * @returns {string} HTML content
+     */
+    getPopupHTML({ name, imageUrl, address, website, status, translations }) {
+        return `
+            <h3 class="popup-title">${name}</h3>
+            <div class="popup-image-wrapper">
+                <img 
+                    src="${CONFIG.UI.IMAGE.DEFAULT}"
+                    data-src="${imageUrl}" 
+                    alt="${name}"
+                    class="popup-image"
+                    data-loading-state="${CONFIG.UI.IMAGE.STATES.LOADING}"
+                />
+            </div>
+            <div class="popup-address">
+                <strong>${translations.address || 'Address'}:</strong>
+                <span class="popup-address-line">${address.street}</span>
+                ${address.postalCode || address.city ?
+                `<span class="popup-address-line">${[address.postalCode, address.city]
+                    .filter(Boolean).join(' ')}</span>`
+                : ''}
+                <span class="popup-address-line">${address.country}</span>
+            </div>
+            <a href="${website}" 
+               target="_blank" 
+               rel="noopener noreferrer" 
+               class="popup-link">
+               ${translations.visitWebsite || 'Visit Website'}
+            </a>
+            <div class="popup-status">
+                <span>${translations.status || 'Status'}:</span>
+                <span class="status-tag status-${status.toLowerCase().replace(/\s+/g, '-')} active">
+                    ${status}
+                </span>
+            </div>
+        `;
+    }
+
+    /**
+     * Binds tooltip to marker
+     * @private
+     * @param {L.CircleMarker} marker - Marker to bind tooltip to
+     */
     bindTooltipToMarker(marker) {
         if (!marker?.hospitalData?.name) return;
 
@@ -1037,118 +1872,107 @@ class EnhancedMapManager {
         });
     }
 
-    updateOpenPopups() {
-        this.performanceManager.startMeasure('updatePopups');
-        
-        this.activePopups.forEach(marker => {
-            if (marker.getPopup() && marker.getPopup().isOpen()) {
-                const popup = marker.getPopup();
-                const newContent = this.generatePopupContent(marker.hospitalData);
-                popup.setContent(newContent);
-                
-                const popupElement = popup.getElement();
-                if (popupElement) {
-                    this.initializePopupImage(popupElement);
-                }
-            }
-        });
+    /**
+     * Updates visible markers
+     * @private
+     */
+    async updateVisibleMarkers() {
+        if (!this.map || !this.markers.size) return;
 
-        this.performanceManager.endMeasure('updatePopups');
-    }
+        try {
+            const bounds = this.map.getBounds();
+            const visibleMarkers = [];
 
-    generatePopupContent(hospital) {
-        if (!hospital) return document.createElement('div');
-
-        const { translations, language } = store.getState();
-        const currentTranslations = translations[language] || translations[CONFIG.UI.DEFAULT_LANGUAGE];
-
-        const container = document.createElement('div');
-        container.className = 'popup-content';
-
-        const address = Utils.parseAddress(hospital.address);
-        const sanitizedName = this.securityManager.sanitizeInput(hospital.name);
-        const sanitizedWebsite = this.securityManager.validateUrl(hospital.website) ? 
-            hospital.website : '#';
-        const sanitizedImageUrl = this.securityManager.validateUrl(hospital.imageUrl) ? 
-            hospital.imageUrl : CONFIG.UI.IMAGE.DEFAULT;
-
-        const statusKey = `status${hospital.status.replace(/\s+/g, '')}`;
-        const translatedStatus = currentTranslations[statusKey] || hospital.status;
-
-        container.innerHTML = `
-            <h3 class="popup-title">${sanitizedName}</h3>
-            <div class="popup-image-wrapper">
-                <img 
-                    src="${CONFIG.UI.IMAGE.DEFAULT}"
-                    data-src="${sanitizedImageUrl}" 
-                    alt="${sanitizedName}"
-                    class="popup-image"
-                    data-loading-state="${CONFIG.UI.IMAGE.STATES.LOADING}"
-                />
-            </div>
-            <div class="popup-address">
-                <strong>${currentTranslations.address || 'Address'}:</strong>
-                <span class="popup-address-line">${address.street}</span>
-                ${address.postalCode || address.city ?
-                `<span class="popup-address-line">${[address.postalCode, address.city]
-                    .filter(Boolean).join(' ')}</span>`
-                : ''}
-                <span class="popup-address-line">${address.country}</span>
-            </div>
-            <a href="${sanitizedWebsite}" 
-               target="_blank" 
-               rel="noopener noreferrer" 
-               class="popup-link">
-               ${currentTranslations.visitWebsite || 'Visit Website'}
-            </a>
-            <div class="popup-status">
-                <span>${currentTranslations.status || 'Status'}:</span>
-                <span class="status-tag status-${hospital.status.toLowerCase().replace(/\s+/g, '-')} active">
-                    ${translatedStatus}
-                </span>
-            </div>
-        `;
-
-        return container;
-    }
-
-    initializePopupImage(popupElement) {
-        if (!popupElement) return;
-
-        const img = popupElement.querySelector('.popup-image');
-        if (!img?.dataset.src) return;
-
-        const loadingState = img.getAttribute('data-loading-state');
-        if (loadingState === CONFIG.UI.IMAGE.STATES.SUCCESS) return;
-
-        const imageLoader = new Image();
-
-        imageLoader.onload = () => {
-            requestAnimationFrame(() => {
-                if (img.parentElement) {
-                    img.src = img.dataset.src;
-                    img.setAttribute('data-loading-state', CONFIG.UI.IMAGE.STATES.SUCCESS);
-                    AnalyticsManager.trackEvent('Image', 'Load', 'Success');
+            this.markers.forEach(marker => {
+                if (bounds.contains(marker.getLatLng())) {
+                    visibleMarkers.push(marker.hospitalData);
                 }
             });
-        };
 
-        imageLoader.onerror = () => {
-            requestAnimationFrame(() => {
-                if (img.parentElement) {
-                    img.src = CONFIG.UI.IMAGE.DEFAULT;
-                    img.setAttribute('data-loading-state', CONFIG.UI.IMAGE.STATES.ERROR);
-                    AnalyticsManager.trackEvent('Image', 'Load', 'Error');
-                }
-            });
-        };
+            store.setState({ visibleHospitals: visibleMarkers });
+            await this.checkAndOptimizeMarkers();
 
-        if (loadingState !== CONFIG.UI.IMAGE.STATES.LOADING) {
-            img.setAttribute('data-loading-state', CONFIG.UI.IMAGE.STATES.LOADING);
-            imageLoader.src = img.dataset.src;
+            AnalyticsManager.trackEvent('Map', 'VisibleMarkers', `Count: ${visibleMarkers.length}`);
+        } catch (error) {
+            ErrorHandler.handle(error, 'Update Visible Markers');
         }
     }
 
+    /**
+     * Checks and optimizes markers for performance
+     * @private
+     * @async
+     */
+    async checkAndOptimizeMarkers() {
+        if (this.markers.size > this.MARKER_CLEANUP_THRESHOLD) {
+            try {
+                const bounds = this.map.getBounds();
+                const padding = 0.5; // 50% padding around current view
+
+                const extendedBounds = L.latLngBounds(
+                    [bounds.getSouth() - padding, bounds.getWest() - padding],
+                    [bounds.getNorth() + padding, bounds.getEast() + padding]
+                );
+
+                let optimizedCount = 0;
+                this.markers.forEach((marker, id) => {
+                    if (!extendedBounds.contains(marker.getLatLng())) {
+                        if (marker.getPopup()) marker.unbindPopup();
+                        if (marker.getTooltip()) marker.unbindTooltip();
+                        this.markerClusterGroup.removeLayer(marker);
+                        this.markers.delete(id);
+                        optimizedCount++;
+                    }
+                });
+
+                if (optimizedCount > 0) {
+                    console.log(`Optimized ${optimizedCount} markers`);
+                    await this.performanceManager.trackMemoryUsage('markerOptimization');
+                    AnalyticsManager.trackEvent('Performance', 'MarkerOptimization', `Removed: ${optimizedCount}`);
+                }
+            } catch (error) {
+                ErrorHandler.handle(error, 'Marker Optimization');
+            }
+        }
+    }
+
+    /**
+     * Fits the map view to show all markers
+     * @async
+     * @private
+     * @returns {Promise<boolean>} Success status
+     */
+    async fitMarkersToView() {
+        if (!this.map || this.markers.size === 0) return false;
+
+        try {
+            const bounds = L.latLngBounds(
+                Array.from(this.markers.values()).map(m => m.getLatLng())
+            );
+
+            await new Promise(resolve => {
+                this.map.fitBounds(bounds, {
+                    padding: CONFIG.MAP.BOUNDS_PADDING,
+                    maxZoom: SecurityConfig.VALIDATION.MAX_ZOOM_LEVEL,
+                    animate: true,
+                    duration: 1
+                });
+
+                this.map.once('moveend', resolve);
+            });
+
+            return true;
+        } catch (error) {
+            ErrorHandler.handle(error, 'Fit Markers to View');
+            return false;
+        }
+    }
+
+    /**
+     * Cleans up the map manager
+     * @async
+     * @returns {Promise<boolean>} Success status
+     */
     async cleanup() {
         try {
             this.performanceManager.startMeasure('cleanup');
@@ -1169,11 +1993,17 @@ class EnhancedMapManager {
                 this.markers.clear();
             }
 
+            this.markerIconCache.clear();
+            this.markerQueue = [];
+            this.isProcessingQueue = false;
+
             if (this.map) {
                 this.map.off();
                 this.map.remove();
                 this.map = null;
             }
+
+            window.removeEventListener('resize', this.handleResize);
 
             this.performanceManager.endMeasure('cleanup');
             await this.performanceManager.destroy();
@@ -1184,62 +2014,60 @@ class EnhancedMapManager {
             return false;
         }
     }
-
-    destroy() {
-        try {
-            this.performanceManager.startMeasure('mapDestroy');
-
-            window.removeEventListener('resize', this.handleResize);
-            if (this.map) {
-                this.map.off('click', this.handleMapClick);
-                this.map.off('zoomend', this.handleZoomEnd);
-                this.map.off('moveend', this.handleMoveEnd);
-
-                if (this.markerClusterGroup) {
-                    this.markerClusterGroup.clearLayers();
-                    this.map.removeLayer(this.markerClusterGroup);
-                }
-
-                if (this.userMarker) {
-                    this.map.removeLayer(this.userMarker);
-                }
-
-                if (this.map.currentTileLayer) {
-                    this.map.removeLayer(this.map.currentTileLayer);
-                }
-
-                this.map.remove();
-            }
-
-            this.map = null;
-            this.markerClusterGroup = null;
-            this.userMarker = null;
-            this.markers.clear();
-            this.activePopups.clear();
-
-            this.performanceManager.endMeasure('mapDestroy');
-            this.performanceManager.destroy();
-
-            console.log('MapManager cleanup completed successfully');
-        } catch (error) {
-            ErrorHandler.handle(error, 'MapManager Cleanup');
-        }
-    }
 }
 
 /**
- * Enhanced UI Manager Class
+ * Enhanced UI Manager class
+ * Manages all user interface operations and interactions
+ * 
+ * @class
+ * @since 1.0.0
  */
 class EnhancedUIManager {
+    /**
+     * Creates an EnhancedUIManager instance
+     * @constructor
+     * @param {EnhancedMapManager} mapManager - Map manager instance
+     * @throws {Error} If mapManager is not provided
+     */
     constructor(mapManager) {
         if (!mapManager) {
             throw new Error('MapManager is required');
         }
-        
+
+        /**
+         * Map manager instance
+         * @type {EnhancedMapManager}
+         * @private
+         */
         this.mapManager = mapManager;
+
+        /**
+         * UI elements references
+         * @type {Object.<string, HTMLElement>}
+         * @private
+         */
         this.elements = {};
+
+        /**
+         * Resize observer instance
+         * @type {ResizeObserver|null}
+         * @private
+         */
         this.resizeObserver = null;
-        this.securityManager = SecurityManager.getInstance();
+
+        /**
+         * Security manager instance
+         * @type {SecurityManager}
+         * @private
+         */
+        this.securityManager = new EnhancedSecurityManager();
+
+        /**
+         * Performance manager instance
+         * @type {PerformanceManager}
+         * @private
+         */
         this.performanceManager = new PerformanceManager();
 
         // Bind methods
@@ -1255,6 +2083,12 @@ class EnhancedUIManager {
         this.clearFilters = this.clearFilters.bind(this);
     }
 
+    /**
+     * Initializes the UI manager
+     * @async
+     * @returns {Promise<void>}
+     * @throws {Error} If initialization fails
+     */
     async init() {
         this.performanceManager.startMeasure('uiInit');
 
@@ -1283,6 +2117,12 @@ class EnhancedUIManager {
         }
     }
 
+    /**
+     * Initializes UI elements
+     * @async
+     * @private
+     * @returns {Promise<boolean>} Success status
+     */
     async initElements() {
         const elements = [
             'map',
@@ -1318,6 +2158,11 @@ class EnhancedUIManager {
         return true;
     }
 
+    /**
+     * Validates critical UI elements
+     * @private
+     * @returns {boolean} Whether all critical elements exist
+     */
     validateCriticalElements() {
         const criticalElements = ['map', 'controls'];
         const missingElements = criticalElements.filter(id => !document.getElementById(id));
@@ -1330,6 +2175,10 @@ class EnhancedUIManager {
         return true;
     }
 
+    /**
+     * Sets up enhanced event listeners
+     * @private
+     */
     setupEnhancedEventListeners() {
         window.addEventListener('resize', this.handleResize, { passive: true });
         window.addEventListener('orientationchange', this.handleOrientationChange, { passive: true });
@@ -1340,6 +2189,10 @@ class EnhancedUIManager {
         this.setupFilterListeners();
     }
 
+    /**
+     * Sets up input event listeners
+     * @private
+     */
     setupInputListeners() {
         const languageSelect = this.elements['language-select'];
         if (languageSelect) {
@@ -1358,6 +2211,10 @@ class EnhancedUIManager {
         });
     }
 
+    /**
+     * Sets up button event listeners
+     * @private
+     */
     setupButtonListeners() {
         const buttonHandlers = {
             'theme-toggle': this.handleThemeToggle,
@@ -1380,6 +2237,10 @@ class EnhancedUIManager {
         });
     }
 
+    /**
+     * Sets up filter event listeners
+     * @private
+     */
     setupFilterListeners() {
         document.querySelectorAll('.status-tag').forEach(tag => {
             tag.addEventListener('click', (e) => this.handleStatusTagClick(e, tag));
@@ -1387,6 +2248,10 @@ class EnhancedUIManager {
         });
     }
 
+    /**
+     * Sets up accessibility features
+     * @private
+     */
     setupAccessibility() {
         document.querySelectorAll('.status-tag').forEach(tag => {
             tag.setAttribute('role', 'button');
@@ -1403,6 +2268,10 @@ class EnhancedUIManager {
         });
     }
 
+    /**
+     * Sets up theme detection
+     * @private
+     */
     setupThemeDetection() {
         const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         const savedPreferences = Utils.loadPreferences();
@@ -1420,6 +2289,10 @@ class EnhancedUIManager {
         });
     }
 
+    /**
+     * Sets up resize observer
+     * @private
+     */
     setupResizeObserver() {
         if ('ResizeObserver' in window) {
             this.resizeObserver = new ResizeObserver(Utils.throttle(() => {
@@ -1435,17 +2308,30 @@ class EnhancedUIManager {
         }
     }
 
+    /**
+     * Handles resize events
+     * @private
+     */
     handleResize() {
         this.updateLayout();
         AnalyticsManager.trackEvent('UI', 'Resize', `Width: ${window.innerWidth}`);
     }
 
+    /**
+     * Handles orientation change events
+     * @private
+     */
     handleOrientationChange() {
         setTimeout(() => {
             this.updateLayout();
         }, 100);
     }
 
+    /**
+     * Handles escape key events
+     * @private
+     * @param {KeyboardEvent} e - Keyboard event
+     */
     handleEscapeKey(e) {
         if (e.key === 'Escape') {
             if (this.mapManager.map) {
@@ -1458,30 +2344,61 @@ class EnhancedUIManager {
         }
     }
 
+    /**
+     * Handles language change events
+     * @private
+     * @param {Event} event - Change event
+     */
     handleLanguageChange(event) {
         const language = this.securityManager.sanitizeInput(event.target.value);
         this.updateTranslations(language);
-        
+
         if (this.mapManager) {
             this.mapManager.updateOpenPopups();
         }
-        
+
         Utils.savePreferences({
             ...Utils.loadPreferences(),
             language
         });
-        
+
         AnalyticsManager.trackEvent('UI', 'LanguageChange', language);
     }
 
+    /**
+     * Handles theme toggle events
+     * @private
+     */
     handleThemeToggle() {
         const { darkMode } = store.getState();
         const newDarkMode = !darkMode;
-        
+
         this.setDarkMode(newDarkMode);
         AnalyticsManager.trackEvent('UI', 'ThemeToggle', newDarkMode ? 'Dark' : 'Light');
     }
 
+    /**
+     * Sets dark mode
+     * @param {boolean} enabled - Whether dark mode should be enabled
+     */
+    setDarkMode(enabled) {
+        document.body.classList.toggle('dark-mode', enabled);
+        store.setState({ darkMode: enabled });
+
+        if (this.mapManager) {
+            this.mapManager.updateTileLayer();
+        }
+
+        Utils.savePreferences({
+            ...Utils.loadPreferences(),
+            darkMode: enabled
+        });
+    }
+
+    /**
+     * Handles legend toggle events
+     * @private
+     */
     handleLegendToggle() {
         const { ui } = store.getState();
         const newLegendVisible = !ui.legendVisible;
@@ -1498,6 +2415,10 @@ class EnhancedUIManager {
         AnalyticsManager.trackEvent('UI', 'LegendToggle', newLegendVisible ? 'Show' : 'Hide');
     }
 
+    /**
+     * Handles controls toggle events
+     * @private
+     */
     handleControlsToggle() {
         const controls = this.elements['controls'];
         const hamburger = this.elements['hamburger-menu'];
@@ -1520,6 +2441,34 @@ class EnhancedUIManager {
         AnalyticsManager.trackEvent('UI', 'ControlsToggle', isVisible ? 'Hide' : 'Show');
     }
 
+    /**
+     * Hides controls on mobile
+     * @private
+     */
+    hideControls() {
+        const controls = this.elements['controls'];
+        const hamburger = this.elements['hamburger-menu'];
+
+        if (controls && hamburger) {
+            controls.classList.add('hidden');
+            hamburger.classList.remove('active');
+            hamburger.setAttribute('aria-expanded', 'false');
+
+            store.setState({
+                ui: {
+                    ...store.getState().ui,
+                    controlsVisible: false
+                }
+            });
+        }
+    }
+
+    /**
+     * Handles status tag click events
+     * @private
+     * @param {Event} e - Click event
+     * @param {HTMLElement} tag - Clicked tag element
+     */
     handleStatusTagClick(e, tag) {
         if (!tag) return;
 
@@ -1550,6 +2499,10 @@ class EnhancedUIManager {
         AnalyticsManager.trackEvent('Filter', 'StatusToggle', `${status}: ${!isActive}`);
     }
 
+    /**
+     * Updates layout based on screen size
+     * @private
+     */
     updateLayout() {
         const isMobile = window.innerWidth <= CONFIG.UI.MOBILE_BREAKPOINT;
         document.body.classList.toggle('mobile-view', isMobile);
@@ -1559,20 +2512,10 @@ class EnhancedUIManager {
         }
     }
 
-    setDarkMode(enabled) {
-        document.body.classList.toggle('dark-mode', enabled);
-        store.setState({ darkMode: enabled });
-        
-        if (this.mapManager) {
-            this.mapManager.updateTileLayer();
-        }
-
-        Utils.savePreferences({
-            ...Utils.loadPreferences(),
-            darkMode: enabled
-        });
-    }
-
+    /**
+     * Updates translations
+     * @param {string} language - Language code
+     */
     updateTranslations(language) {
         const { translations } = store.getState();
         const currentTranslations = translations[language] || translations[CONFIG.UI.DEFAULT_LANGUAGE];
@@ -1592,6 +2535,10 @@ class EnhancedUIManager {
         store.setState({ language });
     }
 
+    /**
+     * Loads user preferences
+     * @private
+     */
     loadUserPreferences() {
         const preferences = Utils.loadPreferences();
         if (preferences) {
@@ -1608,38 +2555,32 @@ class EnhancedUIManager {
         }
     }
 
-    applyStatusFilters(statuses) {
-        if (!Array.isArray(statuses)) return;
-
-        document.querySelectorAll('.status-tag').forEach(tag => {
-            const status = tag.getAttribute('status');
-            const isActive = statuses.includes(status);
-            tag.classList.toggle('active', isActive);
-            tag.setAttribute('aria-pressed', isActive.toString());
-        });
-    }
-
+    /**
+     * Updates filters
+     * Updates filters
+     * @private
+     */
     updateFilters() {
         const filters = this.getCurrentFilters();
         store.setState({ filters });
-    
+
         const filteredHospitals = this.filterHospitals(filters);
-    
+
         if (this.mapManager?.markerClusterGroup) {
             this.mapManager.markerClusterGroup.clearLayers();
-            
+
             const markersToAdd = [];
-            
+
             filteredHospitals.forEach(hospital => {
                 const marker = this.mapManager.markers.get(hospital.id);
                 if (marker && marker instanceof L.CircleMarker) {
                     markersToAdd.push(marker);
                 }
             });
-    
+
             if (markersToAdd.length > 0) {
                 this.mapManager.markerClusterGroup.addLayers(markersToAdd);
-    
+
                 const bounds = L.latLngBounds(markersToAdd.map(m => m.getLatLng()));
                 this.mapManager.map.fitBounds(bounds, {
                     padding: CONFIG.MAP.BOUNDS_PADDING,
@@ -1647,24 +2588,29 @@ class EnhancedUIManager {
                 });
             }
         }
-    
+
         GaugeManager.updateAllGauges(filteredHospitals);
-        
+
         this.updateURLParams(filters);
-    
+
         Utils.savePreferences({
             ...Utils.loadPreferences(),
             filters
         });
-    
+
         const noResults = this.elements['no-hospitals-message'];
         if (noResults) {
             noResults.style.display = filteredHospitals.length === 0 ? 'block' : 'none';
         }
-    
+
         AnalyticsManager.trackEvent('Filter', 'Update', `Results: ${filteredHospitals.length}`);
     }
 
+    /**
+     * Gets current filters state
+     * @private
+     * @returns {Object} Current filters
+     */
     getCurrentFilters() {
         const searchTerm = this.elements['hospital-search']?.value;
         const continent = this.elements['continent-select']?.value;
@@ -1680,6 +2626,12 @@ class EnhancedUIManager {
         };
     }
 
+    /**
+     * Filters hospitals based on current filters
+     * @private
+     * @param {Object} filters - Current filters
+     * @returns {Array<Object>} Filtered hospitals
+     */
     filterHospitals(filters) {
         const { hospitals } = store.getState();
 
@@ -1690,7 +2642,7 @@ class EnhancedUIManager {
             }
 
             // Search term filter
-            if (filters.searchTerm && 
+            if (filters.searchTerm &&
                 !hospital.name.toLowerCase().includes(filters.searchTerm.toLowerCase())) {
                 return false;
             }
@@ -1719,6 +2671,11 @@ class EnhancedUIManager {
         });
     }
 
+    /**
+     * Updates URL parameters based on current filters
+     * @private
+     * @param {Object} filters - Current filters
+     */
     updateURLParams(filters) {
         const params = new URLSearchParams(window.location.search);
 
@@ -1734,6 +2691,11 @@ class EnhancedUIManager {
         window.history.replaceState({}, '', newUrl);
     }
 
+    /**
+     * Sets up mobile keyboard handling
+     * @private
+     * @param {HTMLElement} element - Input element
+     */
     setupMobileKeyboardHandling(element) {
         if (!element) return;
 
@@ -1760,6 +2722,12 @@ class EnhancedUIManager {
         };
     }
 
+    /**
+     * Adds keyboard support to element
+     * @private
+     * @param {HTMLElement} element - Element to enhance
+     * @param {Function} handler - Click handler
+     */
     addKeyboardSupport(element, handler) {
         if (!element || !handler) return;
 
@@ -1774,6 +2742,9 @@ class EnhancedUIManager {
         element._keyboardHandler = keyboardHandler;
     }
 
+    /**
+     * Clears all filters
+     */
     clearFilters() {
         ['hospital-search', 'country-filter', 'city-filter'].forEach(id => {
             const element = this.elements[id];
@@ -1781,52 +2752,71 @@ class EnhancedUIManager {
                 element.value = '';
             }
         });
-    
+
         const continentSelect = this.elements['continent-select'];
         if (continentSelect) {
             continentSelect.selectedIndex = 0;
         }
-    
+
         document.querySelectorAll('.status-tag').forEach(tag => {
             tag.classList.remove('active');
             tag.setAttribute('aria-pressed', 'false');
         });
-    
+
         store.setState({ activeStatus: [] });
-    
+
         if (this.mapManager?.markerClusterGroup) {
             this.mapManager.markerClusterGroup.clearLayers();
-            
+
             const { hospitals } = store.getState();
             const markersToAdd = [];
-            
+
             hospitals.forEach(hospital => {
                 const marker = this.mapManager.markers.get(hospital.id);
                 if (marker && marker instanceof L.CircleMarker) {
                     markersToAdd.push(marker);
                 }
             });
-    
+
             if (markersToAdd.length > 0) {
                 this.mapManager.markerClusterGroup.addLayers(markersToAdd);
-                
+
                 const bounds = L.latLngBounds(markersToAdd.map(m => m.getLatLng()));
                 this.mapManager.map.fitBounds(bounds, {
                     padding: CONFIG.MAP.BOUNDS_PADDING
                 });
             }
-    
+
             GaugeManager.updateAllGauges(hospitals);
         }
-    
+
         const noResults = this.elements['no-hospitals-message'];
         if (noResults) {
             noResults.style.display = 'none';
         }
-    
+
         AnalyticsManager.trackEvent('Filter', 'Clear');
     }
 
+    /**
+     * Applies status filters
+     * @private
+     * @param {Array<string>} statuses - Statuses to apply
+     */
+    applyStatusFilters(statuses) {
+        if (!Array.isArray(statuses)) return;
+
+        document.querySelectorAll('.status-tag').forEach(tag => {
+            const status = tag.getAttribute('status');
+            const isActive = statuses.includes(status);
+            tag.classList.toggle('active', isActive);
+            tag.setAttribute('aria-pressed', isActive.toString());
+        });
+    }
+
+    /**
+     * Cleans up the UI manager
+     */
     destroy() {
         try {
             this.performanceManager.startMeasure('uiDestroy');
@@ -1863,11 +2853,15 @@ class EnhancedUIManager {
     }
 }
 
+// Initialize application
 /**
- * Enhanced application initialization
+ * Initializes the enhanced application
+ * @async
+ * @function
+ * @returns {Promise<void>}
  */
 async function initEnhancedApplication() {
-    const securityManager = SecurityManager.getInstance();
+    const securityManager = new EnhancedSecurityManager();
     const performanceManager = new PerformanceManager();
 
     try {
@@ -1876,14 +2870,13 @@ async function initEnhancedApplication() {
 
         if (!navigator.onLine) {
             document.body.classList.add('offline');
-        }        
+        }
 
         if (store.getState().isInitialized) {
             console.log('Application already initialized');
             return;
         }
 
-        // Validate critical elements
         const mapElement = document.getElementById('map');
         const controlsElement = document.getElementById('controls');
 
@@ -1891,21 +2884,17 @@ async function initEnhancedApplication() {
             throw new Error(CONFIG.ERROR_MESSAGES.INIT_FAILED);
         }
 
-        // Show loader
         const loader = document.getElementById('initial-loader');
         if (loader) loader.style.display = 'block';
 
-        // Initialize managers
         const mapManager = new EnhancedMapManager('map');
         await mapManager.init();
 
         const uiManager = new EnhancedUIManager(mapManager);
         await uiManager.init();
 
-        // Initialize components
         await GaugeManager.initGauges();
 
-        // Load and apply user preferences
         const preferences = Utils.loadPreferences();
         if (preferences?.language) {
             uiManager.updateTranslations(preferences.language);
@@ -1914,20 +2903,16 @@ async function initEnhancedApplication() {
             uiManager.setDarkMode(preferences.darkMode);
         }
 
-        // Load and display data
-        const validatedHospitals = hospitals.filter(hospital => 
+        const validatedHospitals = hospitals.filter(hospital =>
             securityManager.validateCoordinates(hospital.lat, hospital.lon) &&
             securityManager.sanitizeInput(hospital.name)
         );
 
         await mapManager.addMarkers(validatedHospitals);
         await GaugeManager.updateAllGauges(validatedHospitals);
-        await applyInitialFilters(uiManager);
 
-        // Hide loader
         if (loader) loader.style.display = 'none';
 
-        // Set initialization flag
         store.setState({ isInitialized: true });
 
         performanceManager.endMeasure('appInit');
@@ -1941,52 +2926,7 @@ async function initEnhancedApplication() {
     }
 }
 
-/**
- * Apply initial filters from URL parameters
- */
-async function applyInitialFilters(uiManager) {
-    const performanceManager = new PerformanceManager();
-    
-    try {
-        performanceManager.startMeasure('applyFilters');
-        const securityManager = SecurityManager.getInstance();
-        const params = new URLSearchParams(window.location.search);
-
-        // Apply status filters
-        const statusParam = params.get('activeStatus');
-        if (statusParam) {
-            const statuses = statusParam.split(',')
-                .map(s => securityManager.sanitizeInput(s))
-                .filter(Boolean);
-            
-            store.setState({ activeStatus: statuses });
-            uiManager.applyStatusFilters(statuses);
-        }
-
-        // Apply search term
-        const searchTerm = params.get('searchTerm');
-        if (searchTerm && uiManager.elements['hospital-search']) {
-            uiManager.elements['hospital-search'].value = 
-                securityManager.sanitizeInput(searchTerm);
-        }
-
-        // Apply other filters
-        ['continent', 'country', 'city'].forEach(param => {
-            const value = params.get(param);
-            if (value && uiManager.elements[`${param}-filter`]) {
-                uiManager.elements[`${param}-filter`].value = 
-                    securityManager.sanitizeInput(value);
-            }
-        });
-
-        await uiManager.updateFilters();
-        performanceManager.endMeasure('applyFilters');
-    } catch (error) {
-        ErrorHandler.handle(error, 'Initial Filters');
-    }
-}
-
-// Initialize application when DOM is ready
+// Initialize on DOM ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('load', () => {
@@ -2003,7 +2943,6 @@ if (document.readyState === 'loading') {
     });
 }
 
-// Export enhanced modules
 export {
     initEnhancedApplication,
     EnhancedMapManager,
