@@ -22,7 +22,7 @@
 import { GaugeManager } from './gauge.js';
 import { translations } from '../../data/translations.js';
 import { hospitals } from '../../data/hospitals.js';
-import { EnhancedSecurityManager, SecurityConfig } from './security.js';
+import { SecurityManager, EnhancedSecurityManager, SecurityConfig } from './security.js';
 import { PerformanceManager, PerformanceConfig } from './performance.js';
 
 /**
