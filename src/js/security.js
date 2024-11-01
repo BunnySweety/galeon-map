@@ -496,11 +496,59 @@ class EnhancedSecurityManager extends SecurityManager {
    * @private
    */
   setupContentSecurityPolicy() {
-    const policy = "default-src 'self'; script-src 'self' 'https://unpkg.com'; style-src 'self' 'unsafe-inline'; image-src 'self' data: https:; connect-src 'self'; font-src 'self' https://unpkg.com; worker-src 'self'; manifest-src 'self'; media-src 'self';";
+    const policy = "default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; font-src 'self' https://unpkg.com; worker-src 'self'; manifest-src 'self'; media-src 'self';";
     const meta = document.createElement('meta');
     meta.httpEquiv = "Content-Security-Policy";
     meta.content = policy;
     document.getElementsByTagName('head')[0].appendChild(meta);
+  }
+
+  /**
+   * Sets up XSS protection
+   * @private
+   */
+  setupXSSProtection() {
+    document.addEventListener('input', (event) => {
+      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+        const sanitizedValue = this.sanitizeInput(event.target.value);
+        if (sanitizedValue !== event.target.value) {
+          event.target.value = sanitizedValue;
+        }
+      }
+    });
+  }
+
+  /**
+   * Sets up secure headers
+   * @private
+   */
+  setupSecureHeaders() {
+    const headers = new Headers();
+    headers.append('X-Content-Type-Options', 'nosniff');
+    headers.append('X-Frame-Options', 'DENY');
+    headers.append('X-XSS-Protection', '1; mode=block');
+
+    const originalFetch = window.fetch;
+    window.fetch = function () {
+      arguments[1] = arguments[1] || {};
+      arguments[1].headers = headers;
+      return originalFetch.apply(this, arguments);
+    };
+  }
+
+  /**
+   * Sets up enhanced event listeners
+   * @private
+   */
+  setupEnhancedEventListeners() {
+    window.addEventListener('csp-violation', (event) => {
+      console.warn('CSP Violation:', event);
+      this.#securityViolations.set(event.blockedURI, (this.#securityViolations.get(event.blockedURI) || 0) + 1);
+    });
+
+    window.addEventListener('error', (event) => {
+      console.error('Error event:', event);
+    });
   }
 
   /**
