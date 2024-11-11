@@ -1,0 +1,96 @@
+{
+    "app": {
+      "name": "医院地图",
+      "description": "互动医院部署状态地图",
+      "version": "1.0.0"
+    },
+    "navigation": {
+      "home": "主页",
+      "map": "地图",
+      "search": "搜索",
+      "settings": "设置"
+    },
+    "map": {
+      "controls": {
+        "zoomIn": "放大",
+        "zoomOut": "缩小", 
+        "fullscreen": "全屏",
+        "locate": "定位"
+      },
+      "filters": {
+        "title": "筛选",
+        "status": "状态",
+        "region": "地区",
+        "search": "搜索医院...",
+        "clear": "清除筛选",
+        "noResults": "未找到医院"
+      },
+      "legend": {
+        "title": "图例",
+        "deployed": "已部署",
+        "inProgress": "进行中",
+        "signed": "已签约"
+      }
+    },
+    "hospital": {
+      "status": {
+        "deployed": "已部署",
+        "inProgress": "进行中",
+        "signed": "已签约"
+      },
+      "details": {
+        "address": "地址",
+        "website": "网站",
+        "visitWebsite": "访问网站",
+        "contact": "联系方式",
+        "status": "状态"
+      }
+    },
+    "regions": {
+      "europe": "欧洲",
+      "northAmerica": "北美洲",
+      "southAmerica": "南美洲",
+      "asia": "亚洲",
+      "africa": "非洲", 
+      "oceania": "大洋洲"
+    },
+    "errors": {
+      "general": "发生错误",
+      "network": "网络错误",
+      "notFound": "未找到",
+      "loading": "加载错误",
+      "retry": "重试"
+    },
+    "notifications": {
+      "updateAvailable": "有新版本",
+      "update": "更新",
+      "offline": "离线状态",
+      "online": "在线状态"
+    },
+    "buttons": {
+      "close": "关闭",
+      "cancel": "取消",
+      "save": "保存",
+      "edit": "编辑",
+      "delete": "删除",
+      "confirm": "确认"
+    },
+    "settings": {
+      "theme": {
+        "title": "主题",
+        "light": "浅色",
+        "dark": "深色",
+        "system": "跟随系统"
+      },
+      "language": {
+        "title": "语言",
+        "auto": "自动"
+      },
+      "map": {
+        "title": "地图设置",
+        "clustering": "启用聚合",
+        "animations": "启用动画",
+        "performance": "性能模式"
+      }
+    }
+}

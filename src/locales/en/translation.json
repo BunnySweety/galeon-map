@@ -1,0 +1,96 @@
+{
+    "app": {
+      "name": "Hospital Map",
+      "description": "Interactive hospital deployment status map",
+      "version": "1.0.0"
+    },
+    "navigation": {
+      "home": "Home",
+      "map": "Map",
+      "search": "Search",
+      "settings": "Settings"
+    },
+    "map": {
+      "controls": {
+        "zoomIn": "Zoom in",
+        "zoomOut": "Zoom out",
+        "fullscreen": "Fullscreen",
+        "locate": "Find my location"
+      },
+      "filters": {
+        "title": "Filters",
+        "status": "Status",
+        "region": "Region",
+        "search": "Search hospitals...",
+        "clear": "Clear filters",
+        "noResults": "No hospitals found"
+      },
+      "legend": {
+        "title": "Legend",
+        "deployed": "Deployed",
+        "inProgress": "In Progress",
+        "signed": "Signed"
+      }
+    },
+    "hospital": {
+      "status": {
+        "deployed": "Deployed",
+        "inProgress": "In Progress",
+        "signed": "Signed"
+      },
+      "details": {
+        "address": "Address",
+        "website": "Website",
+        "visitWebsite": "Visit Website",
+        "contact": "Contact",
+        "status": "Status"
+      }
+    },
+    "regions": {
+      "europe": "Europe",
+      "northAmerica": "North America",
+      "southAmerica": "South America",
+      "asia": "Asia",
+      "africa": "Africa",
+      "oceania": "Oceania"
+    },
+    "errors": {
+      "general": "An error occurred",
+      "network": "Network error",
+      "notFound": "Not found",
+      "loading": "Error loading data",
+      "retry": "Retry"
+    },
+    "notifications": {
+      "updateAvailable": "New version available",
+      "update": "Update",
+      "offline": "You are offline",
+      "online": "Back online"
+    },
+    "buttons": {
+      "close": "Close",
+      "cancel": "Cancel",
+      "save": "Save",
+      "edit": "Edit",
+      "delete": "Delete",
+      "confirm": "Confirm"
+    },
+    "settings": {
+      "theme": {
+        "title": "Theme",
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      },
+      "language": {
+        "title": "Language",
+        "auto": "Auto"
+      },
+      "map": {
+        "title": "Map Settings",
+        "clustering": "Enable clustering",
+        "animations": "Enable animations",
+        "performance": "Performance mode"
+      }
+    }
+  }

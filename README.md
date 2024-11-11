@@ -1,28 +1,157 @@
-# **Map of Hospitals Using Galeon Software**
-
-This interactive map displays healthcare facilities where Galeon software has been deployed or is in the process of being deployed. Each point on the map represents a hospital or medical center, with detailed information such as the name, address, website, and deployment status (signed, in progress, or deployed).
-
-### **Usage and Availability:**
-
-This map is freely available for general informational purposes. **Galeon does not guarantee continuous availability** or uninterrupted access to the map and reserves the right to modify, remove, or add information at any time without prior notice.
-
----
-
-By using this map, you acknowledge and agree that Galeon is not responsible for the information provided by third parties or for its maintenance. For any questions regarding the deployment of Galeon software, please contact the support team directly via his [website](https://galeon.com/contact).
-
----
-
-## 🚀 About Me
-I'm an IT engineer, specializing in infrastructure. My development skills being what they are, I mainly use ChatGPT and Claude AI to move forward quickly. The idea of creating this project is to shed more light on a project I'm very fond of, and to have a clear representation of Galeon's presence in hospitals around the world.
-
-The development and maintenance of this repository is done voluntarily, as community member and Galeon investor.
-
----
-
-### **Legal Disclaimer:**
-
-**Important**: The information displayed on this map is provided for informational purposes only and is sourced from third parties. **Galeon is not responsible for the collection or maintenance of this information** and has no direct control over its accuracy or updates.
-
-As such, **Galeon disclaims any responsibility** for the accuracy, completeness, or timeliness of the information displayed on this map. The presence of a facility on this map does not guarantee that Galeon software is currently operational or fully deployed at that location. Deployment statuses may change without notice. Information regarding the facilities is provided by third parties, and Galeon cannot be held liable for any errors, omissions, or delays in updating this data.
-
-Galeon will not be held responsible for any direct or indirect damage resulting from the use of the information on this map. Users are advised to contact the facilities directly to verify the accuracy and current status of the information provided.
+{
+  "name": "hospital-map",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interactive hospital deployment status map application",
+  "author": "BunnySweety",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "start": "vite --host",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint src --ext ts,tsx --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,md}\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "cypress run",
+    "test:e2e:dev": "cypress open",
+    "prepare": "husky install",
+    "analyze": "vite build --mode analyze",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "generate:types": "openapi-typescript ./src/api/schema.json --output ./src/types/api.ts",
+    "generate:icons": "svgr --typescript --filename-case pascal ./src/assets/icons -d ./src/components/icons",
+    "translate": "i18next-parser 'src/**/*.{ts,tsx}'",
+    "validate:translations": "node scripts/validate-translations.js",
+    "deploy:staging": "node scripts/deploy.js staging",
+    "deploy:production": "node scripts/deploy.js production",
+    "docker:build": "docker build -t hospital-map .",
+    "docker:run": "docker run -p 3000:80 hospital-map",
+    "precommit": "lint-staged",
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "dependencies": {
+    "@headlessui/react": "^1.7.17",
+    "@reduxjs/toolkit": "^2.0.1",
+    "@tanstack/react-query": "^5.17.9",
+    "@tanstack/react-query-devtools": "^5.17.9",
+    "axios": "^1.6.5",
+    "date-fns": "^3.2.0",
+    "i18next": "^23.7.16",
+    "leaflet": "^1.9.4",
+    "leaflet.markercluster": "^1.5.3",
+    "lodash": "^4.17.21",
+    "lucide-react": "^0.263.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-error-boundary": "^4.0.12",
+    "react-hook-form": "^7.49.3",
+    "react-i18next": "^14.0.0",
+    "react-redux": "^9.0.4",
+    "react-router-dom": "^6.21.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^18.4.4",
+    "@commitlint/config-conventional": "^18.4.4",
+    "@playwright/test": "^1.40.1",
+    "@storybook/addon-essentials": "^7.6.7",
+    "@storybook/react": "^7.6.7",
+    "@storybook/react-vite": "^7.6.7",
+    "@svgr/cli": "^8.1.0",
+    "@testing-library/jest-dom": "^6.2.0",
+    "@testing-library/react": "^14.1.2",
+    "@types/leaflet": "^1.9.8",
+    "@types/leaflet.markercluster": "^1.5.4",
+    "@types/lodash": "^4.14.202",
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.47",
+    "@types/react-dom": "^18.2.18",
+    "@typescript-eslint/eslint-plugin": "^6.18.1",
+    "@typescript-eslint/parser": "^6.18.1",
+    "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/coverage-v8": "^1.1.3",
+    "autoprefixer": "^10.4.16",
+    "cypress": "^13.6.2",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-jsx-a11y": "^6.8.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-storybook": "^0.6.15",
+    "husky": "^8.0.3",
+    "i18next-parser": "^8.12.0",
+    "lint-staged": "^15.2.0",
+    "msw": "^2.0.11",
+    "openapi-typescript": "^6.7.3",
+    "postcss": "^8.4.33",
+    "prettier": "^3.1.1",
+    "prettier-plugin-tailwindcss": "^0.5.11",
+    "storybook": "^7.6.7",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.11",
+    "vite-plugin-pwa": "^0.17.4",
+    "vite-tsconfig-paths": "^4.2.3",
+    "vitest": "^1.1.3"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{css,md}": "prettier --write"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "msw": {
+    "workerDirectory": "public"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest",
+      "plugin:storybook/recommended"
+    ]
+  },
+  "prettier": {
+    "semi": true,
+    "singleQuote": true,
+    "trailingComma": "es5",
+    "printWidth": 100,
+    "tabWidth": 2,
+    "plugins": [
+      "prettier-plugin-tailwindcss"
+    ]
+  },
+  "postcss": {
+    "plugins": {
+      "tailwindcss": {},
+      "autoprefixer": {}
+    }
+  }
+}

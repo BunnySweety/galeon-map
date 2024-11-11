@@ -1,0 +1,96 @@
+{
+    "app": {
+      "name": "Carte des Hôpitaux",
+      "description": "Carte interactive du statut de déploiement des hôpitaux",
+      "version": "1.0.0"
+    },
+    "navigation": {
+      "home": "Accueil",
+      "map": "Carte",
+      "search": "Recherche",
+      "settings": "Paramètres"
+    },
+    "map": {
+      "controls": {
+        "zoomIn": "Zoom avant",
+        "zoomOut": "Zoom arrière",
+        "fullscreen": "Plein écran",
+        "locate": "Ma position"
+      },
+      "filters": {
+        "title": "Filtres",
+        "status": "Statut",
+        "region": "Région",
+        "search": "Rechercher des hôpitaux...",
+        "clear": "Effacer les filtres",
+        "noResults": "Aucun hôpital trouvé"
+      },
+      "legend": {
+        "title": "Légende",
+        "deployed": "Déployé",
+        "inProgress": "En cours",
+        "signed": "Signé"
+      }
+    },
+    "hospital": {
+      "status": {
+        "deployed": "Déployé",
+        "inProgress": "En cours",
+        "signed": "Signé"
+      },
+      "details": {
+        "address": "Adresse",
+        "website": "Site web",
+        "visitWebsite": "Visiter le site",
+        "contact": "Contact",
+        "status": "Statut"
+      }
+    },
+    "regions": {
+      "europe": "Europe",
+      "northAmerica": "Amérique du Nord",
+      "southAmerica": "Amérique du Sud",
+      "asia": "Asie",
+      "africa": "Afrique",
+      "oceania": "Océanie"
+    },
+    "errors": {
+      "general": "Une erreur est survenue",
+      "network": "Erreur réseau",
+      "notFound": "Non trouvé",
+      "loading": "Erreur de chargement",
+      "retry": "Réessayer"
+    },
+    "notifications": {
+      "updateAvailable": "Nouvelle version disponible",
+      "update": "Mettre à jour",
+      "offline": "Vous êtes hors ligne",
+      "online": "Connexion rétablie"
+    },
+    "buttons": {
+      "close": "Fermer",
+      "cancel": "Annuler",
+      "save": "Enregistrer",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "confirm": "Confirmer"
+    },
+    "settings": {
+      "theme": {
+        "title": "Thème",
+        "light": "Clair",
+        "dark": "Sombre",
+        "system": "Système"
+      },
+      "language": {
+        "title": "Langue",
+        "auto": "Automatique"
+      },
+      "map": {
+        "title": "Paramètres de la carte",
+        "clustering": "Activer le regroupement",
+        "animations": "Activer les animations",
+        "performance": "Mode performance"
+      }
+    }
+  }

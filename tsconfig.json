@@ -29,3 +29,9 @@
   "include": ["src/**/*", "data/**/*"],
   "exclude": ["node_modules"]
 }
+s",
+      "dist",
+      "build",
+      "coverage"
+    ]
+  }
