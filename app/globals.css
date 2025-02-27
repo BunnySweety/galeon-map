@@ -1,0 +1,123 @@
+/* File: app/globals.css */
+@import "tailwindcss/preflight";
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-rgb: 255, 255, 255;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+/* Hide scrollbar but allow scrolling */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Opera */
+}
+
+/* MapBox custom styles */
+.mapboxgl-ctrl-logo {
+  display: none !important;
+}
+
+.mapboxgl-ctrl-attrib {
+  display: none !important;
+}
+
+/* Custom marker pulse animation */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+/* Animation de palpitation pour le rond de statut */
+@keyframes statusPulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.hospital-marker {
+  animation: pulse 2s infinite;
+  transition: transform 0.2s ease;
+}
+
+.hospital-marker:hover {
+  transform: scale(1.2);
+}
+
+/* Styles personnalisés pour les popups Mapbox */
+.mapboxgl-popup {
+  font-family: var(--font-geist-sans);
+}
+
+.mapboxgl-popup-content {
+  padding: 0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+  overflow: hidden;
+  border: none !important;
+  width: 260px !important;
+  max-width: 260px !important;
+}
+
+.hospital-popup .mapboxgl-popup-tip {
+  border-top-color: white !important;
+  border-bottom-color: white !important;
+}
+
+/* Style pour l'image de l'hôpital dans les popups */
+.hospital-popup img {
+  transition: transform 0.3s ease;
+}
+
+.hospital-popup:hover img {
+  transform: scale(1.05);
+}
+
+/* Animation du rond de statut */
+.status-dot {
+  animation: statusPulse 2s infinite;
+}
+
+/* Styles pour les boutons dans les popups */
+.hospital-popup a, 
+.hospital-popup button {
+  transition: all 0.2s ease;
+}
+
+.hospital-popup a:hover {
+  background-color: #2563eb !important;
+}
+
+.hospital-popup button:hover {
+  background-color: #e2e8f0 !important;
+}

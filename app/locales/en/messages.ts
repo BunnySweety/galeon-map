@@ -1,0 +1,22 @@
+// File: app/locales/en/messages.ts
+export const messages = {
+    "Hospitals Map": "Hospitals Map",
+    "A community-driven map of deployed hospitals, with support from the Galeon team. Data is not official and may evolve over time.": "A community-driven map of deployed hospitals, with support from the Galeon team. Data is not official and may evolve over time.",
+    "Last updated": "Last updated",
+    "Distribution": "Distribution",
+    "Deployed": "Deployed",
+    "Signed": "Signed",
+    "Language": "Language",
+    "Export Data": "Export Data",
+    "Website": "Website",
+    "Address": "Address",
+    "Export": "Export",
+    "NAME": "NAME",
+    "STATUS": "STATUS",
+    "DEPLOYMENT DATE": "DEPLOYMENT DATE",
+    "WEBSITE": "WEBSITE",
+    "Skip": "Skip",
+    "Open source project": "Open source project",
+    "Made with": "Made with",
+    "by": "by",
+  };
