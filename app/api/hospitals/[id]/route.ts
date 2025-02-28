@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hospitals, HospitalSchema, Hospital } from '../data';
 
-// Fix the types for the context parameter
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -27,7 +26,6 @@ export async function GET(
   }
 }
 
-// Fix the types for the PUT handler
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -68,7 +66,6 @@ export async function PUT(
   }
 }
 
-// Fix the types for the DELETE handler
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
