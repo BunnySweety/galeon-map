@@ -12,6 +12,8 @@ const nextConfig = {
           pathname: '/**',
         },
       ],
+      unoptimized: true,
+      domains: ['api.mapbox.com', 'maps.googleapis.com']
     },
     // Environment variables that will be available at build time on the client side
     env: {
@@ -24,7 +26,8 @@ const nextConfig = {
         })
       );
       return config;
-    }
+    },
+    output: 'standalone'
 };
 
 export default nextConfig;

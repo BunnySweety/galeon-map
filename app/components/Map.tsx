@@ -37,6 +37,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
   const markersRef = useRef<{[key: string]: mapboxgl.Marker}>({});
   const locationMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [isTrackingLocation, setIsTrackingLocation] = useState(false);
   
   const { 
     hospitals, 
@@ -226,6 +227,31 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
     locationMarkerRef.current = marker;
   };
 
+  // Handle location button click
+  const handleLocationClick = () => {
+    setIsTrackingLocation(prev => !prev);
+    if (!isTrackingLocation) {
+      getPosition();
+    } else if (locationMarkerRef.current) {
+      locationMarkerRef.current.remove();
+      locationMarkerRef.current = null;
+    }
+  };
+
+  // Update location marker when coordinates change
+  useEffect(() => {
+    if (mapLoaded && latitude && longitude && isTrackingLocation) {
+      createRadarLocationMarker();
+      
+      // Center map on user location
+      map.current?.flyTo({
+        center: [longitude, latitude],
+        zoom: 15,
+        duration: 2000
+      });
+    }
+  }, [mapLoaded, latitude, longitude, isTrackingLocation]);
+
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -283,14 +309,12 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
           <path d="M16 63.05H49V66.95H16V63.05ZM63.05 49V16H66.95V49H63.05ZM49 1.95H16V-1.95H49V1.95ZM1.95 16V49H-1.95V16H1.95ZM16 1.95C8.2404 1.95 1.95 8.2404 1.95 16H-1.95C-1.95 6.08649 6.08649 -1.95 16 -1.95V1.95ZM63.05 16C63.05 8.2404 56.7596 1.95 49 1.95V-1.95C58.9135 -1.95 66.95 6.08649 66.95 16H63.05ZM49 63.05C56.7596 63.05 63.05 56.7596 63.05 49H66.95C66.95 58.9135 58.9135 66.95 49 66.95V63.05ZM16 66.95C6.08649 66.95 -1.95 58.9135 -1.95 49H1.95C1.95 56.7596 8.2404 63.05 16 63.05V66.95Z" fill="white" fill-opacity="0.15" mask="url(#path-1-inside-1_0_1751)"/>
           <path d="M50 31.25H46.1922C45.8959 28.0502 44.4899 25.0547 42.2176 22.7824C39.9453 20.5101 36.9498 19.1041 33.75 18.8078V15C33.75 14.6685 33.6183 14.3505 33.3839 14.1161C33.1495 13.8817 32.8315 13.75 32.5 13.75C32.1685 13.75 31.8505 13.8817 31.6161 14.1161C31.3817 14.3505 31.25 14.6685 31.25 15V18.8078C28.0502 19.1041 25.0547 20.5101 22.7824 22.7824C20.5101 25.0547 19.1041 28.0502 18.8078 31.25H15C14.6685 31.25 14.3505 31.3817 14.1161 31.6161C13.8817 31.8505 13.75 32.1685 13.75 32.5C13.75 32.8315 13.8817 33.1495 14.1161 33.3839C14.3505 33.6183 14.6685 33.75 15 33.75H18.8078C19.1041 36.9498 20.5101 39.9453 22.7824 42.2176C25.0547 44.4899 28.0502 45.8959 31.25 46.1922V50C31.25 50.3315 31.3817 50.6495 31.6161 50.8839C31.8505 51.1183 32.1685 51.25 32.5 51.25C32.8315 51.25 33.1495 51.1183 33.3839 50.8839C33.6183 50.6495 33.75 50.3315 33.75 50V46.1922C36.9498 45.8959 39.9453 44.4899 42.2176 42.2176C44.4899 39.9453 45.8959 36.9498 46.1922 33.75H50C50.3315 33.75 50.6495 33.6183 50.8839 33.3839C51.1183 33.1495 51.25 32.8315 51.25 32.5C51.25 32.1685 51.1183 31.8505 50.8839 31.6161C50.6495 31.3817 50.3315 31.25 50 31.25ZM32.5 43.75C30.275 43.75 28.0999 43.0902 26.2498 41.854C24.3998 40.6179 22.9578 38.8609 22.1064 36.8052C21.2549 34.7495 21.0321 32.4875 21.4662 30.3052C21.9002 28.1229 22.9717 26.1184 24.545 24.545C26.1184 22.9717 28.1229 21.9002 30.3052 21.4662C32.4875 21.0321 34.7495 21.2549 36.8052 22.1064C38.8609 22.9578 40.6179 24.3998 41.854 26.2498C43.0902 28.0999 43.75 30.275 43.75 32.5C43.7467 35.4827 42.5604 38.3422 40.4513 40.4513C38.3422 42.5604 35.4827 43.7467 32.5 43.75ZM38.75 32.5C38.75 33.7361 38.3834 34.9445 37.6967 35.9723C37.0099 37.0001 36.0338 37.8012 34.8918 38.2742C33.7497 38.7473 32.4931 38.8711 31.2807 38.6299C30.0683 38.3888 28.9547 37.7935 28.0806 36.9194C27.2065 36.0453 26.6112 34.9317 26.3701 33.7193C26.1289 32.5069 26.2527 31.2503 26.7258 30.1082C27.1988 28.9662 27.9999 27.9901 29.0277 27.3033C30.0555 26.6166 31.2639 26.25 32.5 26.25C34.1576 26.25 35.7473 26.9085 36.9194 28.0806C38.0915 29.2527 38.75 30.8424 38.75 32.5Z" fill="#479AF3"/>
         </svg>
-      `, () => {
-        getPosition();
-      });
+      `, handleLocationClick);
 
       // Custom control container
       const controlContainer = document.createElement('div');
       controlContainer.style.position = 'absolute';
-      controlContainer.style.top = '96px'; // Below timeline
+      controlContainer.style.top = '96px';
       controlContainer.style.right = '20px';
       controlContainer.style.zIndex = '10';
       controlContainer.style.display = 'flex';
@@ -323,15 +347,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
     }
   }, [getPosition]);
 
-  // Update location marker when coordinates change
-  useEffect(() => {
-    if (mapLoaded && latitude && longitude) {
-      createRadarLocationMarker();
-    }
-  }, [mapLoaded, latitude, longitude]);
-
-  // Rest of the marker and hospital logic remains the same as in previous implementation...
-  
   return (
     <div 
       ref={mapContainer} 
