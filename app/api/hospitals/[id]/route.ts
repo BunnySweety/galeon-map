@@ -2,13 +2,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hospitals, HospitalSchema, Hospital } from '../data';
 
+type RouteContext = {
+  params: {
+    id: string;
+  };
+  searchParams: { [key: string]: string | string[] | undefined };
+};
+
 // GET handler for fetching a specific hospital
 export async function GET(
-  _request: NextRequest,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: RouteContext
 ) {
   try {
-    const { id } = params;
+    const { id } = context.params;
     const hospital = hospitals.find((h: Hospital) => h.id === id);
     
     if (!hospital) {
@@ -30,10 +37,10 @@ export async function GET(
 // PUT handler for updating a hospital
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteContext
 ) {
   try {
-    const { id } = params;
+    const { id } = context.params;
     const body = await request.json();
     
     // Validate the hospital data
@@ -70,11 +77,11 @@ export async function PUT(
 
 // DELETE handler for removing a hospital
 export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: RouteContext
 ) {
   try {
-    const { id } = params;
+    const { id } = context.params;
     
     // Check if hospital exists
     const hospitalIndex = hospitals.findIndex((h: Hospital) => h.id === id);
