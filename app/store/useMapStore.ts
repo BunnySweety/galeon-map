@@ -2,7 +2,6 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { format } from 'date-fns';
-import { Hospital as APIHospital } from '../api/hospitals/data';
 import { LocaleType } from '../i18n';
 
 // Types

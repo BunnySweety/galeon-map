@@ -341,7 +341,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
     } catch (e) {
       console.error('Error initializing map:', e);
     }
-  }, [getPosition]);
+  }, [getPosition, handleLocationClick]);
 
   return (
     <div 

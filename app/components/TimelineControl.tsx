@@ -79,13 +79,10 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
     if (!timelineDates.length) return;
     
     const lastDate = timelineDates[timelineDates.length - 1];
-    // Utiliser setTimeout pour éviter les mises à jour pendant le rendu
-    setTimeout(() => {
-      setCurrentDate(lastDate);
-    }, 0);
+    setCurrentDate(lastDate);
     setCurrentDateIndex(timelineDates.length - 1);
     setIsPlaying(false);
-  }, [timelineDates, setCurrentDate]);
+  }, [timelineDates, setCurrentDate, setIsPlaying]);
 
   // Handle timeline point click
   const handlePointClick = useCallback((date: string, index: number) => {
