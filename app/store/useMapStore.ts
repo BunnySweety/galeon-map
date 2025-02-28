@@ -30,6 +30,7 @@ interface MapStore {
   selectedHospital: Hospital | null;
   isLoading: boolean;
   error: string | null;
+  hydrated: boolean;
   
   // Actions
   setHospitals: (hospitals: Hospital[]) => void;
@@ -40,8 +41,10 @@ interface MapStore {
   selectHospital: (hospital: Hospital | null) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
+  setHydrated: (hydrated: boolean) => void;
   
   // Derived actions
+  initialize: () => Promise<void>;
   fetchHospitals: () => Promise<void>;
   applyFilters: () => void;
 }
@@ -63,6 +66,7 @@ export const useMapStore = create<MapStore>()(
         selectedHospital: null,
         isLoading: false,
         error: null,
+        hydrated: false,
         
         // Actions
         setHospitals: (hospitals) => set({ hospitals }),
@@ -81,8 +85,21 @@ export const useMapStore = create<MapStore>()(
         selectHospital: (hospital) => set({ selectedHospital: hospital }),
         setLoading: (isLoading) => set({ isLoading }),
         setError: (error) => set({ error }),
+        setHydrated: (hydrated) => set({ hydrated }),
         
         // Derived actions
+        initialize: async () => {
+          const { fetchHospitals, setHydrated } = get();
+          
+          try {
+            await fetchHospitals();
+            setHydrated(true);
+          } catch (error) {
+            console.error('Failed to initialize store:', error);
+            setHydrated(false);
+          }
+        },
+        
         fetchHospitals: async () => {
           const { setLoading, setError, setHospitals, applyFilters } = get();
           

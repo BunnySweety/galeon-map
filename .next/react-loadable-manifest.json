@@ -1,4 +1,11 @@
 {
+  "app\\components\\Layout.tsx -> ./Map": {
+    "id": "app\\components\\Layout.tsx -> ./Map",
+    "files": [
+      "static/css/_app-pages-browser_app_components_Map_tsx.css",
+      "static/chunks/_app-pages-browser_app_components_Map_tsx.js"
+    ]
+  },
   "app\\i18n.ts -> ./locales/en/messages": {
     "id": "app\\i18n.ts -> ./locales/en/messages",
     "files": [
@@ -9,6 +16,12 @@
     "id": "app\\i18n.ts -> ./locales/fr/messages",
     "files": [
       "static/chunks/_app-pages-browser_app_locales_fr_messages_ts.js"
+    ]
+  },
+  "app\\page.tsx -> ./components/Layout": {
+    "id": "app\\page.tsx -> ./components/Layout",
+    "files": [
+      "static/chunks/_app-pages-browser_app_components_Layout_tsx.js"
     ]
   },
   "node_modules\\@tanstack\\query-devtools\\build\\dev.js -> ./DevtoolsComponent/E3YREIG7.js": {

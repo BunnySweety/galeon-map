@@ -3,6 +3,7 @@
 
 import { useLingui } from '@lingui/react';
 import { format } from 'date-fns';
+import { useCallback } from 'react';
 import Image from 'next/image';
 import { Hospital } from '../store/useMapStore';
 
@@ -18,19 +19,23 @@ const HospitalDetail: React.FC<HospitalDetailProps> = ({
   const { i18n } = useLingui();
   
   // Create a safe translation function that handles undefined i18n
-  const _ = (text: string) => {
+  const _ = useCallback((text: string) => {
     try {
       return i18n && i18n._ ? i18n._(text) : text;
     } catch {
       return text;
     }
-  };
+  }, [i18n]);
 
   if (!hospital) return null;
 
+  // Définir la couleur en fonction du statut
+  const statusColor = hospital.status === 'Deployed' ? 'bg-blue-100 text-blue-500' : 'bg-green-100 text-green-500';
+  const dotColor = hospital.status === 'Deployed' ? 'bg-blue-500' : 'bg-green-500';
+
   return (
     <div className={`bg-white rounded-lg shadow-lg overflow-hidden ${className}`}>
-      <div className="relative w-full h-40" style={{ height: '160px' }}>
+      <div className="relative w-full" style={{ height: '160px' }}>
         <Image 
           src={hospital.imageUrl} 
           alt={hospital.name} 
@@ -43,8 +48,8 @@ const HospitalDetail: React.FC<HospitalDetailProps> = ({
       <div className="p-4">
         <h2 className="text-xl font-semibold mb-2">{hospital.name}</h2>
         <div className="mb-4">
-          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs 
-            ${hospital.status === 'Deployed' ? 'bg-blue-100 text-blue-500' : 'bg-green-100 text-green-500'}`}>
+          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${statusColor}`}>
+            <span className={`w-2 h-2 rounded-full mr-1.5 ${dotColor}`}></span>
             {_(hospital.status)} {_('on')} {format(new Date(hospital.deploymentDate), 'dd/MM/yyyy')}
           </span>
         </div>
@@ -53,14 +58,23 @@ const HospitalDetail: React.FC<HospitalDetailProps> = ({
             href={hospital.website} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="flex-1 px-3 py-2 bg-blue-50 text-blue-500 rounded text-center hover:bg-blue-100"
+            className="flex-1 px-3 py-2 bg-blue-500 text-white rounded text-center hover:bg-blue-600 flex items-center justify-center"
           >
+            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
             {_('Website')}
           </a>
           <button 
-            className="flex-1 px-3 py-2 bg-blue-50 text-blue-500 rounded hover:bg-blue-100"
+            className="flex-1 px-3 py-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 flex items-center justify-center"
             onClick={() => alert(hospital.address)}
           >
+            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
             {_('Address')}
           </button>
         </div>

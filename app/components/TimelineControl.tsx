@@ -1,7 +1,7 @@
 // File: app/components/TimelineControl.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useLingui } from '@lingui/react';
 import { format } from 'date-fns';
 import { useMapStore } from '../store/useMapStore';
@@ -12,14 +12,15 @@ interface TimelineControlProps {
 
 const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => {
   const { i18n } = useLingui();
+  
   // Create a safe translation function that handles undefined i18n
-  const _ = (text: string) => {
+  const _ = useCallback((text: string) => {
     try {
       return i18n && i18n._ ? i18n._(text) : text;
     } catch {
       return text;
     }
-  };
+  }, [i18n]);
   
   const { 
     hospitals, 
@@ -31,6 +32,10 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
   const [timelineDates, setTimelineDates] = useState<string[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentDateIndex, setCurrentDateIndex] = useState(0);
+  
+  // Utilisez useRef pour stocker la date courante et éviter les problèmes de rendu
+  const currentDateRef = useRef(currentDate);
+  currentDateRef.current = currentDate;
 
   // Extract unique deployment dates
   useEffect(() => {
@@ -59,8 +64,11 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
           return prevIndex;
         }
         
-        // Update current date
-        setCurrentDate(timelineDates[newIndex]);
+        // Update current date - en utilisant setTimeout pour éviter les problèmes de rendu
+        setTimeout(() => {
+          setCurrentDate(timelineDates[newIndex]);
+        }, 0);
+        
         return newIndex;
       });
     }, 1500); // Change every 1.5 seconds
@@ -69,106 +77,93 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
   }, [isPlaying, timelineDates, setCurrentDate]);
 
   // Skip to the end of the timeline
-  const handleSkip = () => {
+  const handleSkip = useCallback(() => {
     if (!timelineDates.length) return;
     
     const lastDate = timelineDates[timelineDates.length - 1];
-    setCurrentDate(lastDate);
+    // Utiliser setTimeout pour éviter les mises à jour pendant le rendu
+    setTimeout(() => {
+      setCurrentDate(lastDate);
+    }, 0);
     setCurrentDateIndex(timelineDates.length - 1);
     setIsPlaying(false);
-  };
+  }, [timelineDates, setCurrentDate]);
 
   // Toggle play/pause
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     // If at the end, restart from beginning
     if (currentDateIndex >= timelineDates.length - 1) {
       setCurrentDateIndex(0);
-      setCurrentDate(timelineDates[0]);
+      // Utiliser setTimeout pour éviter les mises à jour pendant le rendu
+      setTimeout(() => {
+        setCurrentDate(timelineDates[0]);
+      }, 0);
     }
     
-    setIsPlaying(!isPlaying);
-  };
+    setIsPlaying(prev => !prev);
+  }, [currentDateIndex, timelineDates, setCurrentDate]);
+
+  // Handle timeline point click
+  const handlePointClick = useCallback((date: string, index: number) => {
+    // Utiliser setTimeout pour éviter les mises à jour pendant le rendu
+    setTimeout(() => {
+      setCurrentDate(date);
+    }, 0);
+    setCurrentDateIndex(index);
+    setIsPlaying(false);
+  }, [setCurrentDate]);
 
   return (
-    <div className={`bg-slate-800 bg-opacity-80 p-4 text-white ${className}`}>
-      <div className="relative">
-        {/* Skip button */}
-        <div className="absolute right-2 top-1/2 -translate-y-1/2">
-          <button 
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm"
-            onClick={handleSkip}
+    <div className={`absolute top-8 left-1/2 transform -translate-x-1/2 
+      w-[1415px] h-[64px] rounded-2xl 
+      bg-gradient-to-r from-[rgba(71,154,243,0.5)] to-[rgba(71,154,243,0.1)] 
+      backdrop-blur-[17.5px] flex items-center justify-center z-20 ${className}`}>
+      <div className="relative w-[90%] h-10">
+        {/* Timeline bar */}
+        <div className="absolute w-full h-1 bg-blue-500/30 top-1/2 -translate-y-1/2 rounded"></div>
+        
+        {/* Timeline progress */}
+        <div 
+          className="absolute h-1 bg-blue-500 top-1/2 -translate-y-1/2 rounded" 
+          style={{ width: `${(currentDateIndex / (timelineDates.length - 1)) * 100}%` }}
+        ></div>
+        
+        {/* Timeline points */}
+        {timelineDates.map((date, index) => (
+          <button
+            key={date}
+            className={`absolute top-1/2 -translate-y-1/2 w-8 h-8 rounded-full 
+              ${index <= currentDateIndex 
+                ? 'bg-blue-500 border-2 border-white' 
+                : 'bg-white border-2 border-blue-300'
+              }`}
+            style={{ left: `${(index / (timelineDates.length - 1)) * 100}%` }}
+            onClick={() => handlePointClick(date, index)}
           >
-            {_('Skip')}
+            {index <= currentDateIndex && (
+              <svg className="w-full h-full p-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+            )}
           </button>
-        </div>
+        ))}
         
-        {/* Current date */}
-        <div className="flex justify-center items-center mb-4">
-          <div className="flex items-center gap-4">
-            {/* Play/pause button */}
-            <button 
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600"
-              onClick={togglePlay}
-            >
-              {isPlaying ? (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <rect x="6" y="4" width="4" height="16" rx="1" fill="white"></rect>
-                  <rect x="14" y="4" width="4" height="16" rx="1" fill="white"></rect>
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    fill="white"
-                    d="M6 4l12 8-12 8V4z"
-                  ></path>
-                </svg>
-              )}
-            </button>
-            
-            <p className="text-sm">
-              {currentDate && format(new Date(currentDate), 'dd/MM/yyyy')}
-            </p>
-          </div>
-        </div>
-        
-        {/* Timeline */}
-        <div className="flex items-center justify-center mb-2">
-          {timelineDates.length > 0 && (
-            <div className="relative w-3/4">
-              {/* Timeline bar */}
-              <div className="h-1 bg-blue-500 rounded"></div>
-              
-              {/* Timeline points */}
-              {timelineDates.map((date, index) => (
-                <button
-                  key={date}
-                  className={`w-8 h-8 rounded-full absolute top-1/2 -translate-y-1/2 -ml-4 flex items-center justify-center
-                    ${index <= currentDateIndex ? 'bg-blue-500' : 'bg-blue-300 bg-opacity-50'}`}
-                  style={{ left: `${(index / (timelineDates.length - 1)) * 100}%` }}
-                  onClick={() => {
-                    setCurrentDate(date);
-                    setCurrentDateIndex(index);
-                    setIsPlaying(false);
-                  }}
-                >
-                  {index <= currentDateIndex && (
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        
-        {/* Display selected hospital name */}
-        {selectedHospital && (
-          <div className="text-center mt-2">
-            <h3 className="text-lg font-semibold">{selectedHospital.name}</h3>
-          </div>
-        )}
+        {/* Skip button */}
+        <button 
+          className="absolute right-0 top-1/2 -translate-y-1/2 
+            px-4 py-2 bg-slate-800/70 text-white rounded text-sm"
+          onClick={handleSkip}
+        >
+          {_('Skip')}
+        </button>
       </div>
+      
+      {/* Selected hospital name and date */}
+      {selectedHospital && (
+        <div className="absolute bottom-2 text-center w-full text-white text-lg font-semibold">
+          {selectedHospital.name} - {format(new Date(currentDate), 'dd/MM/yyyy')}
+        </div>
+      )}
     </div>
   );
 };

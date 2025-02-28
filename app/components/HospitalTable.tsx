@@ -2,9 +2,9 @@
 'use client';
 
 import { useLingui } from '@lingui/react';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { saveAs } from 'file-saver';
-import { format as dateFormat } from 'date-fns';
+import { format } from 'date-fns';
 import { useMapStore } from '../store/useMapStore';
 import type { Hospital } from '../store/useMapStore';
 
@@ -16,51 +16,56 @@ const HospitalTable: React.FC<HospitalTableProps> = ({ className = '' }) => {
   const { i18n } = useLingui();
   
   // Create a safe translation function that handles undefined i18n
-  const _ = (text: string) => {
+  const _ = useCallback((text: string) => {
     try {
       return i18n && i18n._ ? i18n._(text) : text;
     } catch {
       return text;
     }
-  };
+  }, [i18n]);
   
   const { filteredHospitals, selectHospital } = useMapStore();
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
   
-  // Fonction pour sélectionner un hôpital
+  // Function to select a hospital
   const handleSelectHospital = (hospital: Hospital) => {
     setSelectedHospital(hospital);
     selectHospital(hospital);
   };
   
   // Export data in different formats
-  const exportData = (format: 'pdf' | 'xls' | 'json') => {
+  const exportData = (exportType: 'pdf' | 'xls' | 'json') => {
     // Extract only the data we want to export
-    const data = filteredHospitals.map((hospital: Hospital) => ({
-      name: hospital.name,
-      status: hospital.status,
-      deploymentDate: format === 'xls' 
-        ? dateFormat(new Date(hospital.deploymentDate), 'yyyy-MM-dd')
-        : hospital.deploymentDate,
-      website: hospital.website,
-      address: hospital.address
-    }));
+    const data = filteredHospitals.map((hospital: Hospital) => {
+      const deploymentDate = format(new Date(hospital.deploymentDate), 
+        exportType === 'xls' ? 'yyyy-MM-dd' : 'dd/MM/yyyy');
+      
+      return {
+        name: hospital.name,
+        status: hospital.status,
+        deploymentDate,
+        website: hospital.website,
+        address: hospital.address
+      };
+    });
 
-    if (format === 'json') {
+    const currentDate = format(new Date(), 'yyyy-MM-dd');
+
+    if (exportType === 'json') {
       // JSON export
       const blob = new Blob([JSON.stringify(data, null, 2)], { 
         type: 'application/json' 
       });
-      saveAs(blob, `hospitals-data-${dateFormat(new Date(), 'yyyy-MM-dd')}.json`);
-    } else if (format === 'xls') {
+      saveAs(blob, `hospitals-data-${currentDate}.json`);
+    } else if (exportType === 'xls') {
       // Simple CSV export as XLS placeholder
       const headers = Object.keys(data[0]).join(',');
       const rows = data.map(item => Object.values(item).join(',')).join('\n');
       const csv = `${headers}\n${rows}`;
       const blob = new Blob([csv], { type: 'text/csv' });
-      saveAs(blob, `hospitals-data-${dateFormat(new Date(), 'yyyy-MM-dd')}.csv`);
-    } else if (format === 'pdf') {
+      saveAs(blob, `hospitals-data-${currentDate}.csv`);
+    } else if (exportType === 'pdf') {
       // In a real app, this would use a library like jsPDF
       // For this demo, we'll just show an alert
       alert('PDF export would be implemented with a library like jsPDF');
@@ -69,13 +74,8 @@ const HospitalTable: React.FC<HospitalTableProps> = ({ className = '' }) => {
     setShowExportModal(false);
   };
 
-  // Fonction pour vérifier le statut d'un hôpital
-  const isHospitalDeployed = (hospital: Hospital): boolean => {
-    return hospital.status === 'Deployed';
-  };
-
   return (
-    <div className={`bg-white p-6 overflow-auto ${className}`}>
+    <div className={`bg-white p-6 rounded-lg shadow-md overflow-auto ${className}`}>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Hospitals</h2>
         <button 
@@ -91,11 +91,11 @@ const HospitalTable: React.FC<HospitalTableProps> = ({ className = '' }) => {
       
       <table className="w-full border-collapse">
         <thead>
-          <tr className="border-b">
-            <th className="text-left py-2 px-4">{_('NAME')}</th>
-            <th className="text-left py-2 px-4">{_('STATUS')}</th>
-            <th className="text-left py-2 px-4">{_('DEPLOYMENT DATE')}</th>
-            <th className="text-left py-2 px-4">{_('WEBSITE')}</th>
+          <tr className="border-b bg-gray-50">
+            <th className="text-left py-3 px-4 font-semibold text-gray-600">{_('NAME')}</th>
+            <th className="text-left py-3 px-4 font-semibold text-gray-600">{_('STATUS')}</th>
+            <th className="text-left py-3 px-4 font-semibold text-gray-600">{_('DEPLOYMENT DATE')}</th>
+            <th className="text-left py-3 px-4 font-semibold text-gray-600">{_('WEBSITE')}</th>
           </tr>
         </thead>
         <tbody>
@@ -105,14 +105,15 @@ const HospitalTable: React.FC<HospitalTableProps> = ({ className = '' }) => {
               className={`border-b hover:bg-gray-50 cursor-pointer ${selectedHospital?.id === hospital.id ? 'bg-blue-50' : ''}`}
               onClick={() => handleSelectHospital(hospital)}
             >
-              <td className="py-4 px-4">{hospital.name}</td>
+              <td className="py-4 px-4 font-medium">{hospital.name}</td>
               <td className="py-4 px-4">
                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs 
-                  ${isHospitalDeployed(hospital) ? 'bg-blue-100 text-blue-500' : 'bg-green-100 text-green-500'}`}>
+                  ${hospital.status === 'Deployed' ? 'bg-blue-100 text-blue-500' : 'bg-green-100 text-green-500'}`}>
+                  <span className={`w-2 h-2 rounded-full mr-1.5 ${hospital.status === 'Deployed' ? 'bg-blue-500' : 'bg-green-500'}`}></span>
                   {_(hospital.status)}
                 </span>
               </td>
-              <td className="py-4 px-4">{dateFormat(new Date(hospital.deploymentDate), 'dd/MM/yyyy')}</td>
+              <td className="py-4 px-4">{format(new Date(hospital.deploymentDate), 'dd/MM/yyyy')}</td>
               <td className="py-4 px-4">
                 <a 
                   href={hospital.website} 
@@ -121,7 +122,7 @@ const HospitalTable: React.FC<HospitalTableProps> = ({ className = '' }) => {
                   className="text-blue-500 hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {hospital.website}
+                  {hospital.website.replace(/^https?:\/\//, '')}
                 </a>
               </td>
             </tr>
@@ -193,5 +194,4 @@ const HospitalTable: React.FC<HospitalTableProps> = ({ className = '' }) => {
   );
 };
 
-export { HospitalTable };
 export default HospitalTable;
