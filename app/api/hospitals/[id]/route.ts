@@ -2,20 +2,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hospitals, HospitalSchema, Hospital } from '../data';
 
-type RouteContext = {
-  params: {
-    id: string;
-  };
-  searchParams: { [key: string]: string | string[] | undefined };
-};
-
-// GET handler for fetching a specific hospital
+// Fix the types for the context parameter
 export async function GET(
   request: NextRequest,
-  context: RouteContext
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     const hospital = hospitals.find((h: Hospital) => h.id === id);
     
     if (!hospital) {
@@ -34,13 +27,13 @@ export async function GET(
   }
 }
 
-// PUT handler for updating a hospital
+// Fix the types for the PUT handler
 export async function PUT(
   request: NextRequest,
-  context: RouteContext
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     const body = await request.json();
     
     // Validate the hospital data
@@ -75,13 +68,13 @@ export async function PUT(
   }
 }
 
-// DELETE handler for removing a hospital
+// Fix the types for the DELETE handler
 export async function DELETE(
   request: NextRequest,
-  context: RouteContext
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     
     // Check if hospital exists
     const hospitalIndex = hospitals.findIndex((h: Hospital) => h.id === id);
