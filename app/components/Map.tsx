@@ -36,7 +36,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<{[key: string]: mapboxgl.Marker}>({});
   const locationMarkerRef = useRef<mapboxgl.Marker | null>(null);
-  const [_showLocationRadar, setShowLocationRadar] = useState(false);
+  const [showLocationRadar, setShowLocationRadar] = useState(false);
   const [isTrackingLocation, setIsTrackingLocation] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   
@@ -233,24 +233,26 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
     setIsTrackingLocation(prev => !prev);
     if (!isTrackingLocation) {
       getPosition();
+      setShowLocationRadar(true);
     } else if (locationMarkerRef.current) {
       locationMarkerRef.current.remove();
       locationMarkerRef.current = null;
+      setShowLocationRadar(false);
     }
-  }, [map, setIsTrackingLocation, getPosition]);
+  }, [isTrackingLocation, getPosition]);
 
   // Update location marker when coordinates change
   useEffect(() => {
-    if (_showLocationRadar) {
+    if (showLocationRadar) {
       createRadarLocationMarker();
     }
-  }, [_showLocationRadar, createRadarLocationMarker]);
+  }, [showLocationRadar, createRadarLocationMarker]);
 
   useEffect(() => {
-    if (map.current) {
+    if (map.current && isTrackingLocation) {
       handleLocationClick();
     }
-  }, [map, handleLocationClick]);
+  }, [map, handleLocationClick, isTrackingLocation]);
 
   // Initialize map
   useEffect(() => {

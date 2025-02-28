@@ -65,17 +65,14 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
           return prevIndex;
         }
         
-        // Update current date - en utilisant setTimeout pour éviter les problèmes de rendu
-        setTimeout(() => {
-          setCurrentDate(timelineDates[newIndex]);
-        }, 0);
-        
+        // Update current date
+        setCurrentDate(timelineDates[newIndex]);
         return newIndex;
       });
     }, 1500); // Change every 1.5 seconds
     
     return () => clearInterval(interval);
-  }, [isPlaying, timelineDates, setCurrentDate]);
+  }, [isPlaying, timelineDates, setCurrentDate, setIsPlaying]);
 
   // Skip to the end of the timeline
   const handleSkip = useCallback(() => {
@@ -92,13 +89,10 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
 
   // Handle timeline point click
   const handlePointClick = useCallback((date: string, index: number) => {
-    // Utiliser setTimeout pour éviter les mises à jour pendant le rendu
-    setTimeout(() => {
-      setCurrentDate(date);
-    }, 0);
+    setCurrentDate(date);
     setCurrentDateIndex(index);
     setIsPlaying(false);
-  }, [setCurrentDate]);
+  }, [setCurrentDate, setIsPlaying]);
 
   useEffect(() => {
     if (currentDateIndex >= timelineDates.length - 1) {
@@ -106,7 +100,8 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
     }
   }, [timelineDates.length, currentDateIndex, setIsPlaying]);
 
-  const _handlePlayPause = useCallback(() => {
+  // Handle play/pause
+  const handlePlayPause = useCallback(() => {
     if (currentDateIndex >= timelineDates.length - 1) {
       setCurrentDateIndex(0);
       setCurrentDate(timelineDates[0]);
@@ -114,7 +109,8 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
     setIsPlaying(!isPlaying);
   }, [currentDateIndex, timelineDates, setCurrentDate, setIsPlaying, isPlaying]);
 
-  const _handleReset = useCallback(() => {
+  // Handle reset
+  const handleReset = useCallback(() => {
     setCurrentDateIndex(0);
     setCurrentDate(timelineDates[0]);
     setIsPlaying(false);
