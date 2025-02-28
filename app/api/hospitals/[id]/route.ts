@@ -1,23 +1,34 @@
 // File: app/api/hospitals/[id]/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { hospitals, HospitalSchema, Hospital } from '../data';
 
 // GET handler for fetching a specific hospital
 export async function GET(
-  _request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: { params: { id: string } }
 ) {
-  const id = params.id;
-  const hospital = hospitals.find((h: Hospital) => h.id === id);
-  
-  if (!hospital) {
+  try {
+    const { id } = context.params;
+    
+    // Simuler un délai de réponse
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const hospital = hospitals.find((h: Hospital) => h.id === id);
+    
+    if (!hospital) {
+      return NextResponse.json(
+        { error: "Hôpital non trouvé" },
+        { status: 404 }
+      );
+    }
+    
+    return NextResponse.json(hospital);
+  } catch (error) {
     return NextResponse.json(
-      { error: 'Hospital not found' },
-      { status: 404 }
+      { error: "Une erreur est survenue" },
+      { status: 500 }
     );
   }
-  
-  return NextResponse.json(hospital);
 }
 
 // PUT handler for updating a hospital
