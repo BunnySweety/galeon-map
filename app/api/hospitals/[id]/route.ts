@@ -4,15 +4,11 @@ import { hospitals, HospitalSchema, Hospital } from '../data';
 
 // GET handler for fetching a specific hospital
 export async function GET(
-  request: NextRequest,
-  context: { params: { id: string } }
+  _request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = context.params;
-    
-    // Simuler un délai de réponse
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
+    const { id } = params;
     const hospital = hospitals.find((h: Hospital) => h.id === id);
     
     if (!hospital) {
@@ -33,11 +29,11 @@ export async function GET(
 
 // PUT handler for updating a hospital
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
+    const { id } = params;
     const body = await request.json();
     
     // Validate the hospital data
@@ -74,23 +70,30 @@ export async function PUT(
 
 // DELETE handler for removing a hospital
 export async function DELETE(
-  _request: Request,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const id = params.id;
-  
-  // Check if hospital exists
-  const hospitalIndex = hospitals.findIndex((h: Hospital) => h.id === id);
-  if (hospitalIndex === -1) {
+  try {
+    const { id } = params;
+    
+    // Check if hospital exists
+    const hospitalIndex = hospitals.findIndex((h: Hospital) => h.id === id);
+    if (hospitalIndex === -1) {
+      return NextResponse.json(
+        { error: 'Hospital not found' },
+        { status: 404 }
+      );
+    }
+    
+    // In a real app, this would remove from the database
+    // For this example, we'll just return success
     return NextResponse.json(
-      { error: 'Hospital not found' },
-      { status: 404 }
+      { success: true, message: 'Hospital would be deleted in a real app' }
+    );
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Une erreur est survenue" },
+      { status: 500 }
     );
   }
-  
-  // In a real app, this would remove from the database
-  // For this example, we'll just return success
-  return NextResponse.json(
-    { success: true, message: 'Hospital would be deleted in a real app' }
-  );
 }
