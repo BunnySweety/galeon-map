@@ -132,30 +132,53 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
         {timelineDates.map((date, index) => (
           <button
             key={date}
-            className={`absolute top-1/2 -translate-y-1/2 w-8 h-8 rounded-full 
-              ${index <= currentDateIndex 
-                ? 'bg-blue-500 border-2 border-white' 
-                : 'bg-white border-2 border-blue-300'
-              }`}
-            style={{ left: `${(index / (timelineDates.length - 1)) * 100}%` }}
             onClick={() => handlePointClick(date, index)}
+            className={`absolute w-4 h-4 -mt-[6px] rounded-full transition-all
+              ${currentDateIndex >= index ? 'bg-blue-500' : 'bg-blue-500/30'}
+              ${currentDateIndex === index ? 'scale-125' : 'hover:scale-110'}`}
+            style={{ left: `${(index / (timelineDates.length - 1)) * 100}%` }}
+            title={date}
+          />
+        ))}
+        
+        {/* Control buttons */}
+        <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 flex items-center gap-4">
+          <button
+            onClick={handleReset}
+            className="p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 transition-colors"
+            title={_("Reset")}
           >
-            {index <= currentDateIndex && (
-              <svg className="w-full h-full p-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          <button
+            onClick={handlePlayPause}
+            className="p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 transition-colors"
+            title={isPlaying ? _("Pause") : _("Play")}
+          >
+            {isPlaying ? (
+              <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
               </svg>
             )}
           </button>
-        ))}
-        
-        {/* Skip button */}
-        <button 
-          className="absolute right-0 top-1/2 -translate-y-1/2 
-            px-4 py-2 bg-slate-800/70 text-white rounded text-sm"
-          onClick={handleSkip}
-        >
-          {_('Skip')}
-        </button>
+          
+          <button
+            onClick={handleSkip}
+            className="p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 transition-colors"
+            title={_("Skip to end")}
+          >
+            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
       </div>
       
       {/* Selected hospital name and date */}

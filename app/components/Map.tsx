@@ -4,12 +4,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { useLingui, Trans } from '@lingui/react';
-import { format } from 'date-fns';
+import { useLingui } from '@lingui/react';
 import { useMapStore } from '../store/useMapStore';
-import { Hospital } from '../store/useMapStore';
 import { useGeolocation } from '../hooks/useGeolocation';
-import { applyMapboxPassiveEventsFix, removeMapboxPassiveEventsFix } from '../utils/mapbox-passive-fix';
 
 // Configuration RTL globale pour éviter les appels multiples
 let rtlPluginLoaded = false;
@@ -25,7 +22,6 @@ interface MapComponentProps {
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
-  const { i18n } = useLingui();
   const { 
     latitude, 
     longitude, 
@@ -34,16 +30,15 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
   
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<{[key: string]: mapboxgl.Marker}>({});
   const locationMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const [showLocationRadar, setShowLocationRadar] = useState(false);
   const [isTrackingLocation, setIsTrackingLocation] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   
   const {
-    filteredHospitals: _hospitals,
-    currentDate: _currentDate,
-    selectHospital: _selectHospital
+    filteredHospitals,
+    currentDate,
+    selectHospital
   } = useMapStore();
 
   // Create custom control button styles
