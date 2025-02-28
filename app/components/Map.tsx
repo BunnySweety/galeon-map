@@ -33,7 +33,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
   const locationMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const [showLocationRadar, setShowLocationRadar] = useState(false);
   const [isTrackingLocation, setIsTrackingLocation] = useState(false);
-  const [mapLoaded, setMapLoaded] = useState(false);
   
   const {
     filteredHospitals,
@@ -249,6 +248,52 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
     }
   }, [map, handleLocationClick, isTrackingLocation]);
 
+  // Create markers for hospitals
+  useEffect(() => {
+    if (!map.current || !filteredHospitals) return;
+
+    // Remove existing markers
+    const markers = document.querySelectorAll('.mapboxgl-marker');
+    markers.forEach(marker => marker.remove());
+
+    // Add new markers
+    filteredHospitals.forEach(hospital => {
+      const el = document.createElement('div');
+      el.className = 'hospital-marker';
+      el.style.width = '24px';
+      el.style.height = '24px';
+      el.style.backgroundImage = 'url(/images/hospital-marker.svg)';
+      el.style.backgroundSize = 'cover';
+      el.style.cursor = 'pointer';
+
+      // Create popup
+      const popup = new mapboxgl.Popup({
+        offset: 25,
+        closeButton: false,
+        className: 'hospital-popup'
+      }).setHTML(`
+        <div class="p-2">
+          <h3 class="font-bold">${hospital.name}</h3>
+          <p class="text-sm">${hospital.address}</p>
+        </div>
+      `);
+
+      // Create and add marker
+      const marker = new mapboxgl.Marker(el)
+        .setLngLat(hospital.coordinates)
+        .setPopup(popup);
+      
+      if (map.current) {
+        marker.addTo(map.current);
+      }
+
+      // Add click handler
+      el.addEventListener('click', () => {
+        selectHospital(hospital);
+      });
+    });
+  }, [filteredHospitals, currentDate, selectHospital]);
+
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
@@ -320,11 +365,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
 
       // Add footer to map
       map.current.getContainer().appendChild(createFooter());
-
-      // Handle map load
-      map.current.on('load', () => {
-        setMapLoaded(true);
-      });
 
       // Cleanup on unmount
       return () => {

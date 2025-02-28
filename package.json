@@ -44,6 +44,7 @@
     "@unocss/preset-rem-to-px": "^66.1.0-beta.3",
     "@unocss/preset-wind": "^66.1.0-beta.3",
     "@unocss/webpack": "^66.1.0-beta.3",
+    "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^8.57.0",
     "eslint-config-next": "15.2.0",
     "postcss": "^8.4.38",
