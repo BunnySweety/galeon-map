@@ -26,28 +26,57 @@ const nextConfig = {
       );
 
       // Optimize bundle size
-      config.optimization = {
-        ...config.optimization,
-        minimize: true,
-        splitChunks: {
-          chunks: 'all',
-          maxInitialRequests: 25,
-          minSize: 20000,
-          cacheGroups: {
-            default: false,
-            vendors: false,
-            commons: {
-              test: /[\\/]node_modules[\\/]/,
-              name(module, chunks, cacheGroupKey) {
-                const moduleFileName = module.identifier().split('/').reduceRight(item => item);
-                const allChunksNames = chunks.map((item) => item.name).join('~');
-                return `${cacheGroupKey}-${allChunksNames}-${moduleFileName}`;
+      if (!isServer) {
+        // Client-side optimizations
+        config.optimization = {
+          ...config.optimization,
+          minimize: true,
+          splitChunks: {
+            chunks: 'all',
+            maxInitialRequests: 25,
+            maxAsyncRequests: 25,
+            minSize: 5000,
+            maxSize: 20000,
+            cacheGroups: {
+              default: false,
+              vendors: false,
+              // Framework chunks
+              framework: {
+                chunks: 'all',
+                name: 'framework',
+                test: /[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
+                priority: 40,
+                enforce: true
               },
-              chunks: 'all'
+              // Library chunks
+              lib: {
+                test: /[\\/]node_modules[\\/]/,
+                priority: 30,
+                minChunks: 2,
+                reuseExistingChunk: true,
+                name(module) {
+                  return `lib-${module.identifier().split('/').slice(-2).join('-')}`;
+                }
+              },
+              // Mapbox specific chunks
+              mapbox: {
+                test: /[\\/]node_modules[\\/]mapbox-gl[\\/]/,
+                name: 'mapbox',
+                priority: 20,
+                enforce: true
+              },
+              // Styles
+              styles: {
+                name: 'styles',
+                test: /\.(css|scss|sass)$/,
+                chunks: 'all',
+                enforce: true,
+                priority: 10
+              }
             }
           }
-        }
-      };
+        };
+      }
 
       return config;
     },
