@@ -4,7 +4,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { useLingui } from '@lingui/react';
 import { useMapStore } from '../store/useMapStore';
 import { useGeolocation } from '../hooks/useGeolocation';
 
