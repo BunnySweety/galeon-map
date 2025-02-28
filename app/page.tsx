@@ -6,8 +6,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import dynamic from 'next/dynamic';
 import { useMapStore } from './store/useMapStore';
+import { hospitals } from './api/hospitals/data';
 
-// Import Layout with dynamic import to avoid SSR issues with MapBox
 const Layout = dynamic(() => import('./components/Layout'), { 
   ssr: false,
   loading: () => (
@@ -17,19 +17,17 @@ const Layout = dynamic(() => import('./components/Layout'), {
   )
 });
 
-// Create a client with persistent caching
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 5 * 60 * 1000,
       refetchOnWindowFocus: false,
-      retry: 1, // Réduire le nombre de tentatives en cas d'échec
-      gcTime: 10 * 60 * 1000, // Anciennement 'cacheTime' dans les versions précédentes
+      retry: 1,
+      gcTime: 10 * 60 * 1000,
     },
   },
 });
 
-// Loading animation component
 const LoadingAnimation = () => (
   <div className="h-screen w-screen flex items-center justify-center bg-slate-900">
     <div className="flex flex-col items-center">
@@ -46,35 +44,24 @@ const LoadingAnimation = () => (
   </div>
 );
 
-// Main application component with initialization logic
 const AppWithInitialization = () => {
   const [initialized, setInitialized] = useState(false);
-  const { initialize } = useMapStore();
+  const { setHospitals, applyFilters } = useMapStore();
 
   useEffect(() => {
-    // Utiliser setTimeout pour éviter les problèmes de rendu
-    const timer = setTimeout(async () => {
+    const initializeApp = async () => {
       try {
-        await initialize();
+        setHospitals(hospitals);
+        applyFilters();
         setInitialized(true);
       } catch (error) {
         console.error('Erreur d\'initialisation:', error);
-        // Réessayer après un délai en cas d'échec
-        setTimeout(async () => {
-          try {
-            await initialize();
-            setInitialized(true);
-          } catch (retryError) {
-            console.error('Échec lors de la réinitialisation:', retryError);
-            // Initialiser quand même pour éviter un blocage
-            setInitialized(true);
-          }
-        }, 2000);
+        setInitialized(true);
       }
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, [initialize]);
+    };
+
+    initializeApp();
+  }, [setHospitals, applyFilters]);
 
   if (!initialized) {
     return <LoadingAnimation />;
@@ -83,7 +70,6 @@ const AppWithInitialization = () => {
   return <Layout />;
 };
 
-// Main page component
 export default function Home() {
   return (
     <QueryClientProvider client={queryClient}>
