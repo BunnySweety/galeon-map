@@ -39,7 +39,7 @@ const LoadingAnimation = () => (
         <div className="h-full bg-blue-500 animate-pulse" 
              style={{ width: '60%', animationDuration: '1.5s' }}></div>
       </div>
-      <p className="mt-4 text-slate-400">Chargement de l'application...</p>
+      <div>L&apos;application est en cours de chargement...</div>
     </div>
   </div>
 );

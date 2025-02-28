@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { useLingui } from '@lingui/react';
+import { useLingui, Trans } from '@lingui/react';
 import { format } from 'date-fns';
 import { useMapStore } from '../store/useMapStore';
 import { Hospital } from '../store/useMapStore';
@@ -36,13 +36,14 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<{[key: string]: mapboxgl.Marker}>({});
   const locationMarkerRef = useRef<mapboxgl.Marker | null>(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
+  const [_showLocationRadar, setShowLocationRadar] = useState(false);
   const [isTrackingLocation, setIsTrackingLocation] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
   
-  const { 
-    hospitals, 
-    currentDate, 
-    selectHospital 
+  const {
+    filteredHospitals: _hospitals,
+    currentDate: _currentDate,
+    selectHospital: _selectHospital
   } = useMapStore();
 
   // Create custom control button styles
@@ -152,7 +153,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
   };
 
   // Create radar effect marker
-  const createRadarLocationMarker = () => {
+  const createRadarLocationMarker = useCallback(() => {
     if (!map.current || !latitude || !longitude) return;
 
     // Remove existing location marker
@@ -225,10 +226,10 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
       .addTo(map.current);
 
     locationMarkerRef.current = marker;
-  };
+  }, [map, latitude, longitude]);
 
   // Handle location button click
-  const handleLocationClick = () => {
+  const handleLocationClick = useCallback(() => {
     setIsTrackingLocation(prev => !prev);
     if (!isTrackingLocation) {
       getPosition();
@@ -236,21 +237,20 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
       locationMarkerRef.current.remove();
       locationMarkerRef.current = null;
     }
-  };
+  }, [map, setIsTrackingLocation, getPosition]);
 
   // Update location marker when coordinates change
   useEffect(() => {
-    if (mapLoaded && latitude && longitude && isTrackingLocation) {
+    if (_showLocationRadar) {
       createRadarLocationMarker();
-      
-      // Center map on user location
-      map.current?.flyTo({
-        center: [longitude, latitude],
-        zoom: 15,
-        duration: 2000
-      });
     }
-  }, [mapLoaded, latitude, longitude, isTrackingLocation]);
+  }, [_showLocationRadar, createRadarLocationMarker]);
+
+  useEffect(() => {
+    if (map.current) {
+      handleLocationClick();
+    }
+  }, [map, handleLocationClick]);
 
   // Initialize map
   useEffect(() => {
@@ -291,13 +291,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
           <path d="M16 63.05H49V66.95H16V63.05ZM63.05 49V16H66.95V49H63.05ZM49 1.95H16V-1.95H49V1.95ZM1.95 16V49H-1.95V16H1.95ZM16 1.95C8.2404 1.95 1.95 8.2404 1.95 16H-1.95C-1.95 6.08649 6.08649 -1.95 16 -1.95V1.95ZM63.05 16C63.05 8.2404 56.7596 1.95 49 1.95V-1.95C58.9135 -1.95 66.95 6.08649 66.95 16H63.05ZM49 63.05C56.7596 63.05 63.05 56.7596 63.05 49H66.95C66.95 58.9135 58.9135 66.95 49 66.95V63.05ZM16 66.95C6.08649 66.95 -1.95 58.9135 -1.95 49H1.95C1.95 56.7596 8.2404 63.05 16 63.05V66.95Z" fill="white" fill-opacity="0.15" mask="url(#path-1-inside-1_0_1754)"/>
           <path d="M30.8844 34.1156C31.0006 34.2317 31.0928 34.3696 31.1557 34.5213C31.2186 34.6731 31.251 34.8357 31.251 35C31.251 35.1643 31.2186 35.3269 31.1557 35.4787C31.0928 35.6304 31.0006 35.7683 30.8844 35.8844L25.5172 41.25L28.3844 44.1156C28.5594 44.2904 28.6786 44.5133 28.7269 44.7559C28.7752 44.9985 28.7505 45.25 28.6558 45.4785C28.5611 45.707 28.4007 45.9023 28.195 46.0397C27.9892 46.177 27.7474 46.2502 27.5 46.25H20C19.6685 46.25 19.3505 46.1183 19.1161 45.8839C18.8817 45.6495 18.75 45.3315 18.75 45V37.5C18.7498 37.2526 18.823 37.0108 18.9603 36.805C19.0977 36.5993 19.293 36.4389 19.5215 36.3442C19.75 36.2495 20.0015 36.2248 20.2441 36.2731C20.4867 36.3214 20.7096 36.4406 20.8844 36.6156L23.75 39.4828L29.1156 34.1156C29.2317 33.9994 29.3696 33.9072 29.5213 33.8443C29.6731 33.7814 29.8357 33.749 30 33.749C30.1643 33.749 30.3269 33.7814 30.4787 33.8443C30.6304 33.9072 30.7683 33.9994 30.8844 34.1156ZM45 18.75H37.5C37.2526 18.7498 37.0108 18.823 36.805 18.9603C36.5993 19.0977 36.4389 19.293 36.3442 19.5215C36.2495 19.75 36.2248 20.0015 36.2731 20.2441C36.3214 20.4867 36.4406 20.7096 36.6156 20.8844L39.4828 23.75L34.1156 29.1156C33.8811 29.3502 33.7493 29.6683 33.7493 30C33.7493 30.3317 33.8811 30.6498 34.1156 30.8844C34.3502 31.1189 34.6683 31.2507 35 31.2507C35.3317 31.2507 35.6498 31.1189 35.8844 30.8844L41.25 25.5172L44.1156 28.3844C44.2904 28.5594 44.5133 28.6786 44.7559 28.7269C44.9985 28.7752 45.25 28.7505 45.4785 28.6558C45.707 28.5611 45.9023 28.4007 46.0397 28.195C46.177 27.9892 46.2502 27.7474 46.25 27.5V20C46.25 19.6685 46.1183 19.3505 45.8839 19.1161C45.6495 18.8817 45.3315 18.75 45 18.75Z" fill="#479AF3"/>
         </svg>
-      `, () => {
-        if (!document.fullscreenElement) {
-          mapContainer.current?.requestFullscreen();
-        } else if (document.exitFullscreen) {
-          document.exitFullscreen();
-        }
-      });
+      `, handleLocationClick);
 
       // Create location control
       const locationControl = createControlButton(`

@@ -26,11 +26,12 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
     hospitals, 
     currentDate, 
     setCurrentDate, 
-    selectedHospital
+    selectedHospital,
+    isPlaying,
+    setIsPlaying
   } = useMapStore();
   
   const [timelineDates, setTimelineDates] = useState<string[]>([]);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [currentDateIndex, setCurrentDateIndex] = useState(0);
   
   // Utilisez useRef pour stocker la date courante et éviter les problèmes de rendu
@@ -89,20 +90,6 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
     setIsPlaying(false);
   }, [timelineDates, setCurrentDate]);
 
-  // Toggle play/pause
-  const togglePlay = useCallback(() => {
-    // If at the end, restart from beginning
-    if (currentDateIndex >= timelineDates.length - 1) {
-      setCurrentDateIndex(0);
-      // Utiliser setTimeout pour éviter les mises à jour pendant le rendu
-      setTimeout(() => {
-        setCurrentDate(timelineDates[0]);
-      }, 0);
-    }
-    
-    setIsPlaying(prev => !prev);
-  }, [currentDateIndex, timelineDates, setCurrentDate]);
-
   // Handle timeline point click
   const handlePointClick = useCallback((date: string, index: number) => {
     // Utiliser setTimeout pour éviter les mises à jour pendant le rendu
@@ -112,6 +99,26 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
     setCurrentDateIndex(index);
     setIsPlaying(false);
   }, [setCurrentDate]);
+
+  useEffect(() => {
+    if (currentDateIndex >= timelineDates.length - 1) {
+      setIsPlaying(false);
+    }
+  }, [timelineDates.length, currentDateIndex, setIsPlaying]);
+
+  const _handlePlayPause = useCallback(() => {
+    if (currentDateIndex >= timelineDates.length - 1) {
+      setCurrentDateIndex(0);
+      setCurrentDate(timelineDates[0]);
+    }
+    setIsPlaying(!isPlaying);
+  }, [currentDateIndex, timelineDates, setCurrentDate, setIsPlaying, isPlaying]);
+
+  const _handleReset = useCallback(() => {
+    setCurrentDateIndex(0);
+    setCurrentDate(timelineDates[0]);
+    setIsPlaying(false);
+  }, [timelineDates, setCurrentDate, setIsPlaying]);
 
   return (
     <div className={`absolute top-8 left-1/2 transform -translate-x-1/2 

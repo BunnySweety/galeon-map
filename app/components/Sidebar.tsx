@@ -1,7 +1,6 @@
 // File: app/components/Sidebar.tsx
 'use client';
 
-import { useLingui } from '@lingui/react';
 import { useCallback } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { activateLocale, LocaleType } from '../i18n';
@@ -12,16 +11,6 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
-  const { i18n } = useLingui();
-  
-  const _ = useCallback((text: string) => {
-    try {
-      return i18n && i18n._ ? i18n._(text) : text;
-    } catch {
-      return text;
-    }
-  }, [i18n]);
-  
   const { 
     hospitals, 
     selectedFilters, 
@@ -29,15 +18,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
     language, 
     setLanguage 
   } = useMapStore();
-  
-  const deployedCount = hospitals.filter(h => h.status === 'Deployed').length;
-  const signedCount = hospitals.filter(h => h.status === 'Signed').length;
-  const totalCount = deployedCount + signedCount;
-  
-  // Set the exact colors matching the map markers
-  const deployedColor = "#3b82f6"; // Blue
-  const signedColor = "#10b981";   // Green - using the exact marker green
-  
+
   const handleLanguageChange = useCallback(async (newLanguage: LocaleType) => {
     await activateLocale(newLanguage);
     setLanguage(newLanguage);
@@ -45,6 +26,14 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
 
   // Get current year dynamically
   const currentYear = new Date().getFullYear();
+
+  const deployedCount = hospitals.filter(h => h.status === 'Deployed').length;
+  const signedCount = hospitals.filter(h => h.status === 'Signed').length;
+  const totalCount = deployedCount + signedCount;
+  
+  // Set the exact colors matching the map markers
+  const deployedColor = "#3b82f6"; // Blue
+  const signedColor = "#10b981";   // Green - using the exact marker green
 
   return (
     <div className={`flex flex-col gap-6 ${className}`}>

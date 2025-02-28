@@ -2,6 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hospitals } from './data';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   return NextResponse.json(hospitals);
 }
