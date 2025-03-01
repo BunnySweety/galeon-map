@@ -1,7 +1,7 @@
 // File: app/hooks/useGeolocation.ts
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 interface GeolocationState {
   latitude: number | null;
@@ -22,7 +22,7 @@ export function useGeolocation(options: UseGeolocationOptions = {}) {
     latitude: null,
     longitude: null,
     accuracy: null,
-    loading: true,
+    loading: false,
     error: null,
   });
 
@@ -62,10 +62,6 @@ export function useGeolocation(options: UseGeolocationOptions = {}) {
       }
     );
   }, [options.enableHighAccuracy, options.maximumAge, options.timeout]);
-
-  useEffect(() => {
-    getPosition();
-  }, [getPosition]);
 
   return { ...state, getPosition };
 }

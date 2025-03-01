@@ -1,4 +1,3 @@
-// File: uno.config.ts
 import { defineConfig } from 'unocss';
 import presetWind from '@unocss/preset-wind';
 import presetRemToPx from '@unocss/preset-rem-to-px';
@@ -23,4 +22,4 @@ export default defineConfig({
     'hospital-marker-deployed': 'hospital-marker-base bg-deployed',
     'hospital-marker-pending': 'hospital-marker-base bg-secondary',
   }
-});
+}); 

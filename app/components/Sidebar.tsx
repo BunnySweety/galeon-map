@@ -1,6 +1,7 @@
 // File: app/components/Sidebar.tsx
 'use client';
 
+import { useLingui } from '@lingui/react';
 import { useCallback } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { activateLocale, LocaleType } from '../i18n';
@@ -11,6 +12,16 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
+  const { i18n } = useLingui();
+  
+  const _ = useCallback((text: string) => {
+    try {
+      return i18n && i18n._ ? i18n._(text) : text;
+    } catch {
+      return text;
+    }
+  }, [i18n]);
+  
   const { 
     hospitals, 
     selectedFilters, 
@@ -18,15 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
     language, 
     setLanguage 
   } = useMapStore();
-
-  const handleLanguageChange = useCallback(async (newLanguage: LocaleType) => {
-    await activateLocale(newLanguage);
-    setLanguage(newLanguage);
-  }, [setLanguage]);
-
-  // Get current year dynamically
-  const currentYear = new Date().getFullYear();
-
+  
   const deployedCount = hospitals.filter(h => h.status === 'Deployed').length;
   const signedCount = hospitals.filter(h => h.status === 'Signed').length;
   const totalCount = deployedCount + signedCount;
@@ -34,6 +37,14 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
   // Set the exact colors matching the map markers
   const deployedColor = "#3b82f6"; // Blue
   const signedColor = "#10b981";   // Green - using the exact marker green
+  
+  const handleLanguageChange = useCallback(async (newLanguage: LocaleType) => {
+    await activateLocale(newLanguage);
+    setLanguage(newLanguage);
+  }, [setLanguage]);
+
+  // Get current year dynamically
+  const currentYear = new Date().getFullYear();
 
   return (
     <div className={`flex flex-col gap-6 ${className}`}>
@@ -46,7 +57,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
             alt="Galeon Logo" 
             width={40} 
             height={40} 
-            className="mr-3" 
+            className="mr-3"
+            style={{ width: 'auto', height: 'auto' }}
           />
           <span className="text-4xl font-normal tracking-wide text-white font-minion">GALEON</span>
         </div>

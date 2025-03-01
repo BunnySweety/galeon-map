@@ -1,12 +1,5 @@
 // File: app/utils/mapbox-passive-fix.ts
 
-// Extend Window interface to include our custom property
-declare global {
-  interface Window {
-    _originalAddEventListener?: typeof EventTarget.prototype.addEventListener;
-  }
-}
-
 /**
  * Cette fonction applique un correctif pour les événements Mapbox
  * en rétablissant certains événements comme non-passifs lorsque nécessaire
@@ -16,7 +9,7 @@ export function applyMapboxPassiveEventsFix(): void {
     
     // Sauvegarde de la méthode originale
     const originalAddEventListener = EventTarget.prototype.addEventListener;
-    window._originalAddEventListener = originalAddEventListener;
+    window['_originalAddEventListener'] = originalAddEventListener;
     
     // Remplacement par une version plus intelligente
     EventTarget.prototype.addEventListener = function(
@@ -77,9 +70,9 @@ export function applyMapboxPassiveEventsFix(): void {
     if (typeof window === 'undefined') return;
     
     // Restauration de la méthode originale si elle a été sauvegardée quelque part
-    const originalAddEventListener = window._originalAddEventListener;
+    const originalAddEventListener = window['_originalAddEventListener'];
     if (originalAddEventListener) {
       EventTarget.prototype.addEventListener = originalAddEventListener;
-      delete window._originalAddEventListener;
+      delete window['_originalAddEventListener'];
     }
   }

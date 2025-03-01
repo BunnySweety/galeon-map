@@ -2,7 +2,6 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { format } from 'date-fns';
-import { LocaleType } from '../i18n';
 
 // Types
 export type HospitalStatus = 'Deployed' | 'Signed';
@@ -27,24 +26,22 @@ interface MapStore {
     deployed: boolean;
     signed: boolean;
   };
-  language: LocaleType;
+  language: 'en' | 'fr';
   selectedHospital: Hospital | null;
   isLoading: boolean;
   error: string | null;
   hydrated: boolean;
-  isPlaying: boolean;
   
   // Actions
   setHospitals: (hospitals: Hospital[]) => void;
   setFilteredHospitals: (hospitals: Hospital[]) => void;
   setCurrentDate: (date: string) => void;
   toggleFilter: (filter: 'deployed' | 'signed') => void;
-  setLanguage: (language: LocaleType) => void;
+  setLanguage: (language: 'en' | 'fr') => void;
   selectHospital: (hospital: Hospital | null) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
   setHydrated: (hydrated: boolean) => void;
-  setIsPlaying: (isPlaying: boolean) => void;
   
   // Derived actions
   initialize: () => Promise<void>;
@@ -65,12 +62,11 @@ export const useMapStore = create<MapStore>()(
           deployed: true,
           signed: true,
         },
-        language: 'fr',
+        language: 'en',
         selectedHospital: null,
-        isLoading: true,
+        isLoading: false,
         error: null,
         hydrated: false,
-        isPlaying: false,
         
         // Actions
         setHospitals: (hospitals) => set({ hospitals }),
@@ -90,7 +86,6 @@ export const useMapStore = create<MapStore>()(
         setLoading: (isLoading) => set({ isLoading }),
         setError: (error) => set({ error }),
         setHydrated: (hydrated) => set({ hydrated }),
-        setIsPlaying: (isPlaying) => set({ isPlaying }),
         
         // Derived actions
         initialize: async () => {

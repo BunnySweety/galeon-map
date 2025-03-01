@@ -26,12 +26,11 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
     hospitals, 
     currentDate, 
     setCurrentDate, 
-    selectedHospital,
-    isPlaying,
-    setIsPlaying
+    selectedHospital
   } = useMapStore();
   
   const [timelineDates, setTimelineDates] = useState<string[]>([]);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [currentDateIndex, setCurrentDateIndex] = useState(0);
   
   // Utilisez useRef pour stocker la date courante et éviter les problèmes de rendu
@@ -65,53 +64,54 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
           return prevIndex;
         }
         
-        // Update current date
-        setCurrentDate(timelineDates[newIndex]);
+        // Update current date - en utilisant setTimeout pour éviter les problèmes de rendu
+        setTimeout(() => {
+          setCurrentDate(timelineDates[newIndex]);
+        }, 0);
+        
         return newIndex;
       });
     }, 1500); // Change every 1.5 seconds
     
     return () => clearInterval(interval);
-  }, [isPlaying, timelineDates, setCurrentDate, setIsPlaying]);
+  }, [isPlaying, timelineDates, setCurrentDate]);
 
   // Skip to the end of the timeline
   const handleSkip = useCallback(() => {
     if (!timelineDates.length) return;
     
     const lastDate = timelineDates[timelineDates.length - 1];
-    setCurrentDate(lastDate);
+    // Utiliser setTimeout pour éviter les mises à jour pendant le rendu
+    setTimeout(() => {
+      setCurrentDate(lastDate);
+    }, 0);
     setCurrentDateIndex(timelineDates.length - 1);
     setIsPlaying(false);
-  }, [timelineDates, setCurrentDate, setIsPlaying]);
+  }, [timelineDates, setCurrentDate]);
+
+  // Toggle play/pause
+  const togglePlay = useCallback(() => {
+    // If at the end, restart from beginning
+    if (currentDateIndex >= timelineDates.length - 1) {
+      setCurrentDateIndex(0);
+      // Utiliser setTimeout pour éviter les mises à jour pendant le rendu
+      setTimeout(() => {
+        setCurrentDate(timelineDates[0]);
+      }, 0);
+    }
+    
+    setIsPlaying(prev => !prev);
+  }, [currentDateIndex, timelineDates, setCurrentDate]);
 
   // Handle timeline point click
   const handlePointClick = useCallback((date: string, index: number) => {
-    setCurrentDate(date);
+    // Utiliser setTimeout pour éviter les mises à jour pendant le rendu
+    setTimeout(() => {
+      setCurrentDate(date);
+    }, 0);
     setCurrentDateIndex(index);
     setIsPlaying(false);
-  }, [setCurrentDate, setIsPlaying]);
-
-  useEffect(() => {
-    if (currentDateIndex >= timelineDates.length - 1) {
-      setIsPlaying(false);
-    }
-  }, [timelineDates.length, currentDateIndex, setIsPlaying]);
-
-  // Handle play/pause
-  const handlePlayPause = useCallback(() => {
-    if (currentDateIndex >= timelineDates.length - 1) {
-      setCurrentDateIndex(0);
-      setCurrentDate(timelineDates[0]);
-    }
-    setIsPlaying(!isPlaying);
-  }, [currentDateIndex, timelineDates, setCurrentDate, setIsPlaying, isPlaying]);
-
-  // Handle reset
-  const handleReset = useCallback(() => {
-    setCurrentDateIndex(0);
-    setCurrentDate(timelineDates[0]);
-    setIsPlaying(false);
-  }, [timelineDates, setCurrentDate, setIsPlaying]);
+  }, [setCurrentDate]);
 
   return (
     <div className={`absolute top-8 left-1/2 transform -translate-x-1/2 
@@ -132,53 +132,30 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
         {timelineDates.map((date, index) => (
           <button
             key={date}
-            onClick={() => handlePointClick(date, index)}
-            className={`absolute w-4 h-4 -mt-[6px] rounded-full transition-all
-              ${currentDateIndex >= index ? 'bg-blue-500' : 'bg-blue-500/30'}
-              ${currentDateIndex === index ? 'scale-125' : 'hover:scale-110'}`}
+            className={`absolute top-1/2 -translate-y-1/2 w-8 h-8 rounded-full 
+              ${index <= currentDateIndex 
+                ? 'bg-blue-500 border-2 border-white' 
+                : 'bg-white border-2 border-blue-300'
+              }`}
             style={{ left: `${(index / (timelineDates.length - 1)) * 100}%` }}
-            title={date}
-          />
-        ))}
-        
-        {/* Control buttons */}
-        <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 flex items-center gap-4">
-          <button
-            onClick={handleReset}
-            className="p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 transition-colors"
-            title={_("Reset")}
+            onClick={() => handlePointClick(date, index)}
           >
-            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-            </svg>
-          </button>
-          
-          <button
-            onClick={handlePlayPause}
-            className="p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 transition-colors"
-            title={isPlaying ? _("Pause") : _("Play")}
-          >
-            {isPlaying ? (
-              <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6" />
-              </svg>
-            ) : (
-              <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+            {index <= currentDateIndex && (
+              <svg className="w-full h-full p-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
               </svg>
             )}
           </button>
-          
-          <button
-            onClick={handleSkip}
-            className="p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 transition-colors"
-            title={_("Skip to end")}
-          >
-            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
+        ))}
+        
+        {/* Skip button */}
+        <button 
+          className="absolute right-0 top-1/2 -translate-y-1/2 
+            px-4 py-2 bg-slate-800/70 text-white rounded text-sm"
+          onClick={handleSkip}
+        >
+          {_('Skip')}
+        </button>
       </div>
       
       {/* Selected hospital name and date */}
