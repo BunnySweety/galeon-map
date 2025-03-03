@@ -1,22 +1,13 @@
 name = "galeon-community-hospital-map"
-type = "javascript"
-account_id = ""
-workers_dev = true
-route = ""
-zone_id = ""
 compatibility_date = "2023-10-30"
 main = "_worker.js"
 pages_build_output_dir = "out"
 
 [site]
 bucket = "./out"
-entry-point = "functions"
 
 [build]
 command = "bash ./build.sh"
 
-[build.upload]
-format = "directory"
-
-[env.production]
-pages_build_output_dir = "out" 
+# Suppression des champs obsolètes
+# type, account_id, workers_dev, route, zone_id, [build.upload], [env.production] 
