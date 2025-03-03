@@ -1,11 +1,9 @@
 import { defineConfig } from 'unocss';
 import presetWind from '@unocss/preset-wind';
-import presetRemToPx from '@unocss/preset-rem-to-px';
 
 export default defineConfig({
   presets: [
     presetWind(),
-    presetRemToPx()
   ],
   rules: [
     ['h-screen-4rem', { height: 'calc(100vh - 4rem)' }],
