@@ -4,9 +4,13 @@
 echo "Node.js version: $(node -v)"
 echo "npm version: $(npm -v)"
 
-# Installer les dépendances avec npm install au lieu de npm ci
+# Supprimer le package-lock.json existant
+echo "Removing package-lock.json..."
+rm -f package-lock.json
+
+# Installer les dépendances avec npm install
 echo "Installing dependencies with npm install..."
-npm install
+npm install --no-package-lock
 
 # Exécuter le build
 echo "Building the application..."

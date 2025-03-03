@@ -12,7 +12,7 @@ bucket = "./out"
 entry-point = "functions"
 
 [build]
-command = "npm install && npm run build"
+command = "bash ./build.sh"
 
 [build.upload]
 format = "directory"
