@@ -1,6 +1,6 @@
 // File: app/api/hospitals/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { hospitals, HospitalSchema, Hospital } from './data';
+import { hospitals, HospitalSchema, Hospital } from '../data';
 
 export async function GET(
   request: NextRequest, 
