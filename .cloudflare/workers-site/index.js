@@ -1,4 +1,4 @@
-import { getAssetFromKV } from '@cloudflare/kv-asset-handler';
+import { getAssetFromKV, mapRequestToAsset } from '@cloudflare/kv-asset-handler';
 
 /**
  * The DEBUG flag will do two things that help during development:
@@ -28,28 +28,73 @@ async function handleEvent(event) {
   const url = new URL(event.request.url);
   let options = {};
 
+  /**
+   * You can add custom logic to how we fetch your assets
+   * by configuring the function `mapRequestToAsset`
+   */
+  // options.mapRequestToAsset = handlePrefix(/^\/docs/)
+
   try {
-    // Check if the URL is for a dynamic route
-    const hospitalMatch = url.pathname.match(/^\/hospitals\/([^\/]+)\/?$/);
+    // Check if the URL is for a static file
+    if (
+      url.pathname.startsWith('/_next/') ||
+      url.pathname.startsWith('/images/') ||
+      url.pathname.endsWith('.js') ||
+      url.pathname.endsWith('.css') ||
+      url.pathname.endsWith('.json') ||
+      url.pathname.endsWith('.ico') ||
+      url.pathname.endsWith('.png') ||
+      url.pathname.endsWith('.jpg') ||
+      url.pathname.endsWith('.svg') ||
+      url.pathname === '/favicon.ico' ||
+      url.pathname === '/robots.txt' ||
+      url.pathname === '/sitemap.xml' ||
+      url.pathname === '/manifest.json'
+    ) {
+      // Serve the static file directly
+      return await getAssetFromKV(event, options);
+    }
+
+    // Check if the URL is for a dynamic route like /hospitals/1
+    const hospitalMatch = url.pathname.match(/^\/hospitals\/([^\/]+)$/);
     if (hospitalMatch) {
-      // Rewrite to the static HTML file
-      const hospitalId = hospitalMatch[1];
-      url.pathname = `/hospitals/${hospitalId}/index.html`;
-      options.mapRequestToAsset = req => new Request(url.toString(), req);
+      // Rewrite to index.html
+      options.mapRequestToAsset = req => {
+        const url = new URL(req.url);
+        url.pathname = '/index.html';
+        return mapRequestToAsset(new Request(url.toString(), req));
+      };
+      return await getAssetFromKV(event, options);
     }
 
-    // Check if the URL is for a dynamic API route
-    const apiHospitalMatch = url.pathname.match(/^\/api\/hospitals\/([^\/]+)\/?$/);
-    if (apiHospitalMatch) {
-      // Rewrite to the static JSON file
-      const hospitalId = apiHospitalMatch[1];
-      url.pathname = `/api/hospitals/${hospitalId}/index.html`;
-      options.mapRequestToAsset = req => new Request(url.toString(), req);
+    // Check if the URL is for an API route
+    if (url.pathname.startsWith('/api/')) {
+      // Rewrite to the appropriate API HTML file
+      const apiHospitalMatch = url.pathname.match(/^\/api\/hospitals\/([^\/]+)$/);
+      if (apiHospitalMatch) {
+        options.mapRequestToAsset = req => {
+          const url = new URL(req.url);
+          url.pathname = `/api/hospitals/${apiHospitalMatch[1]}/index.html`;
+          return mapRequestToAsset(new Request(url.toString(), req));
+        };
+        return await getAssetFromKV(event, options);
+      }
+
+      if (url.pathname === '/api/hospitals') {
+        options.mapRequestToAsset = req => {
+          const url = new URL(req.url);
+          url.pathname = '/api/hospitals/index.html';
+          return mapRequestToAsset(new Request(url.toString(), req));
+        };
+        return await getAssetFromKV(event, options);
+      }
     }
 
-    // Handle 404 for non-existent routes
-    options.notFoundPageHandler = async () => {
-      return new Response('Page not found', { status: 404 });
+    // For all other routes, serve index.html
+    options.mapRequestToAsset = req => {
+      const url = new URL(req.url);
+      url.pathname = '/index.html';
+      return mapRequestToAsset(new Request(url.toString(), req));
     };
 
     const page = await getAssetFromKV(event, options);
@@ -60,21 +105,23 @@ async function handleEvent(event) {
     response.headers.set('X-XSS-Protection', '1; mode=block');
     response.headers.set('X-Content-Type-Options', 'nosniff');
     response.headers.set('X-Frame-Options', 'DENY');
-    response.headers.set('Referrer-Policy', 'unsafe-url');
-    response.headers.set('Feature-Policy', 'none');
+    response.headers.set('Referrer-Policy', 'no-referrer-when-downgrade');
+    response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
 
     return response;
   } catch (e) {
-    // If an error is thrown try to serve the asset at 404.html
+    // If an error is thrown try to serve the 404.html page
     if (!DEBUG) {
       try {
-        let notFoundResponse = await getAssetFromKV(event, {
-          mapRequestToAsset: req => new Request(`${new URL(req.url).origin}/404.html`, req),
-        });
-
+        options.mapRequestToAsset = req => {
+          const url = new URL(req.url);
+          url.pathname = '/404.html';
+          return mapRequestToAsset(new Request(url.toString(), req));
+        };
+        const notFoundResponse = await getAssetFromKV(event, options);
         return new Response(notFoundResponse.body, {
           ...notFoundResponse,
-          status: 404,
+          status: 404
         });
       } catch (e) {}
     }

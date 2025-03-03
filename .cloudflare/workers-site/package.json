@@ -1,0 +1,9 @@
+{
+  "name": "galeon-hospitals-map-worker",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "dependencies": {
+    "@cloudflare/kv-asset-handler": "^0.3.0"
+  }
+} 

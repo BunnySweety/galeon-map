@@ -1,0 +1,7 @@
+[build]
+command = "npm install && npm run build:cloudflare"
+output_directory = "out"
+base_directory = ""
+
+[build.environment]
+NODE_VERSION = "20.11.1" 

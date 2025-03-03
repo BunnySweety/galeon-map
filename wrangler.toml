@@ -12,7 +12,7 @@ bucket = "./out"
 entry-point = "functions"
 
 [build]
-command = "npm run build:cloudflare"
+command = "bash ./build.sh"
 
 [build.upload]
 format = "directory"
