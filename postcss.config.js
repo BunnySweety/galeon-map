@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   plugins: {
     '@unocss/postcss': {
       // Disable internal caching to prevent warnings
