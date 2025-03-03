@@ -3,16 +3,6 @@
   publish = "out"
 
 [[redirects]]
-  from = "/hospitals/*"
-  to = "/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/api/hospitals/*"
-  to = "/api/hospitals/:splat/index.html"
-  status = 200
-
-[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

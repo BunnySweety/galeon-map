@@ -146,7 +146,6 @@ const nextConfig = {
     
     // Configuration pour le routage côté client
     experimental: {
-      optimizeCss: true,
       optimizePackageImports: ['react', 'react-dom', 'mapbox-gl']
     },
     

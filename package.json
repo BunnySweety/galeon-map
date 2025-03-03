@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build && rm -rf .next/cache/webpack && node scripts/post-build.js",
-    "build:cloudflare": "next build && node scripts/post-build.js",
+    "build:cloudflare": "next build --no-lint && node scripts/post-build.js",
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
@@ -69,6 +69,7 @@
     "@unocss/webpack": "^66.1.0-beta.3",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.19",
+    "critters": "^0.0.23",
     "eslint": "^8.57.0",
     "eslint-config-next": "15.2.0",
     "eslint-plugin-react-hooks": "^4.6.0",
