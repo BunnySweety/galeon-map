@@ -78,8 +78,11 @@ const nextConfig = {
             lib: {
               test: /[\\/]node_modules[\\/]/,
               name(module) {
-                const packageName = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/)[1];
-                return `npm.${packageName.replace('@', '')}`;
+                // Vérifier si module.context existe et contient le pattern recherché
+                const packageNameMatch = module.context && module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/);
+                return packageNameMatch 
+                  ? `npm.${packageNameMatch[1].replace('@', '')}`
+                  : 'npm.unknown';
               },
               priority: 30,
               minChunks: 1,
@@ -101,17 +104,15 @@ const nextConfig = {
       ignoreDuringBuilds: false,
     },
     
-    // Exclure les fichiers de cache webpack du déploiement
-    experimental: {
-      outputFileTracingExcludes: {
-        '*': [
-          'node_modules/@swc/core-linux-x64-gnu',
-          'node_modules/@swc/core-linux-x64-musl',
-          'node_modules/@esbuild/linux-x64',
-          '.next/cache/**/*',
-          'cache/**/*'
-        ],
-      },
+    // Exclure les fichiers de cache webpack du déploiement (déplacé hors de experimental)
+    outputFileTracingExcludes: {
+      '*': [
+        'node_modules/@swc/core-linux-x64-gnu',
+        'node_modules/@swc/core-linux-x64-musl',
+        'node_modules/@esbuild/linux-x64',
+        '.next/cache/**/*',
+        'cache/**/*'
+      ],
     },
     
     // Désactiver la génération de source maps en production
