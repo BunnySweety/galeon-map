@@ -146,8 +146,8 @@ const nextConfig = {
     
     // Configuration pour le routage côté client
     experimental: {
-      appDir: true,
-      serverActions: false
+      optimizeCss: true,
+      optimizePackageImports: ['react', 'react-dom', 'mapbox-gl']
     },
     
     // Désactiver le serveur pour Cloudflare Pages

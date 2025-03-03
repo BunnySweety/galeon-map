@@ -3,6 +3,7 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer-when-downgrade
   X-XSS-Protection: 1; mode=block
+  Cache-Control: public, max-age=0, must-revalidate
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' *.mapbox.com; style-src 'self' 'unsafe-inline' *.mapbox.com; img-src 'self' data: blob: *.mapbox.com; connect-src 'self' *.mapbox.com api.mapbox.com events.mapbox.com; worker-src 'self' blob:;
   Permissions-Policy: camera=(), microphone=(), geolocation=(self)
 

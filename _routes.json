@@ -1,9 +1,11 @@
 {
   "version": 1,
+  "include": ["/*"],
+  "exclude": [],
   "routes": [
-    { "src": "/hospitals/[id]", "dest": "/index.html" },
-    { "src": "/api/hospitals/[id]", "dest": "/api/hospitals/[id]/index.html" },
-    { "src": "/api/hospitals", "dest": "/api/hospitals/index.html" },
-    { "src": ".*", "dest": "/index.html" }
+    {
+      "src": ".*",
+      "dest": "/index.html"
+    }
   ]
 } 

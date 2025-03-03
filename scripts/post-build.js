@@ -27,7 +27,7 @@ for (const file of publicConfigFiles) {
 }
 
 // Copier les fichiers de configuration de Cloudflare Pages depuis la racine
-const rootConfigFiles = ['_routes.json', '_redirects', '_headers', '_worker.js'];
+const rootConfigFiles = ['_routes.json', '_redirects', '_headers', '_worker.js', 'index.html'];
 
 for (const file of rootConfigFiles) {
   const sourcePath = path.join(rootDir, file);
@@ -146,6 +146,13 @@ const middlewareContent = `export async function onRequest(context) {
   if (
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/images/') ||
+    pathname.endsWith('.js') ||
+    pathname.endsWith('.css') ||
+    pathname.endsWith('.json') ||
+    pathname.endsWith('.ico') ||
+    pathname.endsWith('.png') ||
+    pathname.endsWith('.jpg') ||
+    pathname.endsWith('.svg') ||
     pathname === '/favicon.ico' ||
     pathname === '/robots.txt' ||
     pathname === '/sitemap.xml' ||
@@ -154,39 +161,13 @@ const middlewareContent = `export async function onRequest(context) {
     return context.next();
   }
 
-  // Gérer les routes API
-  if (pathname.startsWith('/api/')) {
-    // Pour les routes API dynamiques comme /api/hospitals/1
-    const hospitalIdMatch = pathname.match(/^\\/api\\/hospitals\\/([^\\/]+)$/);
-    if (hospitalIdMatch) {
-      const id = hospitalIdMatch[1];
-      // Rediriger vers le fichier HTML statique
-      const newUrl = new URL(\`/api/hospitals/\${id}/index.html\`, url.origin);
-      return context.next();
+  // Pour toutes les autres routes, rediriger vers index.html
+  return new Response(null, {
+    status: 302,
+    headers: {
+      'Location': '/index.html'
     }
-    
-    // Pour la route API principale /api/hospitals
-    if (pathname === '/api/hospitals') {
-      return context.next();
-    }
-  }
-
-  // Gérer les routes dynamiques comme /hospitals/1
-  const hospitalPageMatch = pathname.match(/^\\/hospitals\\/([^\\/]+)$/);
-  if (hospitalPageMatch) {
-    const id = hospitalPageMatch[1];
-    // Rediriger vers le fichier HTML statique
-    const newUrl = new URL(\`/hospitals/\${id}/index.html\`, url.origin);
-    return context.next();
-  }
-
-  // Gérer la page d'accueil
-  if (pathname === '/' || pathname === '') {
-    return context.next();
-  }
-
-  // Rediriger vers la page d'accueil pour les routes non reconnues
-  return Response.redirect(new URL('/', request.url), 302);
+  });
 }`;
 
 // Créer le fichier _middleware.js dans le répertoire functions

@@ -7,6 +7,13 @@ export default {
     if (
       pathname.startsWith('/_next/') ||
       pathname.startsWith('/images/') ||
+      pathname.endsWith('.js') ||
+      pathname.endsWith('.css') ||
+      pathname.endsWith('.json') ||
+      pathname.endsWith('.ico') ||
+      pathname.endsWith('.png') ||
+      pathname.endsWith('.jpg') ||
+      pathname.endsWith('.svg') ||
       pathname === '/favicon.ico' ||
       pathname === '/robots.txt' ||
       pathname === '/sitemap.xml' ||
@@ -46,17 +53,7 @@ export default {
       return fetch(new Request(new URL('/index.html', url.origin), request));
     }
 
-    // Pour toutes les autres routes, essayer de servir le fichier directement
-    try {
-      const response = await fetch(request);
-      if (response.status === 404) {
-        // Si le fichier n'existe pas, rediriger vers la page d'accueil
-        return fetch(new Request(new URL('/index.html', url.origin), request));
-      }
-      return response;
-    } catch (e) {
-      // En cas d'erreur, rediriger vers la page d'accueil
-      return fetch(new Request(new URL('/index.html', url.origin), request));
-    }
+    // Pour toutes les autres routes, rediriger vers index.html
+    return fetch(new Request(new URL('/index.html', url.origin), request));
   }
 }; 
