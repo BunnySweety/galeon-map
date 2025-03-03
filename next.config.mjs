@@ -137,6 +137,18 @@ const nextConfig = {
     
     // Désactiver la compression des assets
     compress: false,
+
+    // Configuration spécifique pour Cloudflare Pages
+    trailingSlash: true,
+    
+    // Configuration pour les routes statiques et dynamiques
+    // Cette option est importante pour Cloudflare Pages
+    experimental: {
+      // Activer le support pour les routes statiques et dynamiques
+      appDir: true,
+      // Permettre les routes dynamiques
+      serverActions: true,
+    }
 }
 
 export default nextConfig;
