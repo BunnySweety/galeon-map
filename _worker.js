@@ -171,31 +171,27 @@ export default {
         }
       }
 
-      // Pour toutes les autres routes, servir index.html sans redirection
-      console.log(`Serving index.html for unknown route: ${pathname}`);
+      // Pour toutes les autres routes, servir index.html
+      console.log(`Serving index.html for route: ${pathname}`);
       try {
-        console.log('Attempting to fetch fallback: /index.html');
+        console.log('Attempting to fetch: /index.html');
         const indexResponse = await fetch(new URL('/index.html', url.origin));
-        console.log(`Fallback response status: ${indexResponse.status}`);
+        console.log(`Index response status: ${indexResponse.status}`);
         
         if (indexResponse.ok) {
           const body = await indexResponse.text();
           return new Response(body, {
             headers: {
               'Content-Type': 'text/html',
-              'Cache-Control': 'public, max-age=0, must-revalidate',
-              'X-XSS-Protection': '1; mode=block',
-              'X-Content-Type-Options': 'nosniff',
-              'X-Frame-Options': 'DENY',
-              'Referrer-Policy': 'no-referrer-when-downgrade'
+              'Cache-Control': 'public, max-age=0, must-revalidate'
             },
             status: 200
           });
         } else {
-          throw new Error('Fallback page not found');
+          throw new Error('Index page not found');
         }
       } catch (e) {
-        console.error(`Error serving fallback: ${e}`);
+        console.error(`Error serving index: ${e}`);
         return new Response('Page not found', { status: 404 });
       }
     } catch (globalError) {
