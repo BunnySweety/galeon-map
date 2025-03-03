@@ -144,10 +144,51 @@ const nextConfig = {
     // Désactiver le serveur pour Cloudflare Pages
     distDir: 'out',
     
-    // Exclure les routes API de l'export statique
-    experimental: {
-      // Ces options ne sont plus nécessaires ou ont été renommées dans Next.js 15
-      // serverActions est maintenant activé par défaut
+    // Ajouter la configuration pour les routes statiques
+    async rewrites() {
+      return [
+        {
+          source: '/hospitals/:id',
+          destination: '/hospitals/:id/index.html',
+        },
+        {
+          source: '/api/hospitals/:id',
+          destination: '/api/hospitals/:id/index.html',
+        }
+      ];
+    },
+    
+    // Ajouter la configuration pour les redirections
+    async redirects() {
+      return [
+        {
+          source: '/:path*',
+          destination: '/',
+          permanent: false,
+          has: [
+            {
+              type: 'header',
+              key: 'x-not-found',
+              value: 'true',
+            },
+          ],
+        },
+      ];
+    },
+    
+    // Ajouter la configuration pour les headers
+    async headers() {
+      return [
+        {
+          source: '/(.*)',
+          headers: [
+            {
+              key: 'Cache-Control',
+              value: 'public, max-age=3600, s-maxage=86400',
+            },
+          ],
+        },
+      ];
     }
 }
 

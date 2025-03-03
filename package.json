@@ -9,8 +9,8 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build && rm -rf .next/cache/webpack",
-    "build:cloudflare": "next build && cp -r out/_next/static out/_next/static || true",
+    "build": "next build && rm -rf .next/cache/webpack && node scripts/post-build.js",
+    "build:cloudflare": "next build && node scripts/post-build.js",
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
@@ -24,7 +24,8 @@
     "compile": "lingui compile",
     "i18n": "npm run extract && npm run compile",
     "deploy": "bash deploy.sh",
-    "build:clean": "next build && rm -rf .next/cache/webpack"
+    "build:clean": "next build && rm -rf .next/cache/webpack",
+    "postbuild": "node scripts/post-build.js"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
