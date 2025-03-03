@@ -2,39 +2,17 @@
   "name": "galeon-hospitals-map",
   "version": "0.2.0",
   "private": true,
-  "type": "module",
-  "engines": {
-    "node": ">=20.11.1",
-    "npm": ">=10.2.4"
-  },
   "scripts": {
     "dev": "next dev",
     "build": "next build && rm -rf .next/cache/webpack && node scripts/post-build.js",
-    "build:cloudflare": "next build --no-lint && node scripts/post-build.js",
+    "postbuild": "node scripts/post-build.js",
     "start": "next start",
     "lint": "next lint",
-    "lint:fix": "next lint --fix",
-    "type-check": "tsc --noEmit",
     "test": "vitest",
-    "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "prepare": "npx husky",
-    "precommit": "npm run lint && npm run type-check",
-    "extract": "lingui extract",
-    "compile": "lingui compile",
-    "i18n": "npm run extract && npm run compile",
-    "deploy": "bash deploy.sh",
-    "build:clean": "next build && rm -rf .next/cache/webpack",
-    "postbuild": "node scripts/post-build.js"
-  },
-  "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "eslint --fix",
-      "tsc --noEmit"
-    ]
+    "prepare": "npx husky"
   },
   "dependencies": {
-    "@cloudflare/kv-asset-handler": "^0.3.0",
     "@lingui/conf": "^5.2.0",
     "@lingui/core": "^5.2.0",
     "@lingui/format-json": "^5.2.0",
@@ -64,8 +42,6 @@
     "@types/react-dom": "^19",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
-    "@unocss/postcss": "^66.1.0-beta.3",
-    "@unocss/preset-rem-to-px": "^66.1.0-beta.3",
     "@unocss/preset-wind": "^66.1.0-beta.3",
     "@unocss/webpack": "^66.1.0-beta.3",
     "@vitejs/plugin-react": "^4.3.4",
@@ -81,17 +57,5 @@
     "typescript": "^5",
     "unocss": "^66.1.0-beta.3",
     "vitest": "^3.0.7"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
   }
 }

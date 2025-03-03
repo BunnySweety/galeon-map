@@ -1,16 +1,15 @@
 #!/bin/bash
 
+# Afficher la version de Node.js
+echo "Node.js version: $(node -v)"
+echo "npm version: $(npm -v)"
+
 # Installer les dépendances avec npm install au lieu de npm ci
+echo "Installing dependencies with npm install..."
 npm install
 
-# Exécuter la commande de build
-npm run build:cloudflare
+# Exécuter le build
+echo "Building the application..."
+npm run build
 
-# Vérifier si le build a réussi
-if [ $? -eq 0 ]; then
-  echo "✅ Build réussi !"
-  exit 0
-else
-  echo "❌ Erreur lors du build !"
-  exit 1
-fi 
+echo "Build completed successfully!" 
