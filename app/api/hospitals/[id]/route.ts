@@ -1,13 +1,19 @@
 // File: app/api/hospitals/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { hospitals, HospitalSchema, Hospital } from '../data';
+import { hospitals, HospitalSchema, Hospital } from './data';
+
+type Params = {
+  params: {
+    id: string;
+  };
+};
 
 export async function GET(
-  request: NextRequest, 
-  context: { params: { id: string } }
+  request: NextRequest,
+  { params }: Params
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     const hospital = hospitals.find((h: Hospital) => h.id === id);
     
     if (!hospital) {
@@ -27,11 +33,11 @@ export async function GET(
 }
 
 export async function PUT(
-  request: NextRequest, 
-  context: { params: { id: string } }
+  request: NextRequest,
+  { params }: Params
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     const body = await request.json();
     
     const result = HospitalSchema.safeParse(body);
@@ -63,11 +69,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: NextRequest, 
-  context: { params: { id: string } }
+  request: NextRequest,
+  { params }: Params
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     
     const hospitalIndex = hospitals.findIndex((h: Hospital) => h.id === id);
     if (hospitalIndex === -1) {
