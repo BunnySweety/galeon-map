@@ -21,7 +21,9 @@
     "precommit": "npm run lint && npm run type-check",
     "extract": "lingui extract",
     "compile": "lingui compile",
-    "i18n": "npm run extract && npm run compile"
+    "i18n": "npm run extract && npm run compile",
+    "deploy": "bash deploy.sh",
+    "build:clean": "next build && rm -rf .next/cache/webpack"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
