@@ -26,7 +26,7 @@ export async function onRequest(context) {
   // Gérer les routes API
   if (pathname.startsWith('/api/')) {
     // Pour les routes API dynamiques comme /api/hospitals/1
-    const hospitalIdMatch = pathname.match(/^\/api\/hospitals\/([^\/]+)$/);
+    const hospitalIdMatch = pathname.match(/^\/api\/hospitals\/([^/]+)$/);
     if (hospitalIdMatch) {
       return context.next();
     }
@@ -38,7 +38,7 @@ export async function onRequest(context) {
   }
 
   // Gérer les routes dynamiques comme /hospitals/1
-  const hospitalPageMatch = pathname.match(/^\/hospitals\/([^\/]+)$/);
+  const hospitalPageMatch = pathname.match(/^\/hospitals\/([^/]+)$/);
   if (hospitalPageMatch) {
     return context.next();
   }
