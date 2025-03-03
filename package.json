@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build && rm -rf .next/cache/webpack",
+    "build:cloudflare": "next build && cp -r .next/static out/_next/static",
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",

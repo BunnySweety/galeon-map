@@ -101,7 +101,7 @@ const nextConfig = {
 
       return config;
     },
-    output: 'standalone',
+    output: 'export',
     
     // Optimize build performance
     typescript: {
@@ -139,7 +139,10 @@ const nextConfig = {
     compress: false,
 
     // Configuration spécifique pour Cloudflare Pages
-    trailingSlash: true,
+    trailingSlash: false,
+    
+    // Désactiver le serveur pour Cloudflare Pages
+    distDir: 'out',
     
     // Configuration pour les routes statiques et dynamiques
     // Cette option est importante pour Cloudflare Pages
