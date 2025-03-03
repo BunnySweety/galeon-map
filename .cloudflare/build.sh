@@ -4,9 +4,9 @@
 
 echo "Starting custom build process..."
 
-# Installer les dépendances sans générer de fichiers de cache
+# Installer les dépendances
 echo "Installing dependencies..."
-npm ci --no-fund --no-audit --no-progress --prefer-offline
+npm install
 
 # Construire l'application
 echo "Building the application..."

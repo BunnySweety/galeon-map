@@ -4,10 +4,17 @@ compatibility_date = "2023-12-01"
 
 [build]
 command = "npm run build"
+publish = ".next"
 upload.format = "directory"
 
+[build.environment]
+NODE_VERSION = "20.11.1"
+NPM_VERSION = "10.2.4"
+NODE_OPTIONS = "--max-old-space-size=3072"
+
 [site]
-bucket = ".next/standalone"
+bucket = ".next"
+entry-point = "workers-site"
 include = [".next/static/*"]
 exclude = [".next/cache/**/*", "cache/**/*", "node_modules/**/*"]
 
