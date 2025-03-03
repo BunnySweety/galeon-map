@@ -10,9 +10,23 @@ import { useHospitalQuery } from '../../store/useQueryHooks';
 import { Hospital } from '../../store/useMapStore';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { hospitals } from '../../api/hospitals/data';
 
 // Setup MapBox token
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZXVzZXIiLCJhIjoiY2s1bnRnMGRoMDBucjNtcDM3cGpqeTJpZyJ9.1vY8E3wImZevWe4p1LiLCQ';
+
+// Cette fonction est nécessaire pour l'export statique
+// Elle génère tous les chemins possibles pour cette page dynamique
+export async function generateStaticParams() {
+  // Retourne un tableau d'objets avec les paramètres pour chaque chemin
+  return hospitals.map((hospital) => ({
+    id: hospital.id,
+  }));
+}
+
+// Définir que cette page est statique
+export const dynamic = 'force-static';
+export const revalidate = false;
 
 export default function HospitalDetailPage() {
   const { i18n } = useLingui();
