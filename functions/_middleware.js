@@ -8,6 +8,13 @@ export async function onRequest(context) {
   if (
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/images/') ||
+    pathname.endsWith('.js') ||
+    pathname.endsWith('.css') ||
+    pathname.endsWith('.json') ||
+    pathname.endsWith('.ico') ||
+    pathname.endsWith('.png') ||
+    pathname.endsWith('.jpg') ||
+    pathname.endsWith('.svg') ||
     pathname === '/favicon.ico' ||
     pathname === '/robots.txt' ||
     pathname === '/sitemap.xml' ||
@@ -21,7 +28,6 @@ export async function onRequest(context) {
     // Pour les routes API dynamiques comme /api/hospitals/1
     const hospitalIdMatch = pathname.match(/^\/api\/hospitals\/([^\/]+)$/);
     if (hospitalIdMatch) {
-      const id = hospitalIdMatch[1];
       return context.next();
     }
     
@@ -42,6 +48,10 @@ export async function onRequest(context) {
     return context.next();
   }
 
-  // Rediriger vers la page d'accueil pour les routes non reconnues
-  return Response.redirect(new URL('/', request.url), 302);
+  // Pour toutes les autres routes, servir index.html sans redirection
+  const response = await context.env.ASSETS.fetch(new URL('/index.html', request.url));
+  return new Response(response.body, {
+    headers: response.headers,
+    status: 200
+  });
 } 

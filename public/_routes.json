@@ -1,11 +1,21 @@
 {
   "version": 1,
-  "include": ["/*"],
-  "exclude": [],
-  "routes": [
-    {
-      "src": ".*",
-      "dest": "/index.html"
-    }
+  "include": [
+    "/*"
+  ],
+  "exclude": [
+    "/_next/*",
+    "/images/*",
+    "/*.js",
+    "/*.css",
+    "/*.json",
+    "/*.ico",
+    "/*.png",
+    "/*.jpg",
+    "/*.svg",
+    "/favicon.ico",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/manifest.json"
   ]
 } 

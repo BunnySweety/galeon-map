@@ -58,36 +58,45 @@ async function handleEvent(event) {
     // Check if the URL is for a dynamic route like /hospitals/1
     const hospitalMatch = url.pathname.match(/^\/hospitals\/([^\/]+)$/);
     if (hospitalMatch) {
-      // Rewrite to index.html
-      options.mapRequestToAsset = req => {
-        const url = new URL(req.url);
-        url.pathname = '/index.html';
-        return mapRequestToAsset(new Request(url.toString(), req));
-      };
-      return await getAssetFromKV(event, options);
+      // Try to serve the specific hospital page
+      try {
+        options.mapRequestToAsset = req => {
+          const url = new URL(req.url);
+          url.pathname = `/hospitals/${hospitalMatch[1]}/index.html`;
+          return mapRequestToAsset(new Request(url.toString(), req));
+        };
+        return await getAssetFromKV(event, options);
+      } catch (e) {
+        // If specific hospital page doesn't exist, serve the main index.html
+        options.mapRequestToAsset = req => {
+          const url = new URL(req.url);
+          url.pathname = '/index.html';
+          return mapRequestToAsset(new Request(url.toString(), req));
+        };
+        return await getAssetFromKV(event, options);
+      }
     }
 
     // Check if the URL is for an API route
     if (url.pathname.startsWith('/api/')) {
-      // Rewrite to the appropriate API HTML file
-      const apiHospitalMatch = url.pathname.match(/^\/api\/hospitals\/([^\/]+)$/);
-      if (apiHospitalMatch) {
-        options.mapRequestToAsset = req => {
-          const url = new URL(req.url);
-          url.pathname = `/api/hospitals/${apiHospitalMatch[1]}/index.html`;
-          return mapRequestToAsset(new Request(url.toString(), req));
-        };
+      // Try to serve the specific API file
+      try {
         return await getAssetFromKV(event, options);
+      } catch (e) {
+        // If API file doesn't exist, return a 404 JSON response
+        return new Response(JSON.stringify({ error: 'Not found' }), {
+          status: 404,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
       }
+    }
 
-      if (url.pathname === '/api/hospitals') {
-        options.mapRequestToAsset = req => {
-          const url = new URL(req.url);
-          url.pathname = '/api/hospitals/index.html';
-          return mapRequestToAsset(new Request(url.toString(), req));
-        };
-        return await getAssetFromKV(event, options);
-      }
+    // For the homepage
+    if (url.pathname === '/' || url.pathname === '') {
+      return await getAssetFromKV(event, options);
     }
 
     // For all other routes, serve index.html

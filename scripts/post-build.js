@@ -161,12 +161,36 @@ const middlewareContent = `export async function onRequest(context) {
     return context.next();
   }
 
-  // Pour toutes les autres routes, rediriger vers index.html
-  return new Response(null, {
-    status: 302,
-    headers: {
-      'Location': '/index.html'
+  // Gérer les routes API
+  if (pathname.startsWith('/api/')) {
+    // Pour les routes API dynamiques comme /api/hospitals/1
+    const hospitalIdMatch = pathname.match(/^\/api\/hospitals\/([^\/]+)$/);
+    if (hospitalIdMatch) {
+      return context.next();
     }
+    
+    // Pour la route API principale /api/hospitals
+    if (pathname === '/api/hospitals') {
+      return context.next();
+    }
+  }
+
+  // Gérer les routes dynamiques comme /hospitals/1
+  const hospitalPageMatch = pathname.match(/^\/hospitals\/([^\/]+)$/);
+  if (hospitalPageMatch) {
+    return context.next();
+  }
+
+  // Gérer la page d'accueil
+  if (pathname === '/' || pathname === '') {
+    return context.next();
+  }
+
+  // Pour toutes les autres routes, servir index.html sans redirection
+  const response = await context.env.ASSETS.fetch(new URL('/index.html', request.url));
+  return new Response(response.body, {
+    headers: response.headers,
+    status: 200
   });
 }`;
 
