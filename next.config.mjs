@@ -58,6 +58,37 @@ const nextConfig = {
         { module: /jiti[\\/]lib[\\/]jiti\.mjs/ }
       ];
 
+      // Optimiser la taille des bundles
+      if (!dev && !isServer) {
+        // Activer la compression des chunks
+        config.optimization.splitChunks = {
+          chunks: 'all',
+          maxInitialRequests: 25,
+          minSize: 20000,
+          maxSize: 20000000, // Limiter la taille des chunks à 20 Mo
+          cacheGroups: {
+            default: false,
+            vendors: false,
+            framework: {
+              name: 'framework',
+              test: /[\\/]node_modules[\\/](react|react-dom|scheduler|next)[\\/]/,
+              priority: 40,
+              enforce: true,
+            },
+            lib: {
+              test: /[\\/]node_modules[\\/]/,
+              name(module) {
+                const packageName = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/)[1];
+                return `npm.${packageName.replace('@', '')}`;
+              },
+              priority: 30,
+              minChunks: 1,
+              reuseExistingChunk: true,
+            },
+          },
+        };
+      }
+
       return config;
     },
     output: 'standalone',
@@ -69,6 +100,22 @@ const nextConfig = {
     eslint: {
       ignoreDuringBuilds: false,
     },
+    
+    // Exclure les fichiers de cache webpack du déploiement
+    experimental: {
+      outputFileTracingExcludes: {
+        '*': [
+          'node_modules/@swc/core-linux-x64-gnu',
+          'node_modules/@swc/core-linux-x64-musl',
+          'node_modules/@esbuild/linux-x64',
+          '.next/cache/**/*',
+          'cache/**/*'
+        ],
+      },
+    },
+    
+    // Désactiver la génération de source maps en production
+    productionBrowserSourceMaps: false,
 }
 
 export default nextConfig;

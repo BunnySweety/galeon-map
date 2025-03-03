@@ -1,0 +1,15 @@
+# File: .cloudflare/wrangler.toml
+name = "galeon-map"
+compatibility_date = "2023-12-01"
+
+[build]
+command = "npm run build"
+upload.format = "directory"
+
+[site]
+bucket = ".next/standalone"
+include = [".next/static/*"]
+exclude = [".next/cache/**/*", "cache/**/*", "node_modules/**/*"]
+
+[env.production]
+workers_dev = false 
