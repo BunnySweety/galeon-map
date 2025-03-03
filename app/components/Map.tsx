@@ -10,8 +10,13 @@ import { useMapStore } from '../store/useMapStore';
 import { Hospital } from '../store/useMapStore';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { applyMapboxPassiveEventsFix, removeMapboxPassiveEventsFix } from '../utils/mapbox-passive-fix';
+import { createBoundsFromHospitals, createMarkerElement } from '../utils/mapHelpers';
+import { createRoot } from 'react-dom/client';
+import HospitalDetail from './HospitalDetail';
+import { I18nProvider } from '@lingui/react';
+import ActionBar from './ActionBar';
 
-// Configuration RTL globale pour éviter les appels multiples
+// Global RTL configuration to avoid multiple calls
 let rtlPluginLoaded = false;
 
 // Setup MapBox token
@@ -26,27 +31,51 @@ interface MapComponentProps {
 
 const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
   const { i18n } = useLingui();
-  const { 
-    latitude, 
-    longitude, 
-    getPosition 
+
+  // Create a safe translation function that handles undefined i18n
+  const _ = useCallback((text: string) => {
+    try {
+      if (!i18n || !i18n._) {
+        return text;
+      }
+      const translated = i18n._(text);
+      return translated;
+    } catch (error) {
+      console.error(`Error translating text in Map component: ${text}`, error);
+      return text;
+    }
+  }, [i18n]);
+
+  const {
+    latitude,
+    longitude,
+    getPosition
   } = useGeolocation();
-  
+
+  // Define France bounds for reuse
+  const franceBounds = new mapboxgl.LngLatBounds(
+    [-5.142, 41.333], // South-west of France
+    [9.561, 51.089]   // North-east of France
+  );
+
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<{[key: string]: mapboxgl.Marker}>({});
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<{ [key: string]: mapboxgl.Marker }>({});
   const locationMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const locationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isTrackingRef = useRef<boolean>(false);
+  const isFirstRenderRef = useRef<boolean>(true);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [isTrackingLocation, setIsTrackingLocation] = useState(false);
-  
-  const { 
-    hospitals, 
-    currentDate, 
-    selectHospital 
+  const popupRef = useRef<mapboxgl.Popup | null>(null);
+
+  const {
+    hospitals,
+    currentDate,
+    selectHospital
   } = useMapStore();
 
   // Create custom control button styles
-  const createControlButton = (svgContent: string, onClick: () => void) => {
+  const createControlButton = useCallback((svgContent: string, onClick: () => void) => {
     const button = document.createElement('button');
     button.className = 'map-control-button';
     button.innerHTML = svgContent;
@@ -65,29 +94,11 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
     button.style.color = 'white';
     button.onclick = onClick;
 
-    // Scale SVG responsively
-    const svg = button.querySelector('svg');
-    if (svg) {
-      svg.style.width = '100%';
-      svg.style.height = '100%';
-      svg.style.padding = '0';
-    }
-
-    // Add hover effect
-    button.onmouseenter = () => {
-      button.style.background = 'rgba(217, 217, 217, 0.1)';
-      button.style.border = '1.95px solid rgba(255, 255, 255, 0.25)';
-    };
-    button.onmouseleave = () => {
-      button.style.background = 'rgba(217, 217, 217, 0.05)';
-      button.style.border = '1.95px solid rgba(255, 255, 255, 0.15)';
-    };
-
     return button;
-  };
+  }, []);
 
   // Create footer element
-  const createFooter = () => {
+  const createFooter = useCallback(() => {
     const footer = document.createElement('div');
     footer.style.position = 'absolute';
     footer.style.bottom = '20px';
@@ -96,64 +107,15 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
     footer.style.display = 'flex';
     footer.style.justifyContent = 'space-between';
     footer.style.alignItems = 'center';
-    footer.style.padding = '0 20px';
+    footer.style.padding = '12px 16px';
     footer.style.zIndex = '10';
 
-    // Create author credit
-    const authorCredit = document.createElement('div');
-    authorCredit.style.position = 'absolute';
-    authorCredit.style.left = '50%';
-    authorCredit.style.transform = 'translateX(-50%)';
-    authorCredit.style.background = 'rgba(217, 217, 217, 0.05)';
-    authorCredit.style.border = '1.95px solid rgba(255, 255, 255, 0.15)';
-    authorCredit.style.backdropFilter = 'blur(17.5px)';
-    authorCredit.style.borderRadius = '16px';
-    authorCredit.style.padding = '8px 16px';
-    authorCredit.innerHTML = 'Made with <span style="color: #3b82f6;">♥</span> by BunnySweety';
-    authorCredit.style.color = 'white';
-    authorCredit.style.fontSize = 'clamp(12px, 1.2vw, 14px)';
-
-    // Add hover effect to author credit
-    authorCredit.onmouseenter = () => {
-      authorCredit.style.background = 'rgba(217, 217, 217, 0.1)';
-      authorCredit.style.border = '1.95px solid rgba(255, 255, 255, 0.25)';
-    };
-    authorCredit.onmouseleave = () => {
-      authorCredit.style.background = 'rgba(217, 217, 217, 0.05)';
-      authorCredit.style.border = '1.95px solid rgba(255, 255, 255, 0.15)';
-    };
-
-    // Create version display
-    const version = document.createElement('div');
-    version.style.marginLeft = 'auto';
-    version.style.background = 'rgba(217, 217, 217, 0.05)';
-    version.style.border = '1.95px solid rgba(255, 255, 255, 0.15)';
-    version.style.backdropFilter = 'blur(17.5px)';
-    version.style.borderRadius = '16px';
-    version.style.padding = '8px 16px';
-    version.textContent = process.env.NEXT_PUBLIC_APP_VERSION || 'v1.0.0';
-    version.style.color = 'white';
-    version.style.fontSize = 'clamp(12px, 1.2vw, 14px)';
-
-    // Add hover effect to version
-    version.onmouseenter = () => {
-      version.style.background = 'rgba(217, 217, 217, 0.1)';
-      version.style.border = '1.95px solid rgba(255, 255, 255, 0.25)';
-    };
-    version.onmouseleave = () => {
-      version.style.background = 'rgba(217, 217, 217, 0.05)';
-      version.style.border = '1.95px solid rgba(255, 255, 255, 0.15)';
-    };
-
-    footer.appendChild(authorCredit);
-    footer.appendChild(version);
-
     return footer;
-  };
+  }, []);
 
   // Create radar effect marker
-  const createRadarLocationMarker = () => {
-    if (!map.current || !latitude || !longitude) return;
+  const createRadarLocationMarker = useCallback(() => {
+    if (!mapRef.current || !latitude || !longitude) return null;
 
     // Remove existing location marker
     if (locationMarkerRef.current) {
@@ -163,58 +125,48 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
     // Create marker element with radar effect
     const markerEl = document.createElement('div');
     markerEl.style.position = 'relative';
-    markerEl.style.width = '20px';
-    markerEl.style.height = '20px';
+    markerEl.style.width = '50px';
+    markerEl.style.height = '50px';
 
-    // Radar pulse layers
-    const pulseLayer1 = document.createElement('div');
-    const pulseLayer2 = document.createElement('div');
+    // Create radar pulse effect
+    const pulseRing = document.createElement('div');
+    pulseRing.style.position = 'absolute';
+    pulseRing.style.width = '100%';
+    pulseRing.style.height = '100%';
+    pulseRing.style.borderRadius = '50%';
+    pulseRing.style.border = '2px solid #3b82f6';
+    pulseRing.style.animation = 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite';
+
+    // Create center dot
     const centerDot = document.createElement('div');
-
-    [pulseLayer1, pulseLayer2].forEach(layer => {
-      layer.style.position = 'absolute';
-      layer.style.top = '50%';
-      layer.style.left = '50%';
-      layer.style.transform = 'translate(-50%, -50%)';
-      layer.style.borderRadius = '50%';
-      layer.style.border = '2px solid #3b82f6';
-      layer.style.animation = 'radar-pulse 2s infinite';
-      layer.style.opacity = '0.7';
-    });
-
-    pulseLayer1.style.animationDelay = '0s';
-    pulseLayer2.style.animationDelay = '1s';
-
     centerDot.style.position = 'absolute';
-    centerDot.style.top = '50%';
     centerDot.style.left = '50%';
+    centerDot.style.top = '50%';
     centerDot.style.transform = 'translate(-50%, -50%)';
-    centerDot.style.width = '10px';
-    centerDot.style.height = '10px';
-    centerDot.style.borderRadius = '50%';
+    centerDot.style.width = '16px';
+    centerDot.style.height = '16px';
     centerDot.style.backgroundColor = '#3b82f6';
+    centerDot.style.borderRadius = '50%';
+    centerDot.style.border = '2px solid white';
 
-    markerEl.appendChild(pulseLayer1);
-    markerEl.appendChild(pulseLayer2);
-    markerEl.appendChild(centerDot);
-
-    // Add global keyframe animation
+    // Add keyframe animation for pulse effect
     const style = document.createElement('style');
     style.textContent = `
-      @keyframes radar-pulse {
+      @keyframes pulse {
         0% {
-          width: 0;
-          height: 0;
-          opacity: 0.7;
+          transform: scale(0.5);
+          opacity: 1;
         }
         100% {
-          width: 40px;
-          height: 40px;
+          transform: scale(2);
           opacity: 0;
         }
       }
     `;
     document.head.appendChild(style);
+
+    markerEl.appendChild(pulseRing);
+    markerEl.appendChild(centerDot);
 
     // Create and add marker
     const marker = new mapboxgl.Marker({
@@ -222,39 +174,95 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
       anchor: 'center'
     })
       .setLngLat([longitude, latitude])
-      .addTo(map.current);
+      .addTo(mapRef.current);
 
-    locationMarkerRef.current = marker;
-  };
+    return marker;
+  }, [latitude, longitude]);
 
   // Handle location button click
-  const handleLocationClick = () => {
-    setIsTrackingLocation(prev => !prev);
-    if (!isTrackingLocation) {
-      getPosition();
-    } else if (locationMarkerRef.current) {
-      locationMarkerRef.current.remove();
-      locationMarkerRef.current = null;
+  const handleLocationClick = useCallback(() => {
+    // Clear existing timeout if any
+    if (locationTimeoutRef.current) {
+      clearTimeout(locationTimeoutRef.current);
+      locationTimeoutRef.current = null;
     }
-  };
+
+    // If currently tracking, stop tracking
+    if (isTrackingRef.current) {
+      isTrackingRef.current = false;
+      if (locationMarkerRef.current) {
+        locationMarkerRef.current.remove();
+        locationMarkerRef.current = null;
+      }
+      return;
+    }
+
+    // Start tracking
+    isTrackingRef.current = true;
+    getPosition();
+
+    // Set timeout to disable tracking after 10 seconds
+    locationTimeoutRef.current = setTimeout(() => {
+      isTrackingRef.current = false;
+      if (locationMarkerRef.current) {
+        locationMarkerRef.current.remove();
+        locationMarkerRef.current = null;
+      }
+      // Force cleanup of any remaining markers
+      const mapElement = mapRef.current?.getContainer();
+      if (mapElement) {
+        const markers = mapElement.getElementsByClassName('mapboxgl-marker');
+        while (markers.length > 0) {
+          markers[0].remove();
+        }
+      }
+    }, 10000);
+  }, [getPosition]);
 
   // Update location marker when coordinates change
   useEffect(() => {
-    if (mapLoaded && latitude && longitude && isTrackingLocation) {
-      createRadarLocationMarker();
-      
-      // Center map on user location
-      map.current?.flyTo({
-        center: [longitude, latitude],
-        zoom: 15,
+    // Always clean up existing marker first
+    if (locationMarkerRef.current) {
+      locationMarkerRef.current.remove();
+      locationMarkerRef.current = null;
+    }
+
+    // If not tracking or no coordinates, don't create new marker
+    if (!isTrackingRef.current || !latitude || !longitude || !mapLoaded) {
+      return;
+    }
+
+    // Create and update marker
+    const marker = createRadarLocationMarker();
+    if (marker) {
+      locationMarkerRef.current = marker;
+
+      // Center map on user location without zoom
+      mapRef.current?.panTo([longitude, latitude], {
         duration: 2000
       });
     }
-  }, [mapLoaded, latitude, longitude, isTrackingLocation]);
+
+    // Cleanup marker when effect is re-run or component unmounts
+    return () => {
+      if (locationMarkerRef.current) {
+        locationMarkerRef.current.remove();
+        locationMarkerRef.current = null;
+      }
+      // Force cleanup of any remaining markers
+      const mapElement = mapRef.current?.getContainer();
+      if (mapElement) {
+        const markers = mapElement.getElementsByClassName('mapboxgl-marker');
+        while (markers.length > 0) {
+          markers[0].remove();
+        }
+      }
+    };
+  }, [mapLoaded, latitude, longitude, createRadarLocationMarker]);
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || map.current) return;
+    if (!mapContainer.current || mapRef.current) return;
 
     // Clear container before initializing
     while (mapContainer.current.firstChild) {
@@ -272,97 +280,386 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
         rtlPluginLoaded = true;
       }
 
-      map.current = new mapboxgl.Map({
+      const newMap = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/dark-v11',
-        center: [2.213749, 46.227638], // Center of France
-        zoom: 5,
+        center: [2.213749, 46.5],
+        zoom: 5.5,
         attributionControl: false,
         touchZoomRotate: true,
         dragRotate: true,
         touchPitch: true,
         interactive: true,
         preserveDrawingBuffer: true,
-        antialias: true
+        antialias: true,
+        maxBounds: franceBounds,
+        minZoom: 5.5,
+        maxZoom: 10,
+        fadeDuration: 0,
+        trackResize: true,
+        refreshExpiredTiles: true,
+        renderWorldCopies: false
+      });
+
+      // Initialisation simple
+      newMap.once('load', () => {
+        // Correctif pour le problème de dézoom bloqué
+        // Désactiver le zoom par défaut et implémenter notre propre gestionnaire
+        newMap.scrollZoom.disable();
+
+        // Ajouter un gestionnaire d'événements pour la molette
+        const wheelHandler = (e: WheelEvent) => {
+          // Empêcher le comportement par défaut
+          e.preventDefault();
+
+          // Calculer le delta de zoom en utilisant les mêmes facteurs que Mapbox par défaut
+          // La valeur par défaut de Mapbox est d'environ 0.0025 * wheelDelta
+          const wheelZoomRate = 0.0025;
+          const delta = -e.deltaY * wheelZoomRate;
+
+          // Obtenir le zoom actuel
+          const currentZoom = newMap.getZoom();
+
+          // Calculer le nouveau zoom
+          let newZoom = currentZoom + delta;
+
+          // S'assurer que le zoom reste dans les limites
+          newZoom = Math.max(newMap.getMinZoom(), Math.min(newMap.getMaxZoom(), newZoom));
+
+          // Appliquer le zoom uniquement s'il a changé
+          if (newZoom !== currentZoom) {
+            // Obtenir la position du curseur par rapport à la carte
+            const rect = mapContainer.current.getBoundingClientRect();
+            const point = new mapboxgl.Point(
+              e.clientX - rect.left,
+              e.clientY - rect.top
+            );
+
+            // Convertir en coordonnées géographiques
+            const lngLat = newMap.unproject(point);
+
+            // Appliquer le zoom
+            newMap.easeTo({
+              zoom: newZoom,
+              duration: 0,
+              around: lngLat
+            });
+          }
+
+          return false;
+        };
+
+        // Ajouter l'écouteur d'événements
+        mapContainer.current.addEventListener('wheel', wheelHandler, { passive: false });
+
+        // Indiquer que la carte est chargée
+        setMapLoaded(true);
       });
 
       // Apply passive events fix
       applyMapboxPassiveEventsFix();
 
-      // Create full-screen control
-      const fullscreenControl = createControlButton(`
-        <svg width="65" height="65" viewBox="0 0 65 65" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <mask id="path-1-inside-1_0_1754" fill="white">
-          <path d="M0 49C0 57.8366 7.16344 65 16 65H49C57.8366 65 65 57.8366 65 49V16C65 7.16344 57.8366 0 49 0H16C7.16344 0 0 7.16344 0 16V49Z"/>
-          </mask>
-          <path d="M0 49C0 57.8366 7.16344 65 16 65H49C57.8366 65 65 57.8366 65 49V16C65 7.16344 57.8366 0 49 0H16C7.16344 0 0 7.16344 0 16V49Z" fill="#D9D9D9" fill-opacity="0.05"/>
-          <path d="M16 63.05H49V66.95H16V63.05ZM63.05 49V16H66.95V49H63.05ZM49 1.95H16V-1.95H49V1.95ZM1.95 16V49H-1.95V16H1.95ZM16 1.95C8.2404 1.95 1.95 8.2404 1.95 16H-1.95C-1.95 6.08649 6.08649 -1.95 16 -1.95V1.95ZM63.05 16C63.05 8.2404 56.7596 1.95 49 1.95V-1.95C58.9135 -1.95 66.95 6.08649 66.95 16H63.05ZM49 63.05C56.7596 63.05 63.05 56.7596 63.05 49H66.95C66.95 58.9135 58.9135 66.95 49 66.95V63.05ZM16 66.95C6.08649 66.95 -1.95 58.9135 -1.95 49H1.95C1.95 56.7596 8.2404 63.05 16 63.05V66.95Z" fill="white" fill-opacity="0.15" mask="url(#path-1-inside-1_0_1754)"/>
-          <path d="M30.8844 34.1156C31.0006 34.2317 31.0928 34.3696 31.1557 34.5213C31.2186 34.6731 31.251 34.8357 31.251 35C31.251 35.1643 31.2186 35.3269 31.1557 35.4787C31.0928 35.6304 31.0006 35.7683 30.8844 35.8844L25.5172 41.25L28.3844 44.1156C28.5594 44.2904 28.6786 44.5133 28.7269 44.7559C28.7752 44.9985 28.7505 45.25 28.6558 45.4785C28.5611 45.707 28.4007 45.9023 28.195 46.0397C27.9892 46.177 27.7474 46.2502 27.5 46.25H20C19.6685 46.25 19.3505 46.1183 19.1161 45.8839C18.8817 45.6495 18.75 45.3315 18.75 45V37.5C18.7498 37.2526 18.823 37.0108 18.9603 36.805C19.0977 36.5993 19.293 36.4389 19.5215 36.3442C19.75 36.2495 20.0015 36.2248 20.2441 36.2731C20.4867 36.3214 20.7096 36.4406 20.8844 36.6156L23.75 39.4828L29.1156 34.1156C29.2317 33.9994 29.3696 33.9072 29.5213 33.8443C29.6731 33.7814 29.8357 33.749 30 33.749C30.1643 33.749 30.3269 33.7814 30.4787 33.8443C30.6304 33.9072 30.7683 33.9994 30.8844 34.1156ZM45 18.75H37.5C37.2526 18.7498 37.0108 18.823 36.805 18.9603C36.5993 19.0977 36.4389 19.293 36.3442 19.5215C36.2495 19.75 36.2248 20.0015 36.2731 20.2441C36.3214 20.4867 36.4406 20.7096 36.6156 20.8844L39.4828 23.75L34.1156 29.1156C33.8811 29.3502 33.7493 29.6683 33.7493 30C33.7493 30.3317 33.8811 30.6498 34.1156 30.8844C34.3502 31.1189 34.6683 31.2507 35 31.2507C35.3317 31.2507 35.6498 31.1189 35.8844 30.8844L41.25 25.5172L44.1156 28.3844C44.2904 28.5594 44.5133 28.6786 44.7559 28.7269C44.9985 28.7752 45.25 28.7505 45.4785 28.6558C45.707 28.5611 45.9023 28.4007 46.0397 28.195C46.177 27.9892 46.2502 27.7474 46.25 27.5V20C46.25 19.6685 46.1183 19.3505 45.8839 19.1161C45.6495 18.8817 45.3315 18.75 45 18.75Z" fill="#479AF3"/>
-        </svg>
-      `, () => {
-        if (!document.fullscreenElement) {
-          mapContainer.current?.requestFullscreen();
-        } else if (document.exitFullscreen) {
-          document.exitFullscreen();
+      // Wait for both map and style to be loaded
+      newMap.on('style.load', () => {
+        // Set map reference only after style is loaded
+        mapRef.current = newMap;
+
+        try {
+          // Initialize hospitals source and layer
+          mapRef.current.addSource('hospitals', {
+            type: 'geojson',
+            data: {
+              type: 'FeatureCollection',
+              features: []
+            }
+          });
+
+          mapRef.current.addLayer({
+            id: 'hospital-points',
+            type: 'circle',
+            source: 'hospitals',
+            paint: {
+              'circle-radius': 6,
+              'circle-color': [
+                'match',
+                ['get', 'status'],
+                'Deployed', '#42A5F5',
+                'Signed', '#4CAF50',
+                '#42A5F5'  // Default color
+              ],
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#ffffff'
+            }
+          });
+
+          // Add click handler for the points
+          mapRef.current.on('click', 'hospital-points', (e) => {
+            if (!e.features?.length || !mapRef.current) return;
+
+            const feature = e.features[0];
+            const coordinates = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
+            const hospital = hospitals.find(h => h.id === feature.properties?.id);
+
+            if (hospital) {
+              // Handle popup creation and display
+              if (popupRef.current) {
+                popupRef.current.remove();
+                popupRef.current = null;
+              }
+
+              const popupNode = document.createElement('div');
+              const root = createRoot(popupNode);
+              root.render(
+                <I18nProvider i18n={i18n}>
+                  <HospitalDetail hospital={hospital} />
+                </I18nProvider>
+              );
+
+              const popup = new mapboxgl.Popup({
+                closeButton: false,
+                closeOnClick: true,
+                maxWidth: '300px',
+                className: 'hospital-popup',
+                offset: [0, 0]
+              })
+                .setLngLat(coordinates)
+                .setDOMContent(popupNode)
+                .addTo(mapRef.current);
+
+              popupRef.current = popup;
+              selectHospital(hospital);
+
+              popup.on('close', () => {
+                popupRef.current = null;
+                selectHospital(null);
+              });
+            }
+          });
+
+          // Add hover effects
+          mapRef.current.on('mouseenter', 'hospital-points', () => {
+            if (mapRef.current) {
+              mapRef.current.getCanvas().style.cursor = 'pointer';
+            }
+          });
+
+          mapRef.current.on('mouseleave', 'hospital-points', () => {
+            if (mapRef.current) {
+              mapRef.current.getCanvas().style.cursor = '';
+            }
+          });
+        } catch (error) {
+          console.error('Error initializing map layers:', error);
         }
+
+        // Create and add controls
+        const controlContainer = document.createElement('div');
+        controlContainer.style.position = 'absolute';
+        controlContainer.style.top = '250px';
+        controlContainer.style.right = '20px';
+        controlContainer.style.zIndex = '10';
+        controlContainer.style.display = 'flex';
+        controlContainer.style.flexDirection = 'column';
+
+        // Add controls to container
+        controlContainer.appendChild(createControlButton(`
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A1CBF9" stroke-width="2">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+          </svg>
+        `, () => {
+          if (!document.fullscreenElement) {
+            mapContainer.current?.requestFullscreen();
+          } else if (document.exitFullscreen) {
+            document.exitFullscreen();
+          }
+        }));
+
+        controlContainer.appendChild(createControlButton(`
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="8" stroke="#A1CBF9" stroke-width="2"/>
+            <circle cx="12" cy="12" r="3" fill="#A1CBF9"/>
+            <path d="M12 2V4" stroke="#A1CBF9" stroke-width="2" stroke-linecap="round"/>
+            <path d="M12 20V22" stroke="#A1CBF9" stroke-width="2" stroke-linecap="round"/>
+            <path d="M2 12L4 12" stroke="#A1CBF9" stroke-width="2" stroke-linecap="round"/>
+            <path d="M20 12L22 12" stroke="#A1CBF9" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        `, handleLocationClick));
+
+        // Add custom container to map
+        newMap.getContainer().appendChild(controlContainer);
+
+        // Add footer to map
+        newMap.getContainer().appendChild(createFooter());
+
+        // Set map as loaded and trigger initial marker update
+        setMapLoaded(true);
       });
 
-      // Create location control
-      const locationControl = createControlButton(`
-        <svg width="65" height="65" viewBox="0 0 65 65" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <mask id="path-1-inside-1_0_1751" fill="white">
-          <path d="M0 49C0 57.8366 7.16344 65 16 65H49C57.8366 65 65 57.8366 65 49V16C65 7.16344 57.8366 0 49 0H16C7.16344 0 0 7.16344 0 16V49Z"/>
-          </mask>
-          <path d="M0 49C0 57.8366 7.16344 65 16 65H49C57.8366 65 65 57.8366 65 49V16C65 7.16344 57.8366 0 49 0H16C7.16344 0 0 7.16344 0 16V49Z" fill="#D9D9D9" fill-opacity="0.05"/>
-          <path d="M16 63.05H49V66.95H16V63.05ZM63.05 49V16H66.95V49H63.05ZM49 1.95H16V-1.95H49V1.95ZM1.95 16V49H-1.95V16H1.95ZM16 1.95C8.2404 1.95 1.95 8.2404 1.95 16H-1.95C-1.95 6.08649 6.08649 -1.95 16 -1.95V1.95ZM63.05 16C63.05 8.2404 56.7596 1.95 49 1.95V-1.95C58.9135 -1.95 66.95 6.08649 66.95 16H63.05ZM49 63.05C56.7596 63.05 63.05 56.7596 63.05 49H66.95C66.95 58.9135 58.9135 66.95 49 66.95V63.05ZM16 66.95C6.08649 66.95 -1.95 58.9135 -1.95 49H1.95C1.95 56.7596 8.2404 63.05 16 63.05V66.95Z" fill="white" fill-opacity="0.15" mask="url(#path-1-inside-1_0_1751)"/>
-          <path d="M50 31.25H46.1922C45.8959 28.0502 44.4899 25.0547 42.2176 22.7824C39.9453 20.5101 36.9498 19.1041 33.75 18.8078V15C33.75 14.6685 33.6183 14.3505 33.3839 14.1161C33.1495 13.8817 32.8315 13.75 32.5 13.75C32.1685 13.75 31.8505 13.8817 31.6161 14.1161C31.3817 14.3505 31.25 14.6685 31.25 15V18.8078C28.0502 19.1041 25.0547 20.5101 22.7824 22.7824C20.5101 25.0547 19.1041 28.0502 18.8078 31.25H15C14.6685 31.25 14.3505 31.3817 14.1161 31.6161C13.8817 31.8505 13.75 32.1685 13.75 32.5C13.75 32.8315 13.8817 33.1495 14.1161 33.3839C14.3505 33.6183 14.6685 33.75 15 33.75H18.8078C19.1041 36.9498 20.5101 39.9453 22.7824 42.2176C25.0547 44.4899 28.0502 45.8959 31.25 46.1922V50C31.25 50.3315 31.3817 50.6495 31.6161 50.8839C31.8505 51.1183 32.1685 51.25 32.5 51.25C32.8315 51.25 33.1495 51.1183 33.3839 50.8839C33.6183 50.6495 33.75 50.3315 33.75 50V46.1922C36.9498 45.8959 39.9453 44.4899 42.2176 42.2176C44.4899 39.9453 45.8959 36.9498 46.1922 33.75H50C50.3315 33.75 50.6495 33.6183 50.8839 33.3839C51.1183 33.1495 51.25 32.8315 51.25 32.5C51.25 32.1685 51.1183 31.8505 50.8839 31.6161C50.6495 31.3817 50.3315 31.25 50 31.25ZM32.5 43.75C30.275 43.75 28.0999 43.0902 26.2498 41.854C24.3998 40.6179 22.9578 38.8609 22.1064 36.8052C21.2549 34.7495 21.0321 32.4875 21.4662 30.3052C21.9002 28.1229 22.9717 26.1184 24.545 24.545C26.1184 22.9717 28.1229 21.9002 30.3052 21.4662C32.4875 21.0321 34.7495 21.2549 36.8052 22.1064C38.8609 22.9578 40.6179 24.3998 41.854 26.2498C43.0902 28.0999 43.75 30.275 43.75 32.5C43.7467 35.4827 42.5604 38.3422 40.4513 40.4513C38.3422 42.5604 35.4827 43.7467 32.5 43.75ZM38.75 32.5C38.75 33.7361 38.3834 34.9445 37.6967 35.9723C37.0099 37.0001 36.0338 37.8012 34.8918 38.2742C33.7497 38.7473 32.4931 38.8711 31.2807 38.6299C30.0683 38.3888 28.9547 37.7935 28.0806 36.9194C27.2065 36.0453 26.6112 34.9317 26.3701 33.7193C26.1289 32.5069 26.2527 31.2503 26.7258 30.1082C27.1988 28.9662 27.9999 27.9901 29.0277 27.3033C30.0555 26.6166 31.2639 26.25 32.5 26.25C34.1576 26.25 35.7473 26.9085 36.9194 28.0806C38.0915 29.2527 38.75 30.8424 38.75 32.5Z" fill="#479AF3"/>
-        </svg>
-      `, handleLocationClick);
-
-      // Custom control container
-      const controlContainer = document.createElement('div');
-      controlContainer.style.position = 'absolute';
-      controlContainer.style.top = '96px';
-      controlContainer.style.right = '20px';
-      controlContainer.style.zIndex = '10';
-      controlContainer.style.display = 'flex';
-      controlContainer.style.flexDirection = 'column';
-      
-      // Add controls to container
-      controlContainer.appendChild(fullscreenControl);
-      controlContainer.appendChild(locationControl);
-
-      // Add custom container to map
-      map.current.getContainer().appendChild(controlContainer);
-
-      // Add footer to map
-      map.current.getContainer().appendChild(createFooter());
-
-      // Handle map load
-      map.current.on('load', () => {
-        setMapLoaded(true);
+      // Adjust initial view to see entire France
+      newMap.fitBounds(franceBounds, {
+        padding: { top: 150, bottom: 50, left: 100, right: 100 },
+        duration: 0,
+        maxZoom: 4.5
       });
 
       // Cleanup on unmount
       return () => {
         removeMapboxPassiveEventsFix();
-        if (map.current) {
-          map.current.remove();
-          map.current = null;
+        if (mapRef.current) {
+          // Remove all markers first
+          Object.values(markersRef.current).forEach(marker => marker.remove());
+          markersRef.current = {};
+
+          // Then remove the map
+          mapRef.current.remove();
+          mapRef.current = null;
         }
       };
     } catch (e) {
       console.error('Error initializing map:', e);
     }
-  }, [getPosition]);
+  }, []);
+
+  // Update displayed hospitals based on current date
+  useEffect(() => {
+    if (!mapRef.current || !hospitals.length || !mapLoaded) return;
+
+    try {
+      // Sort hospitals by deployment date
+      const sortedHospitals = [...hospitals].sort((a, b) =>
+        new Date(a.deploymentDate).getTime() - new Date(b.deploymentDate).getTime()
+      );
+
+      // Get date of the first hospital
+      const firstHospitalDate = new Date(sortedHospitals[0].deploymentDate);
+      const currentDateObj = new Date(currentDate);
+
+      // Check if we are at the beginning of the animation
+      const isStartOfAnimation = isFirstRenderRef.current ||
+        currentDateObj.getTime() <= firstHospitalDate.getTime();
+
+      // Get hospitals up to current date
+      const hospitalsUpToCurrentDate = sortedHospitals
+        .filter(h => new Date(h.deploymentDate) <= currentDateObj);
+
+      // Convert hospitals to GeoJSON features
+      const features = hospitalsUpToCurrentDate.map(h => ({
+        type: 'Feature' as const,
+        geometry: {
+          type: 'Point' as const,
+          coordinates: h.coordinates
+        },
+        properties: {
+          id: h.id,
+          name: h.name,
+          status: h.status,
+          deploymentDate: h.deploymentDate
+        }
+      }));
+
+      // Update source data
+      const source = mapRef.current.getSource('hospitals') as mapboxgl.GeoJSONSource;
+      if (source) {
+        // Display only the first hospital at the beginning
+        const displayFeatures = isStartOfAnimation ?
+          [{ // Only first hospital
+            type: 'Feature' as const,
+            geometry: {
+              type: 'Point' as const,
+              coordinates: sortedHospitals[0].coordinates
+            },
+            properties: {
+              id: sortedHospitals[0].id,
+              name: sortedHospitals[0].name,
+              status: sortedHospitals[0].status,
+              deploymentDate: sortedHospitals[0].deploymentDate
+            }
+          }] :
+          features;
+
+        source.setData({
+          type: 'FeatureCollection',
+          features: displayFeatures
+        });
+
+        // Adjust view only on initial render
+        if (isFirstRenderRef.current) {
+          mapRef.current.fitBounds(franceBounds, {
+            padding: { top: 100, bottom: 100, left: 100, right: 100 },
+            duration: 0
+          });
+          isFirstRenderRef.current = false;
+        }
+      }
+    } catch (e) {
+      console.error('Error updating hospital points:', e);
+    }
+
+    return () => {
+      if (mapRef.current) {
+        const source = mapRef.current.getSource('hospitals') as mapboxgl.GeoJSONSource;
+        if (source) {
+          source.setData({
+            type: 'FeatureCollection',
+            features: []
+          });
+        }
+      }
+
+      if (popupRef.current) {
+        popupRef.current.remove();
+        popupRef.current = null;
+      }
+    };
+  }, [currentDate, hospitals, mapLoaded]);
+
+  // Nettoyer les écouteurs lors du démontage du composant
+  useEffect(() => {
+    return () => {
+      // Nettoyage si nécessaire
+    };
+  }, []);
 
   return (
-    <div 
-      ref={mapContainer} 
-      className={`relative w-full h-full ${className}`}
-      style={{ position: 'relative', height: '100%' }}
-      data-testid="map-container"
-    />
+    <>
+      <div
+        ref={mapContainer}
+        className={`relative w-full h-full ${className}`}
+        style={{ position: 'relative', height: '100%' }}
+        data-testid="map-container"
+      />
+      {/* Action Bar positioned to match timeline position */}
+      <div className="absolute top-[190px] left-[clamp(350px,calc(330px+3vw),410px)] w-[calc(100%-clamp(370px,calc(350px+3vw),430px))] z-[9999]">
+        <div className="relative w-full overflow-visible px-[2.5%]">
+          <div className="absolute w-[calc(100%-120px)] left-[80px] flex justify-center">
+            <div className="absolute w-full flex justify-center">
+              <ActionBar className="!my-0" />
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Author credit */}
+      <div className="absolute bottom-[80px] left-[clamp(350px,calc(330px+3vw),410px)] w-[calc(100%-clamp(370px,calc(350px+3vw),430px))] z-[9999]">
+        <div className="relative w-full overflow-visible px-[2.5%]">
+          <div className="absolute w-[calc(100%-120px)] left-[80px] flex justify-center">
+            <div className="border-2 border-[rgba(71,154,243,0.3)] rounded-lg px-6 py-2 bg-[rgba(217,217,217,0.05)] backdrop-blur-[17.5px] text-[#A1CBF9] text-[clamp(12px,0.9vw,14px)] transition-all duration-200 whitespace-nowrap">
+              {_("Made with")} <span className="text-[#3b82f6]"> ♥ </span>{_("by")} BunnySweety
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Version display */}
+      <div className="absolute bottom-[80px] right-[80px] z-[9999]">
+        <div className="relative w-full overflow-visible">
+          <div className="absolute w-full flex justify-center">
+            <div className="border-2 border-[rgba(71,154,243,0.3)] rounded-lg px-6 py-2 bg-[rgba(217,217,217,0.05)] backdrop-blur-[17.5px] text-[#A1CBF9] text-[clamp(12px,0.9vw,14px)] transition-all duration-200 whitespace-nowrap">
+              {process.env.NEXT_PUBLIC_APP_VERSION || 'v1.0.0'}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 };
 

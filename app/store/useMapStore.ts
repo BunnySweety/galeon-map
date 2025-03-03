@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { format } from 'date-fns';
+import { activateLocale } from '../i18n';
 
 // Types
 export type HospitalStatus = 'Deployed' | 'Signed';
@@ -9,6 +10,8 @@ export type HospitalStatus = 'Deployed' | 'Signed';
 export interface Hospital {
   id: string;
   name: string;
+  nameEn: string;
+  nameFr: string;
   status: HospitalStatus;
   deploymentDate: string;
   website: string;
@@ -46,7 +49,7 @@ interface MapStore {
   // Derived actions
   initialize: () => Promise<void>;
   fetchHospitals: () => Promise<void>;
-  applyFilters: () => void;
+  applyFilters: () => Hospital[];
 }
 
 // Create store with middlewares
@@ -71,7 +74,10 @@ export const useMapStore = create<MapStore>()(
         // Actions
         setHospitals: (hospitals) => set({ hospitals }),
         setFilteredHospitals: (hospitals) => set({ filteredHospitals: hospitals }),
-        setCurrentDate: (date) => set({ currentDate: date }),
+        setCurrentDate: (date) => {
+          set({ currentDate: date });
+          get().applyFilters();
+        },
         toggleFilter: (filter) => {
           set((state) => ({
             selectedFilters: {
@@ -81,7 +87,23 @@ export const useMapStore = create<MapStore>()(
           }));
           get().applyFilters();
         },
-        setLanguage: (language) => set({ language }),
+        setLanguage: async (language) => {
+          try {
+            console.log(`Setting language in store to: ${language}`);
+            
+            // Set the language state
+            set({ language });
+            
+            // Activate the locale without forcing a reload
+            await activateLocale(language);
+            
+            console.log(`Language set to ${language} and locale activated`);
+          } catch (error) {
+            console.error('Failed to set language:', error);
+            // Revert to previous language on error
+            set((state) => ({ language: state.language }));
+          }
+        },
         selectHospital: (hospital) => set({ selectedHospital: hospital }),
         setLoading: (isLoading) => set({ isLoading }),
         setError: (error) => set({ error }),
@@ -133,14 +155,24 @@ export const useMapStore = create<MapStore>()(
             return false;
           });
           
-          // Filter by date
+          // Filter by date, status, and status filter
           const dateFiltered = statusFiltered.filter((hospital) => {
             const hospitalDate = new Date(hospital.deploymentDate);
             const current = new Date(currentDate);
-            return hospitalDate <= current;
+            
+            // Check if hospital is deployed or signed before or on current date
+            const isBeforeOrOnCurrentDate = hospitalDate <= current;
+            
+            // Check if hospital matches current status filters
+            const matchesStatusFilter = 
+              (hospital.status === 'Deployed' && selectedFilters.deployed) ||
+              (hospital.status === 'Signed' && selectedFilters.signed);
+            
+            return isBeforeOrOnCurrentDate && matchesStatusFilter;
           });
           
           set({ filteredHospitals: dateFiltered });
+          return dateFiltered;
         },
       }),
       {

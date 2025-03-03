@@ -243,3 +243,20 @@ body {
   font-size: 24px;
   font-weight: 700;
 }
+
+/* Styles personnalisés pour les menus déroulants */
+.action-menu {
+  position: absolute;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 50;
+  width: 320px;
+  max-width: 90vw;
+}
+
+.action-menu > div {
+  background-color: rgba(20, 20, 20, 0.8) !important;
+  backdrop-filter: blur(17.5px) !important;
+  -webkit-backdrop-filter: blur(17.5px) !important;
+  isolation: isolate;
+}

@@ -33,20 +33,30 @@ const HospitalDetail: React.FC<HospitalDetailProps> = ({
   const statusColor = hospital.status === 'Deployed' ? 'bg-blue-100 text-blue-500' : 'bg-green-100 text-green-500';
   const dotColor = hospital.status === 'Deployed' ? 'bg-blue-500' : 'bg-green-500';
 
+  // Récupérer le nom de l'hôpital en fonction de la langue actuelle
+  const hospitalName = i18n.locale === 'fr' ? hospital.nameFr : hospital.nameEn;
+
   return (
     <div className={`bg-white rounded-lg shadow-lg overflow-hidden ${className}`}>
       <div className="relative w-full" style={{ height: '160px' }}>
+        <style jsx global>{`
+          .gradient-mask {
+            mask-image: linear-gradient(to top, transparent, black 50%);
+            -webkit-mask-image: linear-gradient(to top, transparent, black 50%);
+          }
+        `}</style>
         <Image 
           src={hospital.imageUrl} 
-          alt={hospital.name} 
+          alt={hospitalName} 
           fill
           sizes="100%"
+          className="gradient-mask"
           style={{ objectFit: 'cover' }}
           priority
         />
       </div>
       <div className="p-4">
-        <h2 className="text-xl font-semibold mb-2">{hospital.name}</h2>
+        <h2 className="text-xl font-semibold mb-2" style={{ wordBreak: 'break-word' }}>{hospitalName}</h2>
         <div className="mb-4">
           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${statusColor}`}>
             <span className={`w-2 h-2 rounded-full mr-1.5 ${dotColor}`}></span>

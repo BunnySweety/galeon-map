@@ -2,8 +2,6 @@
 'use client';
 
 import { Suspense, useState, useEffect } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import dynamic from 'next/dynamic';
 import { useMapStore } from './store/useMapStore';
 
@@ -17,34 +15,76 @@ const Layout = dynamic(() => import('./components/Layout'), {
   )
 });
 
-// Create a client with persistent caching
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      refetchOnWindowFocus: false,
-      retry: 1, // Réduire le nombre de tentatives en cas d'échec
-      gcTime: 10 * 60 * 1000, // Anciennement 'cacheTime' dans les versions précédentes
-    },
-  },
-});
-
 // Loading animation component
-const LoadingAnimation = () => (
-  <div className="h-screen w-screen flex items-center justify-center bg-slate-900">
-    <div className="flex flex-col items-center">
-      <div className="text-3xl font-bold text-white mb-4 flex items-center">
-        <span className="mr-2">Ω</span>
-        <span>GALEON</span>
+const LoadingAnimation = () => {
+  // Get the language from localStorage if available
+  const getLanguage = () => {
+    if (typeof window !== 'undefined') {
+      const savedLocale = localStorage.getItem('locale');
+      return savedLocale === 'fr' ? 'fr' : 'en';
+    }
+    return 'en';
+  };
+  
+  const language = getLanguage();
+  
+  // Use the same translation keys as defined in the translation files
+  const translations = {
+    en: {
+      'Loading application...': 'Loading application...',
+      'HOSPITALS MAP': 'HOSPITALS MAP',
+      'Galeon Logo': 'Galeon Logo'
+    },
+    fr: {
+      'Loading application...': 'Chargement de l\'application...',
+      'HOSPITALS MAP': 'CARTE DES HÔPITAUX',
+      'Galeon Logo': 'Logo Galeon'
+    }
+  };
+  
+  // Function to get translated text using the same keys as in the translation files
+  const t = (key: string) => {
+    return translations[language as 'en' | 'fr'][key] || key;
+  };
+  
+  return (
+    <div className="h-screen w-screen flex items-center justify-center bg-slate-900">
+      <div className="flex flex-col items-center">
+        <div className="flex items-center justify-center mb-4">
+          {/* Logo from SVG file */}
+          {typeof window !== 'undefined' && (
+            <img 
+              src="/logo-white.svg" 
+              alt={t('Galeon Logo')} 
+              width={40} 
+              height={40} 
+              className="mr-3"
+              style={{ width: 'auto', height: 'auto' }}
+            />
+          )}
+          <span className="text-3xl font-normal tracking-wide text-white font-[var(--font-minion)]">
+            GALEON
+          </span>
+        </div>
+        
+        {/* Neon title effect for "HOSPITALS MAP" */}
+        <h1 className="text-xl font-normal tracking-wide text-[#60a5fa] mb-5 text-center"
+            style={{
+              textShadow: "0 0 5px rgba(96, 165, 250, 0.7), 0 0 10px rgba(96, 165, 250, 0.5), 0 0 15px rgba(96, 165, 250, 0.3)"
+            }}
+        >
+          {t('HOSPITALS MAP')}
+        </h1>
+        
+        <div className="w-48 h-2 bg-slate-700 rounded-full overflow-hidden">
+          <div className="h-full bg-blue-500 animate-pulse" 
+               style={{ width: '60%', animationDuration: '1.5s' }}></div>
+        </div>
+        <p className="mt-4 text-slate-400">{t('Loading application...')}</p>
       </div>
-      <div className="w-48 h-2 bg-slate-700 rounded-full overflow-hidden">
-        <div className="h-full bg-blue-500 animate-pulse" 
-             style={{ width: '60%', animationDuration: '1.5s' }}></div>
-      </div>
-      <p className="mt-4 text-slate-400">Chargement de l'application...</p>
     </div>
-  </div>
-);
+  );
+};
 
 // Main application component with initialization logic
 const AppWithInitialization = () => {
@@ -52,21 +92,26 @@ const AppWithInitialization = () => {
   const { initialize } = useMapStore();
 
   useEffect(() => {
-    // Utiliser setTimeout pour éviter les problèmes de rendu
+    // Use setTimeout to avoid rendering issues
     const timer = setTimeout(async () => {
       try {
         await initialize();
         setInitialized(true);
       } catch (error) {
-        console.error('Erreur d\'initialisation:', error);
-        // Réessayer après un délai en cas d'échec
+        // Get the language from localStorage if available
+        const language = typeof window !== 'undefined' && localStorage.getItem('locale') === 'fr' ? 'fr' : 'en';
+        const errorMessage = language === 'fr' ? 'Erreur d\'initialisation:' : 'Initialization error:';
+        console.error(errorMessage, error);
+        
+        // Retry after a delay in case of failure
         setTimeout(async () => {
           try {
             await initialize();
             setInitialized(true);
           } catch (retryError) {
-            console.error('Échec lors de la réinitialisation:', retryError);
-            // Initialiser quand même pour éviter un blocage
+            const retryErrorMessage = language === 'fr' ? 'Échec lors de la réinitialisation:' : 'Retry initialization failed:';
+            console.error(retryErrorMessage, retryError);
+            // Initialize anyway to avoid blocking
             setInitialized(true);
           }
         }, 2000);
@@ -86,11 +131,8 @@ const AppWithInitialization = () => {
 // Main page component
 export default function Home() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <Suspense fallback={<LoadingAnimation />}>
-        <AppWithInitialization />
-      </Suspense>
-      {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
-    </QueryClientProvider>
+    <Suspense fallback={<LoadingAnimation />}>
+      <AppWithInitialization />
+    </Suspense>
   );
 }

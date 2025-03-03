@@ -5,8 +5,34 @@ import { ReactNode } from 'react';
 import { i18n } from '@lingui/core';
 import { I18nProvider } from '@lingui/react';
 import { useEffect, useState } from 'react';
-import { activateLocale, LocaleType } from './i18n';
+import { activateLocale, initI18n, LocaleType } from './i18n';
 import { useMapStore } from './store/useMapStore';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+
+interface ProvidersProps {
+  children: ReactNode;
+}
+
+export function Providers({ children }: ProvidersProps) {
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 60 * 1000,
+        refetchOnWindowFocus: false,
+      },
+    },
+  }));
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <I18nProviderWrapper>
+        {children}
+      </I18nProviderWrapper>
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
+  );
+}
 
 interface I18nProviderWrapperProps {
   children: ReactNode;
@@ -17,9 +43,9 @@ export function I18nProviderWrapper({ children }: I18nProviderWrapperProps) {
   const { setLanguage } = useMapStore();
 
   useEffect(() => {
-    // Récupérer la locale depuis les cookies ou localStorage
+    // Get locale from cookies or localStorage
     const getInitialLocale = (): LocaleType => {
-      // Vérifier localStorage d'abord
+      // Check localStorage first
       if (typeof window !== 'undefined') {
         const savedLocale = localStorage.getItem('locale') as LocaleType | null;
         if (savedLocale && (savedLocale === 'en' || savedLocale === 'fr')) {
@@ -27,7 +53,7 @@ export function I18nProviderWrapper({ children }: I18nProviderWrapperProps) {
         }
       }
 
-      // Vérifier les cookies
+      // Check cookies
       const cookieLocale = document.cookie
         .split('; ')
         .find(row => row.startsWith('NEXT_LOCALE='))
@@ -37,15 +63,33 @@ export function I18nProviderWrapper({ children }: I18nProviderWrapperProps) {
         return cookieLocale;
       }
 
-      // Utiliser la langue par défaut
+      // Use default language
       return 'en';
     };
 
     const initLocale = async () => {
-      const initialLocale = getInitialLocale();
-      await activateLocale(initialLocale);
-      setLanguage(initialLocale);
-      setIsLoaded(true);
+      try {
+        // Initialize i18n first
+        await initI18n();
+        
+        // Then activate the initial locale
+        const initialLocale = getInitialLocale();
+        await activateLocale(initialLocale);
+        
+        // Update the store
+        setLanguage(initialLocale);
+        
+        // Mark as loaded
+        setIsLoaded(true);
+        
+        console.log(`I18nProviderWrapper: Initialized with locale ${initialLocale}`);
+      } catch (error) {
+        console.error('Failed to initialize locale:', error);
+        // Fallback to English if initialization fails
+        await activateLocale('en');
+        setLanguage('en');
+        setIsLoaded(true);
+      }
     };
 
     initLocale();
