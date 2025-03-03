@@ -144,13 +144,10 @@ const nextConfig = {
     // Désactiver le serveur pour Cloudflare Pages
     distDir: 'out',
     
-    // Configuration pour les routes statiques et dynamiques
-    // Cette option est importante pour Cloudflare Pages
+    // Exclure les routes API de l'export statique
     experimental: {
-      // Activer le support pour les routes statiques et dynamiques
-      appDir: true,
-      // Permettre les routes dynamiques
-      serverActions: true,
+      // Ces options ne sont plus nécessaires ou ont été renommées dans Next.js 15
+      // serverActions est maintenant activé par défaut
     }
 }
 

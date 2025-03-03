@@ -2,6 +2,17 @@
 import { NextResponse } from 'next/server';
 import { hospitals, HospitalSchema, Hospital } from './data';
 
+// Indiquer à Next.js que cette route est statique
+export const dynamic = 'force-static';
+export const revalidate = false;
+
+// Générer les paramètres statiques pour cette route
+export async function generateStaticParams() {
+  return hospitals.map((hospital) => ({
+    id: hospital.id,
+  }));
+}
+
 export async function GET(
   request: Request
 ) {
@@ -29,6 +40,9 @@ export async function GET(
   }
 }
 
+// Les méthodes PUT et DELETE ne sont pas compatibles avec l'export statique
+// Nous les commentons pour l'instant
+/*
 export async function PUT(
   request: Request
 ) {
@@ -95,3 +109,4 @@ export async function DELETE(
     );
   }
 }
+*/
