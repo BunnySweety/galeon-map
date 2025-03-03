@@ -11,18 +11,33 @@ const rootDir = path.resolve(__dirname, '..');
 const outDir = path.join(rootDir, 'out');
 const publicDir = path.join(rootDir, 'public');
 
-// Copier les fichiers de configuration de Cloudflare Pages
-const cloudflareConfigFiles = ['_routes.json', '_redirects', '_headers'];
+// Copier les fichiers de configuration de Cloudflare Pages depuis public
+const publicConfigFiles = ['_routes.json', '_redirects', '_headers'];
 
-for (const file of cloudflareConfigFiles) {
+for (const file of publicConfigFiles) {
   const sourcePath = path.join(publicDir, file);
   const destPath = path.join(outDir, file);
   
   if (fs.existsSync(sourcePath)) {
     fs.copyFileSync(sourcePath, destPath);
-    console.log(`✅ ${file} a été copié avec succès dans le répertoire de sortie.`);
+    console.log(`✅ ${file} a été copié depuis public vers le répertoire de sortie.`);
   } else {
     console.log(`⚠️ ${file} n'existe pas dans le répertoire public.`);
+  }
+}
+
+// Copier les fichiers de configuration de Cloudflare Pages depuis la racine
+const rootConfigFiles = ['_routes.json', '_redirects', '_headers', '_worker.js'];
+
+for (const file of rootConfigFiles) {
+  const sourcePath = path.join(rootDir, file);
+  const destPath = path.join(outDir, file);
+  
+  if (fs.existsSync(sourcePath)) {
+    fs.copyFileSync(sourcePath, destPath);
+    console.log(`✅ ${file} a été copié depuis la racine vers le répertoire de sortie.`);
+  } else {
+    console.log(`⚠️ ${file} n'existe pas à la racine du projet.`);
   }
 }
 
@@ -80,6 +95,40 @@ const notFoundHtml = `<!DOCTYPE html>
 
 fs.writeFileSync(path.join(outDir, '404.html'), notFoundHtml, 'utf8');
 console.log('✅ 404.html a été créé avec succès dans le répertoire de sortie.');
+
+// Créer un fichier index.html à la racine du répertoire de sortie (copie de l'index.html existant)
+if (fs.existsSync(path.join(outDir, 'index.html'))) {
+  const indexHtml = fs.readFileSync(path.join(outDir, 'index.html'), 'utf8');
+  
+  // Créer des copies de index.html pour les routes dynamiques
+  const routes = [
+    '/hospitals/1',
+    '/hospitals/2',
+    '/hospitals/3',
+    '/hospitals/4',
+    '/hospitals/5',
+    '/hospitals/6',
+    '/hospitals/7',
+    '/hospitals/8',
+    '/hospitals/9',
+    '/hospitals/10',
+    '/hospitals/11',
+    '/hospitals/12',
+    '/hospitals/13',
+    '/hospitals/14',
+    '/hospitals/15',
+    '/hospitals/16'
+  ];
+  
+  for (const route of routes) {
+    const routeDir = path.join(outDir, route);
+    if (!fs.existsSync(routeDir)) {
+      fs.mkdirSync(routeDir, { recursive: true });
+    }
+    fs.writeFileSync(path.join(routeDir, 'index.html'), indexHtml, 'utf8');
+    console.log(`✅ index.html a été copié vers ${route}/index.html`);
+  }
+}
 
 // Créer le répertoire functions s'il n'existe pas
 const functionsDir = path.join(rootDir, 'functions');

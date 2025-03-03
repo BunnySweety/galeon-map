@@ -141,8 +141,18 @@ const nextConfig = {
     // Configuration spécifique pour Cloudflare Pages
     trailingSlash: false,
     
+    // Spécifier le répertoire de sortie pour Cloudflare Pages
+    distDir: 'out',
+    
+    // Configuration pour le routage côté client
+    experimental: {
+      appDir: true,
+      serverActions: false
+    },
+    
     // Désactiver le serveur pour Cloudflare Pages
-    distDir: 'out'
+    basePath: '',
+    assetPrefix: ''
 }
 
 export default nextConfig;

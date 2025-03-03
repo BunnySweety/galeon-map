@@ -11,4 +11,10 @@ bucket = "./out"
 entry-point = "functions"
 
 [build]
-command = "npm run build:cloudflare" 
+command = "npm run build:cloudflare"
+
+[build.upload]
+format = "directory"
+
+[env.production]
+pages_build_output_dir = "out" 
