@@ -3,33 +3,42 @@
   "include": ["/*"],
   "exclude": [
     "/_next/*",
-    "/api/*"
+    "/images/*",
+    "/favicon.ico",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/manifest.json"
   ],
   "routes": [
     {
       "src": "^/hospitals/([^/]+)/?$",
-      "dest": "/hospitals/$1"
-    },
-    {
-      "src": "^/api/hospitals/?$",
-      "dest": "/api/hospitals"
+      "dest": "/hospitals/$1/index.html",
+      "status": 200
     },
     {
       "src": "^/api/hospitals/([^/]+)/?$",
-      "dest": "/api/hospitals/$1"
+      "dest": "/api/hospitals/$1/index.html",
+      "status": 200
     },
     {
-      "src": "^/((?!_next|api).*)",
-      "dest": "/$1"
+      "src": "^/api/hospitals/?$",
+      "dest": "/api/hospitals/index.html",
+      "status": 200
     },
     {
       "src": "^/$",
-      "dest": "/"
+      "dest": "/index.html",
+      "status": 200
     },
     {
-      "src": "/(.*)",
-      "status": 404,
-      "dest": "/_not-found"
+      "src": "^/404/?$",
+      "dest": "/404.html",
+      "status": 404
+    },
+    {
+      "src": ".*",
+      "dest": "/index.html",
+      "status": 200
     }
   ]
 } 

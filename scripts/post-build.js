@@ -9,63 +9,77 @@ const rootDir = path.resolve(__dirname, '..');
 
 // Chemin vers le répertoire de sortie
 const outDir = path.join(rootDir, 'out');
+const publicDir = path.join(rootDir, 'public');
 
-// Contenu du fichier _routes.json
-const routesConfig = {
-  "version": 1,
-  "include": ["/*"],
-  "exclude": [
-    "/_next/*",
-    "/images/*",
-    "/favicon.ico",
-    "/robots.txt",
-    "/sitemap.xml",
-    "/manifest.json"
-  ],
-  "routes": [
-    {
-      "src": "/hospitals/([^/]+)/?$",
-      "dest": "/hospitals/$1/index.html"
-    },
-    {
-      "src": "/api/hospitals/([^/]+)/?$",
-      "dest": "/api/hospitals/$1/index.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1",
-      "continue": true
-    },
-    {
-      "src": "/(.*)",
-      "status": 404,
-      "dest": "/404.html"
+// Copier les fichiers de configuration de Cloudflare Pages
+const cloudflareConfigFiles = ['_routes.json', '_redirects', '_headers'];
+
+for (const file of cloudflareConfigFiles) {
+  const sourcePath = path.join(publicDir, file);
+  const destPath = path.join(outDir, file);
+  
+  if (fs.existsSync(sourcePath)) {
+    fs.copyFileSync(sourcePath, destPath);
+    console.log(`✅ ${file} a été copié avec succès dans le répertoire de sortie.`);
+  } else {
+    console.log(`⚠️ ${file} n'existe pas dans le répertoire public.`);
+  }
+}
+
+// Créer un fichier 404.html dans le répertoire de sortie
+const notFoundHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page not found</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f7f7f7;
+      color: #333;
     }
-  ]
-};
+    .container {
+      text-align: center;
+      padding: 2rem;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    p {
+      margin-bottom: 2rem;
+    }
+    a {
+      color: #0070f3;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>404 - Page not found</h1>
+    <p>The page you are looking for does not exist or has been moved.</p>
+    <a href="/">Go back to home page</a>
+  </div>
+</body>
+</html>`;
 
-// Créer le fichier _routes.json dans le répertoire de sortie
-fs.writeFileSync(
-  path.join(outDir, '_routes.json'),
-  JSON.stringify(routesConfig, null, 2),
-  'utf8'
-);
-
-console.log('✅ _routes.json a été créé avec succès dans le répertoire de sortie.');
-
-// Contenu du fichier _redirects
-const redirectsContent = `/hospitals/:id  /hospitals/:id/index.html  200
-/api/hospitals/:id  /api/hospitals/:id/index.html  200
-/*  /index.html  200`;
-
-// Créer le fichier _redirects dans le répertoire de sortie
-fs.writeFileSync(
-  path.join(outDir, '_redirects'),
-  redirectsContent,
-  'utf8'
-);
-
-console.log('✅ _redirects a été créé avec succès dans le répertoire de sortie.');
+fs.writeFileSync(path.join(outDir, '404.html'), notFoundHtml, 'utf8');
+console.log('✅ 404.html a été créé avec succès dans le répertoire de sortie.');
 
 // Créer le répertoire functions s'il n'existe pas
 const functionsDir = path.join(rootDir, 'functions');
@@ -97,6 +111,8 @@ const middlewareContent = `export async function onRequest(context) {
     const hospitalIdMatch = pathname.match(/^\\/api\\/hospitals\\/([^\\/]+)$/);
     if (hospitalIdMatch) {
       const id = hospitalIdMatch[1];
+      // Rediriger vers le fichier HTML statique
+      const newUrl = new URL(\`/api/hospitals/\${id}/index.html\`, url.origin);
       return context.next();
     }
     
@@ -109,6 +125,9 @@ const middlewareContent = `export async function onRequest(context) {
   // Gérer les routes dynamiques comme /hospitals/1
   const hospitalPageMatch = pathname.match(/^\\/hospitals\\/([^\\/]+)$/);
   if (hospitalPageMatch) {
+    const id = hospitalPageMatch[1];
+    // Rediriger vers le fichier HTML statique
+    const newUrl = new URL(\`/hospitals/\${id}/index.html\`, url.origin);
     return context.next();
   }
 
@@ -146,7 +165,7 @@ fs.writeFileSync(
 
 console.log('✅ _routes.json a été créé avec succès dans le répertoire functions.');
 
-// Copier le fichier _routes.json dans le répertoire out/functions
+// Copier les fichiers dans le répertoire out/functions
 const outFunctionsDir = path.join(outDir, 'functions');
 if (!fs.existsSync(outFunctionsDir)) {
   fs.mkdirSync(outFunctionsDir, { recursive: true });
