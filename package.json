@@ -4,8 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && rm -rf .next/cache/webpack && node scripts/post-build.js",
-    "postbuild": "node scripts/post-build.js",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest",
