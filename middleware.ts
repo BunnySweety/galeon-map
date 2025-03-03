@@ -30,25 +30,62 @@ function getLocale(request: NextRequest): string {
 }
 
 export function middleware(request: NextRequest) {
-  // Obtenir la locale
-  const locale = getLocale(request);
-  
-  // Créer une nouvelle réponse
-  const response = NextResponse.next();
-  
-  // Définir la locale dans un cookie pour les futures requêtes
-  response.cookies.set('NEXT_LOCALE', locale, {
-    path: '/',
-    maxAge: 60 * 60 * 24 * 365, // 1 an
-  });
-  
-  return response;
+  const url = request.nextUrl.clone();
+  const { pathname } = url;
+
+  // Gérer les fichiers statiques
+  if (pathname.startsWith('/_next/') || 
+      pathname.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg)$/)) {
+    return NextResponse.next();
+  }
+
+  // Gérer les routes API statiques
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
+
+  // Gérer les routes dynamiques
+  if (pathname.match(/^\/hospitals\/[^\/]+$/)) {
+    return NextResponse.next();
+  }
+
+  // Gérer la page d'accueil
+  if (pathname === '/' || pathname === '') {
+    // Obtenir la locale
+    const locale = getLocale(request);
+    
+    // Créer une nouvelle réponse
+    const response = NextResponse.next();
+    
+    // Définir la locale dans un cookie pour les futures requêtes
+    response.cookies.set('NEXT_LOCALE', locale, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365, // 1 an
+    });
+    
+    return response;
+  }
+
+  // Rediriger vers la page d'accueil si la route n'est pas reconnue
+  if (!pathname.startsWith('/_next') && 
+      !pathname.startsWith('/api') && 
+      !pathname.match(/\.[a-zA-Z0-9]+$/)) {
+    url.pathname = '/';
+    return NextResponse.redirect(url);
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
   // Matcher pour les routes à intercepter
   matcher: [
-    // Exclure les routes qui ne doivent pas être interceptées
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }; 
