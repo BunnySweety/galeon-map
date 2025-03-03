@@ -1,13 +1,16 @@
 // File: app/api/hospitals/[id]/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { hospitals, HospitalSchema, Hospital } from './data';
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: Request
 ) {
   try {
-    const { id } = params;
+    // Extraire l'ID de l'URL
+    const url = new URL(request.url);
+    const pathParts = url.pathname.split('/');
+    const id = pathParts[pathParts.length - 1];
+    
     const hospital = hospitals.find((h: Hospital) => h.id === id);
     
     if (!hospital) {
@@ -27,11 +30,14 @@ export async function GET(
 }
 
 export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: Request
 ) {
   try {
-    const { id } = params;
+    // Extraire l'ID de l'URL
+    const url = new URL(request.url);
+    const pathParts = url.pathname.split('/');
+    const id = pathParts[pathParts.length - 1];
+    
     const body = await request.json();
     
     const result = HospitalSchema.safeParse(body);
@@ -63,11 +69,13 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: Request
 ) {
   try {
-    const { id } = params;
+    // Extraire l'ID de l'URL
+    const url = new URL(request.url);
+    const pathParts = url.pathname.split('/');
+    const id = pathParts[pathParts.length - 1];
     
     const hospitalIndex = hospitals.findIndex((h: Hospital) => h.id === id);
     if (hospitalIndex === -1) {
