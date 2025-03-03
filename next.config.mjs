@@ -142,54 +142,7 @@ const nextConfig = {
     trailingSlash: false,
     
     // Désactiver le serveur pour Cloudflare Pages
-    distDir: 'out',
-    
-    // Ajouter la configuration pour les routes statiques
-    async rewrites() {
-      return [
-        {
-          source: '/hospitals/:id',
-          destination: '/hospitals/:id/index.html',
-        },
-        {
-          source: '/api/hospitals/:id',
-          destination: '/api/hospitals/:id/index.html',
-        }
-      ];
-    },
-    
-    // Ajouter la configuration pour les redirections
-    async redirects() {
-      return [
-        {
-          source: '/:path*',
-          destination: '/',
-          permanent: false,
-          has: [
-            {
-              type: 'header',
-              key: 'x-not-found',
-              value: 'true',
-            },
-          ],
-        },
-      ];
-    },
-    
-    // Ajouter la configuration pour les headers
-    async headers() {
-      return [
-        {
-          source: '/(.*)',
-          headers: [
-            {
-              key: 'Cache-Control',
-              value: 'public, max-age=3600, s-maxage=86400',
-            },
-          ],
-        },
-      ];
-    }
+    distDir: 'out'
 }
 
 export default nextConfig;

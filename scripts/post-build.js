@@ -1,8 +1,14 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Obtenir le chemin du répertoire actuel
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const rootDir = path.resolve(__dirname, '..');
 
 // Chemin vers le répertoire de sortie
-const outDir = path.join(process.cwd(), 'out');
+const outDir = path.join(rootDir, 'out');
 
 // Contenu du fichier _routes.json
 const routesConfig = {
@@ -47,8 +53,22 @@ fs.writeFileSync(
 
 console.log('✅ _routes.json a été créé avec succès dans le répertoire de sortie.');
 
+// Contenu du fichier _redirects
+const redirectsContent = `/hospitals/:id  /hospitals/:id/index.html  200
+/api/hospitals/:id  /api/hospitals/:id/index.html  200
+/*  /index.html  200`;
+
+// Créer le fichier _redirects dans le répertoire de sortie
+fs.writeFileSync(
+  path.join(outDir, '_redirects'),
+  redirectsContent,
+  'utf8'
+);
+
+console.log('✅ _redirects a été créé avec succès dans le répertoire de sortie.');
+
 // Créer le répertoire functions s'il n'existe pas
-const functionsDir = path.join(process.cwd(), 'functions');
+const functionsDir = path.join(rootDir, 'functions');
 if (!fs.existsSync(functionsDir)) {
   fs.mkdirSync(functionsDir, { recursive: true });
 }
