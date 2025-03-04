@@ -138,150 +138,137 @@ if (!fs.existsSync(functionsDir)) {
 
 // Créer un fichier _worker.js à la racine du projet
 const workerContent = `
-import { getAssetFromKV, mapRequestToAsset } from '@cloudflare/kv-asset-handler';
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    const pathname = url.pathname;
 
-const DEBUG = false;
+    console.log(\`Worker handling request for: \${pathname}\`);
+    console.log(\`Full URL: \${request.url}\`);
 
-addEventListener('fetch', event => {
-  try {
-    event.respondWith(handleEvent(event));
-  } catch (e) {
-    if (DEBUG) {
-      return event.respondWith(
-        new Response(e.message || e.toString(), {
-          status: 500,
-        }),
-      );
-    }
-    event.respondWith(new Response('Internal Error', { status: 500 }));
-  }
-});
-
-async function handleEvent(event) {
-  const url = new URL(event.request.url);
-  let options = {};
-
-  try {
-    // Check if the URL is for a static file
-    if (
-      url.pathname.startsWith('/_next/') ||
-      url.pathname.startsWith('/images/') ||
-      url.pathname.endsWith('.js') ||
-      url.pathname.endsWith('.css') ||
-      url.pathname.endsWith('.json') ||
-      url.pathname.endsWith('.ico') ||
-      url.pathname.endsWith('.png') ||
-      url.pathname.endsWith('.jpg') ||
-      url.pathname.endsWith('.svg') ||
-      url.pathname === '/favicon.ico' ||
-      url.pathname === '/robots.txt' ||
-      url.pathname === '/sitemap.xml' ||
-      url.pathname === '/manifest.json'
-    ) {
-      // Serve the static file directly
-      return await getAssetFromKV(event, options);
-    }
-
-    // Check if the URL is for a dynamic route like /hospitals/1
-    const hospitalMatch = url.pathname.match(/^\\/hospitals\\/([^/]+)$/);
-    if (hospitalMatch) {
-      // Try to serve the specific hospital page
-      try {
-        options.mapRequestToAsset = req => {
-          const url = new URL(req.url);
-          url.pathname = \`/hospitals/\${hospitalMatch[1]}/index.html\`;
-          return mapRequestToAsset(new Request(url.toString(), req));
-        };
-        return await getAssetFromKV(event, options);
-      } catch (e) {
-        // If specific hospital page doesn't exist, serve the main index.html
-        options.mapRequestToAsset = req => {
-          const url = new URL(req.url);
-          url.pathname = '/index.html';
-          return mapRequestToAsset(new Request(url.toString(), req));
-        };
-        return await getAssetFromKV(event, options);
+    try {
+      // Gérer les fichiers statiques
+      if (
+        pathname.startsWith('/_next/') ||
+        pathname.startsWith('/images/') ||
+        pathname.startsWith('/static/') ||
+        pathname.endsWith('.js') ||
+        pathname.endsWith('.css') ||
+        pathname.endsWith('.json') ||
+        pathname.endsWith('.ico') ||
+        pathname.endsWith('.png') ||
+        pathname.endsWith('.jpg') ||
+        pathname.endsWith('.svg') ||
+        pathname === '/favicon.ico' ||
+        pathname === '/robots.txt' ||
+        pathname === '/sitemap.xml' ||
+        pathname === '/manifest.json'
+      ) {
+        console.log(\`Serving static file: \${pathname}\`);
+        return fetch(request);
       }
-    }
 
-    // Check if the URL is for an API route
-    if (url.pathname.startsWith('/api/')) {
-      // Try to serve the specific API file
-      try {
-        const apiHospitalMatch = url.pathname.match(/^\\/api\\/hospitals\\/([^/]+)$/);
-        if (apiHospitalMatch) {
-          options.mapRequestToAsset = req => {
-            const url = new URL(req.url);
-            url.pathname = \`/api/hospitals/\${apiHospitalMatch[1]}/index.html\`;
-            return mapRequestToAsset(new Request(url.toString(), req));
-          };
-          return await getAssetFromKV(event, options);
-        }
-
-        if (url.pathname === '/api/hospitals') {
-          options.mapRequestToAsset = req => {
-            const url = new URL(req.url);
-            url.pathname = '/api/hospitals/index.html';
-            return mapRequestToAsset(new Request(url.toString(), req));
-          };
-          return await getAssetFromKV(event, options);
-        }
-      } catch (e) {
-        // If API file doesn't exist, return a 404 JSON response
-        return new Response(JSON.stringify({ error: 'Not found' }), {
-          status: 404,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
+      // Gérer les routes API
+      if (pathname.startsWith('/api/')) {
+        console.log(\`Handling API route: \${pathname}\`);
+        
+        // Pour les routes API dynamiques comme /api/hospitals/1
+        const hospitalIdMatch = pathname.match(/^\\/api\\/hospitals\\/([^/]+)$/);
+        if (hospitalIdMatch) {
+          const id = hospitalIdMatch[1];
+          console.log(\`API hospital ID: \${id}\`);
+          
+          try {
+            // Essayer de servir le fichier API spécifique
+            const apiResponse = await fetch(new URL(\`/api/hospitals/\${id}/index.html\`, url.origin));
+            console.log(\`API hospital \${id} response status: \${apiResponse.status}\`);
+            
+            if (apiResponse.ok) {
+              const body = await apiResponse.text();
+              return new Response(body, {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Access-Control-Allow-Origin': '*'
+                },
+                status: 200
+              });
+            } else {
+              throw new Error(\`API hospital \${id} not found\`);
+            }
+          } catch (e) {
+            console.error(\`Error serving API hospital: \${e}\`);
+            // Retourner une réponse JSON 404
+            return new Response(JSON.stringify({ error: 'Hospital not found' }), {
+              status: 404,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            });
           }
-        });
+        }
+        
+        // Pour la route API principale /api/hospitals
+        if (pathname === '/api/hospitals') {
+          console.log('Serving main API hospitals route');
+          try {
+            const apiResponse = await fetch(new URL('/api/hospitals/index.html', url.origin));
+            console.log(\`API hospitals response status: \${apiResponse.status}\`);
+            
+            if (apiResponse.ok) {
+              const body = await apiResponse.text();
+              return new Response(body, {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Access-Control-Allow-Origin': '*'
+                },
+                status: 200
+              });
+            } else {
+              throw new Error('API hospitals not found');
+            }
+          } catch (e) {
+            console.error(\`Error serving API hospitals: \${e}\`);
+            return new Response(JSON.stringify({ error: 'Hospitals not found' }), {
+              status: 404,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            });
+          }
+        }
       }
-    }
 
-    // For the homepage
-    if (url.pathname === '/' || url.pathname === '') {
-      return await getAssetFromKV(event, options);
-    }
-
-    // For all other routes, serve index.html
-    options.mapRequestToAsset = req => {
-      const url = new URL(req.url);
-      url.pathname = '/index.html';
-      return mapRequestToAsset(new Request(url.toString(), req));
-    };
-
-    const page = await getAssetFromKV(event, options);
-
-    // Allow headers to be altered
-    const response = new Response(page.body, page);
-
-    response.headers.set('X-XSS-Protection', '1; mode=block');
-    response.headers.set('X-Content-Type-Options', 'nosniff');
-    response.headers.set('X-Frame-Options', 'DENY');
-    response.headers.set('Referrer-Policy', 'no-referrer-when-downgrade');
-    response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
-
-    return response;
-  } catch (e) {
-    // If an error is thrown try to serve the 404.html page
-    if (!DEBUG) {
+      // Pour toutes les autres routes, servir index.html
+      console.log(\`Serving index.html for route: \${pathname}\`);
       try {
-        options.mapRequestToAsset = req => {
-          const url = new URL(req.url);
-          url.pathname = '/404.html';
-          return mapRequestToAsset(new Request(url.toString(), req));
-        };
-        const notFoundResponse = await getAssetFromKV(event, options);
-        return new Response(notFoundResponse.body, {
-          ...notFoundResponse,
-          status: 404
-        });
-      } catch (e) {}
+        console.log('Attempting to fetch: /index.html');
+        const indexResponse = await fetch(new URL('/index.html', url.origin));
+        console.log(\`Index response status: \${indexResponse.status}\`);
+        
+        if (indexResponse.ok) {
+          const body = await indexResponse.text();
+          return new Response(body, {
+            headers: {
+              'Content-Type': 'text/html',
+              'Cache-Control': 'public, max-age=0, must-revalidate'
+            },
+            status: 200
+          });
+        } else {
+          throw new Error('Index page not found');
+        }
+      } catch (e) {
+        console.error(\`Error serving index: \${e}\`);
+        return new Response('Page not found', { status: 404 });
+      }
+    } catch (globalError) {
+      console.error(\`Global worker error: \${globalError}\`);
+      return new Response(\`Server Error: \${globalError.message}\`, { status: 500 });
     }
-
-    return new Response(e.message || e.toString(), { status: 500 });
   }
-}
+};
 `;
 
 fs.writeFileSync(path.join(rootDir, '_worker.js'), workerContent, 'utf8');
