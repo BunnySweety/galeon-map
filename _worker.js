@@ -100,103 +100,149 @@ export default {
         }
       }
 
-      // Gérer les routes dynamiques comme /hospitals/1
-      const hospitalPageMatch = pathname.match(/^\/hospitals\/([^/]+)$/);
-      if (hospitalPageMatch) {
-        const id = hospitalPageMatch[1];
-        console.log(`Hospital page ID: ${id}`);
-        
-        try {
-          // Essayer de servir la page d'hôpital spécifique
-          console.log(`Attempting to fetch: /hospitals/${id}/index.html`);
-          const pageResponse = await fetch(new URL(`/hospitals/${id}/index.html`, url.origin));
-          console.log(`Hospital ${id} page response status: ${pageResponse.status}`);
-          
-          if (pageResponse.ok) {
-            const body = await pageResponse.text();
-            return new Response(body, {
-              headers: {
-                'Content-Type': 'text/html',
-                'Cache-Control': 'public, max-age=0, must-revalidate'
-              },
-              status: 200
-            });
-          } else {
-            throw new Error(`Hospital page ${id} not found`);
-          }
-        } catch (e) {
-          console.error(`Error serving hospital page: ${e}`);
-          // Si la page spécifique n'existe pas, servir la page d'accueil
-          console.log(`Falling back to index.html for hospital ${id}`);
-          try {
-            const indexResponse = await fetch(new URL('/index.html', url.origin));
-            const body = await indexResponse.text();
-            return new Response(body, {
-              headers: {
-                'Content-Type': 'text/html',
-                'Cache-Control': 'public, max-age=0, must-revalidate'
-              },
-              status: 200
-            });
-          } catch (innerError) {
-            console.error(`Error serving fallback for hospital: ${innerError}`);
-            return new Response('Hospital page not found', { status: 404 });
-          }
-        }
-      }
-
-      // Gérer la page d'accueil
-      if (pathname === '/' || pathname === '') {
-        console.log('Serving homepage');
-        try {
-          console.log('Attempting to fetch: /index.html');
-          const indexResponse = await fetch(new URL('/index.html', url.origin));
-          console.log(`Homepage response status: ${indexResponse.status}`);
-          
-          if (indexResponse.ok) {
-            const body = await indexResponse.text();
-            return new Response(body, {
-              headers: {
-                'Content-Type': 'text/html',
-                'Cache-Control': 'public, max-age=0, must-revalidate'
-              },
-              status: 200
-            });
-          } else {
-            throw new Error('Homepage not found');
-          }
-        } catch (e) {
-          console.error(`Error serving homepage: ${e}`);
-          return new Response('Homepage not found', { status: 404 });
-        }
-      }
-
-      // Pour toutes les autres routes, servir index.html
-      console.log(`Serving index.html for route: ${pathname}`);
-      try {
-        console.log('Attempting to fetch: /index.html');
-        const indexResponse = await fetch(new URL('/index.html', url.origin));
-        console.log(`Index response status: ${indexResponse.status}`);
-        
-        if (indexResponse.ok) {
-          const body = await indexResponse.text();
-          return new Response(body, {
-            headers: {
-              'Content-Type': 'text/html',
-              'Cache-Control': 'public, max-age=0, must-revalidate'
-            },
-            status: 200
-          });
-        } else {
-          throw new Error('Index page not found');
-        }
-      } catch (e) {
-        console.error(`Error serving index: ${e}`);
-        return new Response('Page not found', { status: 404 });
-      }
-    } catch (globalError) {
-      console.error(`Global worker error: ${globalError}`);
-      return new Response(`Server Error: ${globalError.message}`, { status: 500 });
+      // Pour toutes les autres routes, servir une page HTML directement
+      console.log(`Serving fallback HTML for route: ${pathname}`);
+      
+      const fallbackHtml = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Galeon Community Hospital Map</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f7f7f7;
+      color: #333;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    p {
+      margin-bottom: 2rem;
+    }
+    a {
+      color: #0070f3;
+      text-decoration: none;
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      background-color: #0070f3;
+      color: white;
+      border-radius: 4px;
+    }
+    a:hover {
+      background-color: #0051a8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Galeon Community Hospital Map</h1>
+    <p>Bienvenue sur la carte des hôpitaux communautaires Galeon.</p>
+    <p>Cette application est en cours de développement.</p>
+    <a href="https://github.com/BunnySweety/galeon-map" target="_blank">Voir le code source sur GitHub</a>
+  </div>
+</body>
+</html>`;
+      
+      return new Response(fallbackHtml, {
+        headers: {
+          'Content-Type': 'text/html;charset=UTF-8',
+          'Cache-Control': 'public, max-age=0, must-revalidate'
+        },
+        status: 200
+      });
+    } catch (error) {
+      console.error(`Global error: ${error}`);
+      
+      // En cas d'erreur, retourner une page d'erreur HTML
+      const errorHtml = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Erreur - Galeon Community Hospital Map</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f7f7f7;
+      color: #333;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    p {
+      margin-bottom: 2rem;
+    }
+    .error {
+      color: #e00;
+      font-size: 0.9rem;
+      margin-top: 1rem;
+    }
+    a {
+      color: #0070f3;
+      text-decoration: none;
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      background-color: #0070f3;
+      color: white;
+      border-radius: 4px;
+    }
+    a:hover {
+      background-color: #0051a8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Erreur</h1>
+    <p>Une erreur s'est produite lors du chargement de l'application.</p>
+    <p>Veuillez réessayer ultérieurement ou contacter l'administrateur.</p>
+    <div class="error">Détails: ${error.message || 'Erreur inconnue'}</div>
+    <a href="/">Retour à l'accueil</a>
+  </div>
+</body>
+</html>`;
+      
+      return new Response(errorHtml, {
+        headers: {
+          'Content-Type': 'text/html;charset=UTF-8',
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        },
+        status: 500
+      });
     }
   }
-}; 
+};
