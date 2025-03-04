@@ -1,3 +1,16 @@
 name = "galeon-community-hospital-map"
 compatibility_date = "2023-10-30"
-pages_build_output_dir = "out" 
+pages_build_output_dir = "out"
+
+[build]
+command = "npm run build"
+output_directory = "out"
+
+[build.environment]
+NODE_VERSION = "20.11.1"
+NPM_VERSION = "10.2.4"
+NODE_OPTIONS = "--max-old-space-size=3072"
+
+[dev]
+port = 8788
+local_protocol = "http" 
