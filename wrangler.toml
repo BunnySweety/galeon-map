@@ -1,11 +1,8 @@
 name = "galeon-community-hospital-map"
 compatibility_date = "2023-10-30"
-main = "_worker.js"
 pages_build_output_dir = "out"
 
-[site]
-bucket = "./out"
-
+# Commande de build
 [build]
 command = "bash ./build.sh"
 
