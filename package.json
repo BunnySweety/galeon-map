@@ -13,7 +13,6 @@
     "prepare": "npx husky"
   },
   "dependencies": {
-    "@cloudflare/kv-asset-handler": "^0.3.0",
     "@lingui/conf": "^5.2.0",
     "@lingui/core": "^5.2.0",
     "@lingui/format-json": "^5.2.0",
