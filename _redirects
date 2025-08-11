@@ -1,1 +1,6 @@
-/* /index.html 200 
+# Redirections pour Cloudflare Pages
+# Format: [source] [destination] [code]
+
+# Rediriger les requêtes HTTP vers HTTPS
+http://:project.pages.dev/*    https://:project.pages.dev/:splat    301!
+http://:customdomain/*    https://:customdomain/:splat    301! 

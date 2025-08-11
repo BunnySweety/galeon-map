@@ -15,12 +15,14 @@ export async function onRequest(context) {
   }
 
   // Rediriger vers la page d'accueil si la route n'est pas reconnue
-  if (!pathname.startsWith('/_next') && 
-      !pathname.startsWith('/api') && 
-      pathname !== '/' && 
-      !pathname.match(/\.[a-zA-Z0-9]+$/)) {
+  if (
+    !pathname.startsWith('/_next') &&
+    !pathname.startsWith('/api') &&
+    pathname !== '/' &&
+    !pathname.match(/\.[a-zA-Z0-9]+$/)
+  ) {
     return Response.redirect(`${url.origin}/`, 302);
   }
 
   return context.next();
-} 
+}

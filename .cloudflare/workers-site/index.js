@@ -17,7 +17,7 @@ addEventListener('fetch', event => {
       return event.respondWith(
         new Response(e.message || e.toString(), {
           status: 500,
-        }),
+        })
       );
     }
     event.respondWith(new Response('Internal Error', { status: 500 }));
@@ -88,8 +88,8 @@ async function handleEvent(event) {
           status: 404,
           headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
+            'Access-Control-Allow-Origin': '*',
+          },
         });
       }
     }
@@ -130,11 +130,11 @@ async function handleEvent(event) {
         const notFoundResponse = await getAssetFromKV(event, options);
         return new Response(notFoundResponse.body, {
           ...notFoundResponse,
-          status: 404
+          status: 404,
         });
       } catch (e) {}
     }
 
     return new Response(e.message || e.toString(), { status: 500 });
   }
-} 
+}

@@ -1,16 +1,39 @@
-/* File: app/globals.css */
-/* Reset and base styles */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Prevent horizontal scroll on mobile */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
 }
+
+/* --- ALL CUSTOM RULES BELOW TEMPORARILY COMMENTED OUT FOR DEBUGGING --- */
+
+/* File: app/globals.css */
+/* Reset and base styles - Commented out as @tailwind base handles this */
+/* *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; } */
 
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-rgb: 255, 255, 255;
+  --standard-spacing: 1.25rem;
+
+  /* --- TIMELINE VARIABLES START --- */
+  --timeline-point-size-lg: 18px; /* Taille normale pour desktop */
+  --timeline-point-size-md: 16px; /* Taille normale pour desktop */
+  --timeline-point-size-sm: 14px; /* Taille normale pour desktop */
+  --timeline-text-v-offset-above: -38px;
+  --timeline-text-v-offset-below: clamp(14px, 1.8vh, 18px);
+  --timeline-point-width-lg: 160px;
+  --timeline-point-width-sm: 120px;
+  --skip-button-estimated-width: 100px;
+  --timeline-mask-width-lg: 120px;
+  --timeline-mask-width-sm: 100px;
+  --timeline-skip-button-size: 60px;
+  /* --- TIMELINE VARIABLES END --- */
+
+  --font-geist-sans: /* Define your font stack here */;
 }
 
 body {
@@ -18,8 +41,19 @@ body {
   background: rgb(var(--background-rgb));
   margin: 0;
   padding: 0;
-  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family:
+    var(--font-geist-sans),
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    'Open Sans',
+    'Helvetica Neue',
+    sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Hide scrollbar but allow scrolling */
@@ -27,18 +61,39 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
 
-/* MapBox custom styles */
+/* Mapbox custom styles (Keep as needed) */
 .mapboxgl-ctrl-logo,
 .mapboxgl-ctrl-attrib {
   display: none !important;
 }
 
-/* Custom marker pulse animation */
+/* S'assurer que la carte Mapbox s'affiche correctement */
+.mapboxgl-map {
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.mapboxgl-canvas-container {
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+}
+
+.mapboxgl-canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+}
+
 @keyframes pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
@@ -50,8 +105,6 @@ body {
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
   }
 }
-
-/* Status dot pulse animation */
 @keyframes statusPulse {
   0% {
     transform: scale(1);
@@ -66,197 +119,1165 @@ body {
     opacity: 1;
   }
 }
-
 .hospital-marker {
   animation: pulse 2s infinite;
   transition: transform 0.2s ease;
 }
-
 .hospital-marker:hover {
   transform: scale(1.2);
 }
-
-/* Mapbox popup styles */
 .mapboxgl-popup {
   font-family: var(--font-geist-sans);
   max-width: none !important;
 }
-
 .mapboxgl-popup-content {
   padding: 0 !important;
   border-radius: 12px !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
   overflow: hidden;
   border: none !important;
-  width: 260px !important;
-  max-width: 260px !important;
+  width: 280px !important;
+  max-width: 90vw !important;
+  min-width: 260px !important;
 }
-
 .hospital-popup .mapboxgl-popup-tip {
   border-top-color: white !important;
   border-bottom-color: white !important;
 }
-
 .hospital-popup img {
   transition: transform 0.3s ease;
 }
-
 .hospital-popup:hover img {
   transform: scale(1.05);
 }
-
 .status-dot {
   animation: statusPulse 2s infinite;
 }
-
-.hospital-popup a, 
+.sidebar-container .rounded-full {
+  transition: all 0.2s ease;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+.sidebar-container .rounded-full:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+}
+.hospital-popup a,
 .hospital-popup button {
   transition: all 0.2s ease;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  touch-action: manipulation !important;
 }
-
 .hospital-popup a:hover {
   background-color: #2563eb !important;
 }
-
-.hospital-popup button:hover {
-  background-color: #e2e8f0 !important;
+.mapboxgl-ctrl-group {
+  background-color: white !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+  margin-bottom: 8px !important;
+}
+.mapboxgl-ctrl button {
+  width: 29px !important;
+  height: 29px !important;
+  touch-action: manipulation !important;
+  background-color: white !important;
+  border: none !important;
+  cursor: pointer !important;
 }
 
-/* Timeline styling */
-.timeline-bar {
-  height: 2px;
-  background: rgba(59, 130, 246, 0.3);
-  border-radius: 2px;
+/* Améliorer les contrôles sur mobile */
+@media (max-width: 768px) {
+  .mapboxgl-ctrl button {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  
+  .mapboxgl-ctrl-group {
+    margin-bottom: 6px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .mapboxgl-ctrl button {
+    width: 40px !important;
+    height: 40px !important;
+  }
+}
+.mapboxgl-ctrl-group button::after {
+  display: none !important;
+}
+.bg-slate-900 {
+  background-color: #0f172a !important;
+}
+.social-icons a {
+  transition: all 0.2s ease;
+}
+.distribution-circle {
+  margin: 0 auto;
+  /* border: 2px solid white; */ /* Toujours commentée */
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.distribution-circle span {
+  font-size: clamp(1.25rem, 2.5vw, 1.5rem);
+  font-weight: bold;
+}
+.distribution-circle-svg {
+  /* filter: drop-shadow(0 0 2px rgba(59, 130, 246, 0.5)); */ /* Temporairement désactivé */
+}
+
+/* Sidebar styles (Simplified, ensure width and padding use clamp as before if needed) */
+.sidebar-container {
+  min-height: 240px;
+  width: clamp(280px, 22vw, 340px);
+  padding: clamp(1rem, 1.5vw, 1.5rem);
+  font-size: clamp(14px, 2vw, 16px);
+}
+.sidebar-container-second {
+  width: clamp(280px, 22vw, 340px);
+  padding: clamp(1rem, 1.5vw, 1.5rem);
+  font-size: clamp(14px, 2vw, 16px);
+}
+/* ... simplified styles for sidebar content (h1, h2, p, flex, svg) using clamp if necessary ... */
+
+/* Ensure Mapbox controls respect standard spacing */
+.mapboxgl-ctrl-top-right {
+  top: var(--standard-spacing) !important;
+  right: var(--standard-spacing) !important;
+}
+
+/* --- CLEANED TIMELINE STYLES START --- */
+
+/* Main Container - Adjust height */
+.timeline-container {
   position: relative;
-  margin: 0 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  height: clamp(100px, 10vh, 140px) !important; /* Réduit de 120px,12vh,160px */
+  box-sizing: border-box;
+}
+
+/* Scrollable Area - Add clip-path */
+.timeline-scroll-container {
+  position: relative;
+  width: 100%;
+  cursor: grab;
+  height: 100%;
+  overflow: hidden;
+  padding-right: var(--timeline-mask-width-lg); /* Keep padding for scrollbar space/visual end */
+  box-sizing: border-box;
+  clip-path: inset(0 var(--timeline-mask-width-lg) 0 0);
+}
+.timeline-scroll-container:active {
+  cursor: grabbing;
+}
+
+/* Bar Wrapper - Update right offset */
+.timeline-bar-wrapper {
+  position: absolute;
+  left: 0;
+  right: var(--timeline-mask-width-lg);
+  top: 50%;
+  transform: translateY(-50%);
+  height: 2px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+}
+
+.timeline-bar-wrapper-full {
+  right: 0 !important;
+}
+
+.timeline-bar {
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  position: relative;
 }
 
 .timeline-progress {
+  position: absolute;
+  height: 100%;
+  background: #479af3;
+  transition: width 0.3s ease;
+  top: 0;
+  left: 0;
+}
+
+/* Points Container - REMOVED clip-path */
+.timeline-points-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: max-content;
+  display: flex;
+  align-items: center;
+  transition: transform 0.3s ease;
+  z-index: 2;
+}
+
+/* Individual Point Container - Flex centering for the point */
+.timeline-point-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--timeline-point-width-lg);
+  flex-shrink: 0;
+  height: 100%;
+}
+
+/* The Point - Centered by flex parent */
+.timeline-point {
+  position: relative;
+  width: var(--timeline-point-size-lg);
+  height: var(--timeline-point-size-lg);
+  border-radius: 50%;
+  border: 2px solid;
+  color: white;
+  cursor: pointer;
+  transition:
+    transform 0.3s ease,
+    background-color 0.3s ease,
+    border-color 0.3s ease;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+  transform-origin: center center;
+  border-color: #3b82f6;
+  margin-top: 1px; /* Ajustement fin pour l'alignement vertical */
+  /* Tailles par défaut pour desktop - utiliser les variables */
+  min-width: var(--timeline-point-size-lg) !important;
+  min-height: var(--timeline-point-size-lg) !important;
+}
+
+/* --- ADDED: Style for past points --- */
+.timeline-point.past {
+  background-color: #3b82f6; /* Same blue as active, makes white checkmark visible */
+  border-color: #3b82f6; /* Match background */
+}
+
+.timeline-point.active {
+  transform: scale(1.2);
+  background-color: #3b82f6;
+  border-color: white;
+}
+
+.timeline-point svg {
+  width: calc(var(--timeline-point-size-lg) * 0.6);
+  height: calc(var(--timeline-point-size-lg) * 0.6);
+}
+
+/* Date - Use updated offset */
+.timeline-date {
+  position: absolute;
+  top: calc(50% + var(--timeline-text-v-offset-above)); /* Use updated var */
+  left: 0;
+  right: 0;
+  font-size: 13px;
+  color: white;
+  opacity: 0.7;
+  transition:
+    opacity 0.3s ease,
+    font-weight 0.3s ease;
+  white-space: nowrap;
+  text-align: center;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* Name - Absolute relative to point-container, offset from center */
+.timeline-hospital-name {
+  position: absolute;
+  top: calc(50% + var(--timeline-text-v-offset-below)); /* Use updated var */
+  left: 10px;
+  right: 10px;
+  font-size: 13px;
+  color: white;
+  opacity: 0.7;
+  transition:
+    opacity 0.3s ease,
+    font-weight 0.3s ease;
+  text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.3;
+  max-height: calc(1.3em * 2);
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* Active state text */
+.timeline-point-container.active .timeline-date,
+.timeline-point-container.active .timeline-hospital-name {
+  opacity: 1;
+  font-weight: bold;
+}
+
+/* Skip Button */
+.timeline-skip-button {
+  position: absolute;
+  right: var(--standard-spacing); /* Taille normale pour desktop */
+  top: 50%;
+  transform: translateY(-50%);
+  /* --- Taille normale pour desktop --- */
+  min-width: 80px;
+  min-height: 36px;
+  padding: 6px 12px;
+  background: rgba(71, 154, 243, 0.3);
+  color: #a1cbf9;
+  border-radius: 8px;
+  font-size: 14px;
+  white-space: nowrap;
+  transition:
+    background-color 0.2s ease,
+    opacity 0.2s ease;
+  z-index: 30;
+  border: 1px solid rgba(71, 154, 243, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  backdrop-filter: blur(5px);
+  /* Assurer un bon alignement vertical */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeline-skip-button:hover {
+  background-color: rgba(71, 154, 243, 0.4); /* Restored hover */
+}
+
+.timeline-skip-button:focus {
+  /* Kept focus style */
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Disabled Styles - Adjusted for restored look */
+.timeline-skip-button:disabled {
+  opacity: 0.6; /* Adjusted opacity */
+  cursor: not-allowed;
+  background-color: rgba(71, 154, 243, 0.15); /* Faded version of original background */
+  border-color: rgba(71, 154, 243, 0.15);
+  box-shadow: none; /* Remove shadow when disabled */
+}
+.timeline-skip-button:disabled:hover {
+  background-color: rgba(71, 154, 243, 0.15); /* Prevent hover effect */
+}
+
+/* Mask - REMOVED */
+/* .timeline-points-mask { ... } */
+
+/* --- CLEANED TIMELINE STYLES END --- */
+
+/* --- RESPONSIVE ADJUSTMENTS --- */
+
+/* General spacing adjustments */
+@media (max-width: 1024px) {
+  :root {
+    --standard-spacing: 1rem;
+  }
+}
+@media (max-width: 768px) {
+  :root {
+    --standard-spacing: 0.75rem;
+  }
+}
+@media (max-width: 480px) {
+  :root {
+    --standard-spacing: 0.5rem;
+  }
+}
+
+/* Timeline responsive adjustments */
+@media (max-width: 768px) {
+  :root {
+    --timeline-point-size-lg: 10px; /* ↓ Très petit pour mobile (non-tactile) */
+    --timeline-point-size-sm: 8px;
+    --timeline-point-width-lg: 120px; /* ↓ Réduit l'espacement */
+    --timeline-point-width-sm: 90px;
+    --timeline-mask-width-lg: 90px;
+    --timeline-mask-width-sm: 70px;
+    --timeline-text-v-offset-above: -28px;
+    --timeline-text-v-offset-below: clamp(10px, 1.4vh, 14px);
+    --timeline-skip-button-size: 45px;
+  }
+
+  /* Container adjustments - Plus compact */
+  .timeline-container {
+    height: clamp(80px, 8vh, 100px) !important; /* ↓ Réduit la hauteur */
+    margin-bottom: 8px; /* Espacement avec le contenu */
+  }
+
+  /* Text adjustments - Plus compact */
+  .timeline-date,
+  .timeline-hospital-name {
+    font-size: 12px !important; /* ↓ Réduit pour plus de compacité */
+    line-height: 1.2 !important;
+  }
+
+  .timeline-hospital-name {
+    left: 3px;
+    right: 3px;
+    -webkit-line-clamp: 1;
+    max-height: 1.1em;
+  }
+
+  /* Point adjustments - Plus petits sur mobile (non-tactiles) */
+  .timeline-point {
+    width: var(--timeline-point-size-lg);
+    height: var(--timeline-point-size-lg);
+    min-width: var(--timeline-point-size-lg) !important; /* ↓ Taille exacte, pas tactile */
+    min-height: var(--timeline-point-size-lg) !important; /* ↓ Taille exacte, pas tactile */
+    border-width: 1.5px; /* ↓ Bordure plus fine */
+  }
+
+  /* Skip button adjustments - Plus gros sur mobile */
+  .timeline-skip-button {
+    font-size: 12px !important; /* ↑ Texte plus lisible sur mobile */
+    padding: 6px 12px !important; /* ↑ Padding plus confortable sur mobile */
+    min-width: 60px !important; /* ↑ Largeur plus grande sur mobile */
+    min-height: 32px !important; /* ↑ Hauteur alignée avec la barre */
+    right: 4px !important; /* ↑ Collé au bord droit sur mobile */
+    border-radius: 6px !important; /* Coins arrondis sur mobile */
+    top: calc(50% - 1px) !important; /* ↑ Légèrement plus haut pour alignement avec la barre */
+  }
+
+  /* Bar adjustments */
+  .timeline-bar-wrapper {
+    right: var(--timeline-mask-width-sm);
+    height: 1.5px;
+  }
+
+  /* Scroll container adjustments */
+  .timeline-scroll-container {
+    padding-right: var(--timeline-mask-width-sm);
+    clip-path: inset(0 var(--timeline-mask-width-sm) 0 0);
+  }
+}
+
+/* Desktop et tablette - tailles normales */
+@media (min-width: 769px) {
+  .timeline-point {
+    /* Garder les tailles par défaut des variables CSS */
+    min-width: var(--timeline-point-size-lg) !important; /* Utiliser la variable */
+    min-height: var(--timeline-point-size-lg) !important; /* Utiliser la variable */
+  }
+  
+  .timeline-skip-button {
+    min-width: 80px !important; /* Taille normale desktop */
+    min-height: 36px !important; /* Taille normale desktop */
+  }
+}
+
+/* Optimisations pour très petits écrans (mode portrait) */
+@media (max-width: 480px) {
+  :root {
+    --timeline-point-size-lg: 8px; /* ↓ Minuscule pour petits écrans */
+    --timeline-point-size-sm: 6px;
+    --timeline-point-width-lg: 100px; /* ↓ Espacement réduit */
+    --timeline-point-width-sm: 70px;
+    --timeline-mask-width-lg: 70px;
+    --timeline-mask-width-sm: 50px;
+    --timeline-text-v-offset-above: -24px;
+    --timeline-text-v-offset-below: clamp(8px, 1.2vh, 12px);
+    --timeline-skip-button-size: 40px;
+  }
+
+  .timeline-container {
+    height: clamp(70px, 7vh, 90px) !important; /* ↓ Très compact */
+    margin-bottom: 6px;
+  }
+
+  .timeline-date,
+  .timeline-hospital-name {
+    font-size: 11px !important; /* ↓ Texte plus petit */
+    line-height: 1.1 !important;
+  }
+
+  .timeline-point {
+    width: var(--timeline-point-size-lg);
+    height: var(--timeline-point-size-lg);
+    min-width: var(--timeline-point-size-lg) !important; /* ↓ Taille exacte, pas tactile */
+    min-height: var(--timeline-point-size-lg) !important;
+    border-width: 1px; /* ↓ Bordure fine */
+  }
+
+  .timeline-skip-button {
+    font-size: 11px !important; /* ↑ Texte lisible sur très petits écrans */
+    padding: 4px 8px !important; /* ↑ Padding confortable sur très petits écrans */
+    min-width: 50px !important; /* ↑ Largeur suffisante sur très petits écrans */
+    min-height: 28px !important; /* ↑ Hauteur alignée avec la barre sur petits écrans */
+    right: 4px !important; /* ↑ Collé au bord droit sur très petits écrans */
+    border-radius: 4px !important; /* Coins arrondis sur très petits écrans */
+  }
+
+  .timeline-scroll-container {
+    padding-right: var(--timeline-mask-width-sm);
+    clip-path: inset(0 var(--timeline-mask-width-sm) 0 0);
+  }
+}
+
+/* Mobile-specific touch improvements - DÉSACTIVÉ pour timeline */
+@media (hover: none) and (pointer: coarse) {
+  /* Les points de timeline ne sont PAS tactiles, donc on ne force pas la taille */
+  /* .timeline-point { ... } - SUPPRIMÉ */
+
+  /* Le bouton Skip garde sa taille responsive définie plus haut */
+  /* .timeline-skip-button { ... } - SUPPRIMÉ */
+
+  .timeline-container {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Amélioration de l'espacement tactile pour les autres éléments */
+  button:not(.timeline-skip-button), a, [role="button"] {
+    margin: 8px !important;
+  }
+}
+
+/* Accessibility */
+a:focus,
+button:focus,
+select:focus,
+.timeline-point:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+button:not(.timeline-skip-button),
+a,
+.mapboxgl-ctrl button {
+  touch-action: manipulation; /* Prevent zoom on double tap */
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Timeline elements have their own responsive sizing */
+.timeline-point,
+.timeline-skip-button {
+  touch-action: manipulation;
+  /* Tailles définies par les variables CSS responsives */
+}
+
+/* Ensure needed utility classes are defined if not using Tailwind */
+.cursor-grab {
+  cursor: grab;
+}
+.cursor-grabbing {
+  cursor: grabbing;
+}
+
+/* --- MOBILE LAYOUT STYLES --- */
+
+/* Boutons de contrôle mobile */
+.mobile-control-btn {
+  width: 48px;
+  height: 48px;
+  background: rgba(217, 217, 217, 0.08);
+  border: 1.5px solid rgba(71, 154, 243, 0.3);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.mobile-control-btn:hover {
+  background: rgba(217, 217, 217, 0.12);
+  border-color: rgba(71, 154, 243, 0.5);
+  transform: scale(1.05);
+}
+
+.mobile-control-btn-small {
+  width: 40px;
+  height: 40px;
+  background: rgba(217, 217, 217, 0.06);
+  border: 1px solid rgba(71, 154, 243, 0.25);
+  backdrop-filter: blur(10px);
+  border-radius: 10px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+/* Timeline mobile */
+.mobile-timeline-container {
+  background: rgba(217, 217, 217, 0.05);
+  border: 2px solid rgba(71, 154, 243, 0.3);
+  backdrop-filter: blur(17.5px);
+  border-radius: 16px;
+  padding: 16px;
+  color: white;
+}
+
+.mobile-timeline-control {
+  width: 40px;
+  height: 40px;
+  background: rgba(71, 154, 243, 0.2);
+  border: 1px solid rgba(71, 154, 243, 0.4);
+  border-radius: 8px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.mobile-timeline-control:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mobile-timeline-control:not(:disabled):hover {
+  background: rgba(71, 154, 243, 0.3);
+}
+
+.mobile-timeline-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 8px 0;
+}
+
+.mobile-timeline-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-timeline-track {
+  display: flex;
+  gap: 16px;
+  min-width: max-content;
+  padding: 0 8px;
+}
+
+.mobile-timeline-point {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 120px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mobile-timeline-point:hover {
+  transform: translateY(-2px);
+}
+
+.mobile-timeline-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.mobile-timeline-point.active .mobile-timeline-dot {
+  background: #3b82f6;
+  border-color: white;
+  transform: scale(1.2);
+}
+
+.mobile-timeline-point.past .mobile-timeline-dot {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.mobile-timeline-label {
+  text-align: center;
+  font-size: 12px;
+}
+
+.mobile-timeline-date {
+  color: white;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.mobile-timeline-year {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+  font-weight: 300;
+  margin-bottom: 2px;
+}
+
+.mobile-timeline-hospital {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 10px;
+  line-height: 1.2;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  text-align: center;
+}
+
+.mobile-timeline-progress-container {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.mobile-timeline-progress-bar {
   height: 100%;
   background: #3b82f6;
   border-radius: 2px;
   transition: width 0.3s ease;
 }
 
-.timeline-marker {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: white;
-  border: 2px solid #3b82f6;
-  position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.timeline-marker.active {
-  background: #3b82f6;
-  transform: translate(-50%, -50%) scale(1.2);
-}
-
-.timeline-marker:hover {
-  transform: translate(-50%, -50%) scale(1.2);
-}
-
-/* Adjust for exact design */
-.mapboxgl-ctrl-top-right {
-  top: auto !important; 
-  bottom: 20px !important;
-  right: 20px !important;
-}
-
-.mapboxgl-ctrl-group {
-  background-color: white !important;
-  border-radius: 50% !important;
-  width: 40px !important;
-  height: 40px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
-  margin-bottom: 8px !important;
-}
-
-.mapboxgl-ctrl button {
-  width: 40px !important;
-  height: 40px !important;
-}
-
-/* Add custom background color to match design */
-.bg-slate-900 {
-  background-color: #0f172a !important;
-}
-
-/* Format social icons to match design */
-.social-icons a {
-  transition: all 0.2s ease;
-}
-
-/* Timeline buttons */
-.timeline-btn {
-  background-color: #3b82f6;
-  border-radius: 9999px;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.timeline-btn:hover {
-  background-color: #2563eb;
-}
-
-.timeline-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-/* Skip button */
-.skip-btn {
-  background-color: rgba(30, 41, 59, 0.7);
-  border-radius: 4px;
-  padding: 6px 12px;
-  font-size: 14px;
-  transition: all 0.2s ease;
-}
-
-.skip-btn:hover {
-  background-color: rgba(30, 41, 59, 0.9);
-}
-
-/* Distribution circle */
-.distribution-circle {
-  width: 100px;
-  height: 100px;
-  border-radius: 9999px;
-  border: 4px solid #3b82f6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.distribution-circle span {
-  font-size: 24px;
-  font-weight: 700;
-}
-
-/* Styles personnalisés pour les menus déroulants */
-.action-menu {
-  position: absolute;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
+/* Sidebar mobile */
+.mobile-sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 50;
-  width: 320px;
-  max-width: 90vw;
+  display: flex;
 }
 
-.action-menu > div {
-  background-color: rgba(20, 20, 20, 0.8) !important;
-  backdrop-filter: blur(17.5px) !important;
-  -webkit-backdrop-filter: blur(17.5px) !important;
-  isolation: isolate;
+.mobile-sidebar-content {
+  width: 85vw;
+  max-width: 400px;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  border-right: 2px solid rgba(71, 154, 243, 0.3);
+  padding: 24px;
+  overflow-y: auto;
+  animation: slideInLeft 0.3s ease-out;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.mobile-sidebar-header {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.mobile-sidebar-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  background: rgba(217, 217, 217, 0.1);
+  border: 1px solid rgba(71, 154, 243, 0.3);
+  border-radius: 8px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.mobile-sidebar-section {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(71, 154, 243, 0.2);
+}
+
+.mobile-sidebar-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.mobile-language-select {
+  width: 100%;
+  background: rgba(217, 217, 217, 0.1);
+  border: 1px solid rgba(71, 154, 243, 0.3);
+  border-radius: 8px;
+  color: white;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.mobile-social-link {
+  width: 40px;
+  height: 40px;
+  background: rgba(217, 217, 217, 0.1);
+  border: 1px solid rgba(71, 154, 243, 0.3);
+  border-radius: 8px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.mobile-social-link:hover {
+  background: rgba(217, 217, 217, 0.15);
+  transform: scale(1.05);
+}
+
+/* ActionBar mobile */
+.mobile-actionbar-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.mobile-actionbar-content {
+  width: 85vw;
+  max-width: 400px;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  border-left: 2px solid rgba(71, 154, 243, 0.3);
+  padding: 24px;
+  overflow-y: auto;
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.mobile-actionbar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid rgba(71, 154, 243, 0.3);
+}
+
+.mobile-actionbar-close {
+  width: 40px;
+  height: 40px;
+  background: rgba(217, 217, 217, 0.1);
+  border: 1px solid rgba(71, 154, 243, 0.3);
+  border-radius: 8px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.mobile-actionbar-section {
+  margin-bottom: 24px;
+}
+
+.mobile-action-group {
+  margin-bottom: 16px;
+}
+
+.mobile-action-button {
+  width: 100%;
+  background: rgba(217, 217, 217, 0.05);
+  border: 1px solid rgba(71, 154, 243, 0.3);
+  border-radius: 12px;
+  color: white;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  text-align: left;
+  font-size: 16px;
+  touch-action: manipulation;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.mobile-action-button:hover {
+  background: rgba(217, 217, 217, 0.08);
+  border-color: rgba(71, 154, 243, 0.5);
+}
+
+.mobile-action-submenu {
+  margin-left: 16px;
+  margin-top: 8px;
+  border-left: 2px solid rgba(71, 154, 243, 0.3);
+  padding-left: 16px;
+}
+
+.mobile-action-subbutton {
+  width: 100%;
+  background: rgba(217, 217, 217, 0.03);
+  border: 1px solid rgba(71, 154, 243, 0.2);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  text-align: left;
+  font-size: 14px;
+  touch-action: manipulation;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+
+.mobile-action-subbutton:hover {
+  background: rgba(217, 217, 217, 0.06);
+  color: white;
+}
+
+/* Responsive adjustments pour mobile */
+@media (max-width: 480px) {
+  .mobile-sidebar-content,
+  .mobile-actionbar-content {
+    width: 90vw;
+    padding: 20px;
+  }
+  
+  .mobile-timeline-container {
+    padding: 12px;
+  }
+  
+  .mobile-timeline-track {
+    gap: 10px;
+  }
+  
+  .mobile-timeline-point {
+    min-width: 100px;
+  }
+  
+  .mobile-timeline-hospital {
+    max-width: 95px;
+    font-size: 9px;
+  }
+}
+
+/* --- END OF CLEANED FILE --- */
+
+.actionbar-top {
+  top: calc(var(--standard-spacing) + clamp(120px, 16vh, 180px) - 32px);
+}
+
+/* Mode portrait mobile - Descendre la barre d'action */
+@media (max-width: 480px) and (orientation: portrait) {
+  .actionbar-top {
+    top: calc(100vh - 120px) !important; /* Descendre vers le bas de l'écran */
+  }
+}
+
+/* Mode portrait mobile - Positionner la barre d'action sous la timeline et monter la sidebar */
+@media (max-width: 480px) and (orientation: portrait) {
+  .actionbar-top {
+    top: calc(var(--standard-spacing) + clamp(70px, 7vh, 90px) + 20px) !important; /* Sous la timeline */
+  }
+  
+  .sidebar-position {
+    top: calc(var(--standard-spacing) + 60px) !important; /* Monter la sidebar pour laisser place au bouton */
+    bottom: var(--standard-spacing) !important; /* Espace normal en bas */
+  }
+  
+  /* Bouton toggle sidebar visible et accessible en mode portrait */
+  .sidebar-toggle-button {
+    opacity: 0.9 !important;
+    background: rgba(217, 217, 217, 0.08) !important;
+    border: 1.5px solid rgba(71, 154, 243, 0.4) !important;
+    backdrop-filter: blur(12px) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+  }
+  
+  .sidebar-toggle-button:hover {
+    opacity: 1 !important;
+    background: rgba(217, 217, 217, 0.12) !important;
+  }
+}
+
+/* Amélioration générale des boutons et liens pour le tactile */
+button:not(.timeline-skip-button),
+a,
+.mapboxgl-ctrl button {
+  touch-action: manipulation; /* Prevent zoom on double tap */
+  min-width: 44px; /* Taille minimale pour le tactile */
+  min-height: 44px; /* Taille minimale pour le tactile */
+}
+
+/* Timeline elements exemptés des règles tactiles générales */
+
+/* Espacement amélioré pour les éléments tactiles sur mobile */
+@media (max-width: 768px) {
+  button + button,
+  a + a,
+  button + a,
+  a + button {
+    margin-left: 8px; /* Espacement horizontal minimum */
+  }
+
+  .flex > button,
+  .flex > a,
+  .flex > [role="button"] {
+    margin: 4px; /* Espacement uniforme dans les conteneurs flex */
+  }
+
+  /* Amélioration de la lisibilité du texte */
+  p, span, div {
+    font-size: clamp(14px, 3vw, 16px) !important; /* Taille minimale de 14px sur mobile */
+    line-height: 1.5 !important; /* Amélioration de l'interlignage */
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-size: clamp(16px, 4vw, 24px) !important; /* Tailles de titres améliorées */
+  }
+}
+
+/* Amélioration spécifique pour les très petits écrans */
+@media (max-width: 375px) {
+  .sidebar-container,
+  .sidebar-container-second {
+    padding: 1rem; /* ↓ Padding réduit pour plus d'espace */
+    font-size: 13px; /* ↓ Texte plus petit */
+  }
+
+  button,
+  a,
+  [role="button"] {
+    min-width: 44px; /* ↓ Taille tactile standard */
+    min-height: 44px;
+    padding: 6px 10px; /* ↓ Padding réduit */
+    font-size: 13px; /* ↓ Texte plus petit */
+  }
+}
+
+/* Mode portrait mobile - Optimisations spéciales */
+@media (max-width: 480px) and (orientation: portrait) {
+  /* Réduire l'espacement général */
+  .actionbar-top {
+    top: calc(var(--standard-spacing) + clamp(70px, 8vh, 90px) - 16px); /* ↓ Ajusté pour timeline plus petite */
+  }
+  
+  /* Améliorer l'espacement des éléments */
+  .flex > * + * {
+    margin-left: 6px !important; /* ↓ Espacement réduit */
+  }
+  
+  /* Optimiser la sidebar sur très petits écrans */
+  .sidebar-container {
+    width: clamp(260px, 20vw, 300px) !important; /* ↓ Plus étroite */
+    padding: 0.75rem !important; /* ↓ Padding minimal */
+  }
+  
+  .sidebar-container h1 {
+    font-size: 18px !important; /* ↓ Titre plus petit */
+    margin-bottom: 6px !important;
+  }
+  
+  .sidebar-container h2 {
+    font-size: 14px !important; /* ↓ Sous-titre plus petit */
+    margin-bottom: 4px !important;
+  }
+
+  /* Bouton Skip maximisé en mode portrait */
+  .timeline-skip-button {
+    font-size: 13px !important; /* ↑ Texte plus gros en portrait */
+    padding: 8px 16px !important; /* ↑ Padding maximisé en portrait */
+    min-width: 70px !important; /* ↑ Largeur maximisée en portrait */
+    min-height: 36px !important; /* ↑ Hauteur maximisée pour alignement avec barre */
+    right: 4px !important; /* ↑ Collé au bord droit en portrait */
+    border-radius: 8px !important; /* Coins plus arrondis en portrait */
+    top: calc(50% - 2px) !important; /* ↑ Légèrement plus haut pour alignement avec la barre */
+  }
+
+  /* Boutons de contrôle de carte collés à droite en mode portrait */
+  .map-control-button {
+    margin-right: 0 !important; /* ↑ Supprime la marge droite en portrait */
+  }
+
+  /* Conteneur des boutons de contrôle encore plus collé en mode portrait */
+  div[class*="right-"]:has(.map-control-button) {
+    right: 8px !important; /* ↑ Collé au maximum à droite en mode portrait */
+  }
+}
+
+/* Responsive popup adjustments */
+@media (max-width: 768px) {
+  .mapboxgl-popup-content {
+    width: 85vw !important;
+    max-width: 300px !important;
+    min-width: 260px !important;
+    margin: 8px !important;
+  }
+  
+  /* Améliorer l'espacement interne des popups */
+  .hospital-popup {
+    padding: 12px !important;
+  }
+  
+  .hospital-popup h3 {
+    font-size: 16px !important;
+    margin-bottom: 8px !important;
+  }
+  
+  .hospital-popup p {
+    font-size: 14px !important;
+    margin-bottom: 6px !important;
+  }
+  
+  .hospital-popup button,
+  .hospital-popup a {
+    font-size: 14px !important;
+    padding: 10px 16px !important;
+    margin: 4px 2px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .mapboxgl-popup-content {
+    width: 88vw !important;
+    max-width: 280px !important;
+    min-width: 240px !important;
+  }
+}
+
+@media (max-width: 375px) {
+  .mapboxgl-popup-content {
+    width: 90vw !important;
+    max-width: 260px !important;
+    min-width: 220px !important;
+  }
 }

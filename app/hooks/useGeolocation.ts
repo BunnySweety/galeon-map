@@ -56,9 +56,9 @@ export function useGeolocation(options: UseGeolocationOptions = {}) {
         }));
       },
       {
-        enableHighAccuracy: options.enableHighAccuracy || true,
-        maximumAge: options.maximumAge || 0,
-        timeout: options.timeout || 5000,
+        enableHighAccuracy: options.enableHighAccuracy ?? true,
+        maximumAge: options.maximumAge ?? 0,
+        timeout: options.timeout ?? 5000,
       }
     );
   }, [options.enableHighAccuracy, options.maximumAge, options.timeout]);

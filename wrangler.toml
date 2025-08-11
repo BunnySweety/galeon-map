@@ -1,16 +1,28 @@
-name = "galeon-community-hospital-map"
+# Configuration Wrangler pour Cloudflare Pages
+name = "map-galeon-community"
+
+# Configuration commune
 compatibility_date = "2023-10-30"
+compatibility_flags = ["nodejs_compat"]
+
+# Spécifier le répertoire de sortie pour Next.js
 pages_build_output_dir = "out"
 
-[build]
-command = "npm run build"
-output_directory = "out"
+# Configuration pour l'environnement de prévisualisation
+[env.preview]
+vars = { ENVIRONMENT = "development" }
 
-[build.environment]
-NODE_VERSION = "20.11.1"
-NPM_VERSION = "10.2.4"
-NODE_OPTIONS = "--max-old-space-size=3072"
+# Configuration pour l'environnement de production
+[env.production]
+vars = { ENVIRONMENT = "production" }
 
-[dev]
-port = 8788
-local_protocol = "http" 
+# Configuration des en-têtes HTTP
+[[headers]]
+for = "/*"
+[headers.values]
+X-Frame-Options = "SAMEORIGIN"
+X-Content-Type-Options = "nosniff"
+X-XSS-Protection = "1; mode=block"
+Permissions-Policy = "geolocation=(self \"https://*.galeon.community\" \"https://*.cloudflareaccess.com\")"
+Referrer-Policy = "strict-origin-when-cross-origin"
+Content-Security-Policy = "upgrade-insecure-requests" 

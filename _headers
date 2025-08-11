@@ -1,18 +1,23 @@
+# En-têtes pour Cloudflare Pages
+# Format: [route] [nom-en-tête]: [valeur]
+
+# En-têtes globaux pour toutes les routes
 /*
-  X-Frame-Options: DENY
+  X-Frame-Options: SAMEORIGIN
   X-Content-Type-Options: nosniff
-  Referrer-Policy: no-referrer
-  Permissions-Policy: camera=(), microphone=(), geolocation=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.mapbox.com; style-src 'self' 'unsafe-inline' https://api.mapbox.com; img-src 'self' data: blob: https://api.mapbox.com https://maps.googleapis.com; connect-src 'self' https://api.mapbox.com https://events.mapbox.com; worker-src 'self' blob:; frame-src 'self';
+  X-XSS-Protection: 1; mode=block
+  Permissions-Policy: geolocation=(self "https://*.galeon.community" "https://*.cloudflareaccess.com")
+  Referrer-Policy: strict-origin-when-cross-origin
+  Content-Security-Policy: upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.mapbox.com; style-src 'self' 'unsafe-inline' https://api.mapbox.com; img-src 'self' data: blob: https://*.mapbox.com https://*.githubusercontent.com; connect-src 'self' https://*.mapbox.com https://*.cloudflareinsights.com; worker-src 'self' blob:;
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 
-/_next/*
-  Cache-Control: public, max-age=31536000, immutable
-
-/static/*
-  Cache-Control: public, max-age=31536000, immutable
-
+# En-têtes spécifiques pour les ressources statiques
 /*.js
-  Cache-Control: public, max-age=31536000
+  Cache-Control: public, max-age=31536000, immutable
 
 /*.css
-  Cache-Control: public, max-age=31536000 
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable 

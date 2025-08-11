@@ -1,13 +1,24 @@
 // File: app/store/useMapStore.ts
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import { format } from 'date-fns';
+import { formatDateDefault } from '../utils/date-utils';
 import { activateLocale } from '../i18n';
+import { hospitals as importedHospitals, Hospital as HospitalType } from '../api/hospitals/data';
+import logger from '../utils/logger';
 
 // Types
 export type HospitalStatus = 'Deployed' | 'Signed';
 
-export interface Hospital {
+// Re-export the Hospital type with a more explicit coordinates type
+export interface Hospital extends Omit<HospitalType, 'coordinates'> {
+  coordinates: [number, number]; // Explicitly define as tuple with exactly 2 elements
+}
+
+// Cast the imported hospitals to our more specific type
+export const staticHospitals: Hospital[] = importedHospitals as Hospital[];
+
+// Keep the interface for backward compatibility
+export interface HospitalInterface {
   id: string;
   name: string;
   nameEn: string;
@@ -34,7 +45,9 @@ interface MapStore {
   isLoading: boolean;
   error: string | null;
   hydrated: boolean;
-  
+  timelineIndex: number;
+  timelineLength: number;
+
   // Actions
   setHospitals: (hospitals: Hospital[]) => void;
   setFilteredHospitals: (hospitals: Hospital[]) => void;
@@ -45,7 +58,8 @@ interface MapStore {
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
   setHydrated: (hydrated: boolean) => void;
-  
+  setTimelineState: (index: number, length: number) => void;
+
   // Derived actions
   initialize: () => Promise<void>;
   fetchHospitals: () => Promise<void>;
@@ -60,7 +74,7 @@ export const useMapStore = create<MapStore>()(
         // Initial state
         hospitals: [],
         filteredHospitals: [],
-        currentDate: format(new Date(), 'yyyy-MM-dd'),
+        currentDate: formatDateDefault(new Date()).split('/').reverse().join('-'), // Convert dd/MM/yyyy to yyyy-MM-dd
         selectedFilters: {
           deployed: true,
           signed: true,
@@ -70,16 +84,18 @@ export const useMapStore = create<MapStore>()(
         isLoading: false,
         error: null,
         hydrated: false,
-        
+        timelineIndex: 0,
+        timelineLength: 0,
+
         // Actions
-        setHospitals: (hospitals) => set({ hospitals }),
-        setFilteredHospitals: (hospitals) => set({ filteredHospitals: hospitals }),
-        setCurrentDate: (date) => {
+        setHospitals: hospitals => set({ hospitals }),
+        setFilteredHospitals: hospitals => set({ filteredHospitals: hospitals }),
+        setCurrentDate: date => {
           set({ currentDate: date });
           get().applyFilters();
         },
-        toggleFilter: (filter) => {
-          set((state) => ({
+        toggleFilter: filter => {
+          set(state => ({
             selectedFilters: {
               ...state.selectedFilters,
               [filter]: !state.selectedFilters[filter],
@@ -87,97 +103,137 @@ export const useMapStore = create<MapStore>()(
           }));
           get().applyFilters();
         },
-        setLanguage: async (language) => {
+        setLanguage: async language => {
           try {
-            console.log(`Setting language in store to: ${language}`);
-            
+            logger.debug(`Setting language in store to: ${language}`);
+
             // Set the language state
             set({ language });
-            
+
             // Activate the locale without forcing a reload
             await activateLocale(language);
-            
-            console.log(`Language set to ${language} and locale activated`);
+
+            logger.debug(`Language set to ${language} and locale activated`);
           } catch (error) {
-            console.error('Failed to set language:', error);
+            logger.error('Failed to set language:', error);
             // Revert to previous language on error
-            set((state) => ({ language: state.language }));
+            set(state => ({ language: state.language }));
           }
         },
-        selectHospital: (hospital) => set({ selectedHospital: hospital }),
-        setLoading: (isLoading) => set({ isLoading }),
-        setError: (error) => set({ error }),
-        setHydrated: (hydrated) => set({ hydrated }),
-        
+        selectHospital: hospital => set({ selectedHospital: hospital }),
+        setLoading: isLoading => set({ isLoading }),
+        setError: error => set({ error }),
+        setHydrated: hydrated => set({ hydrated }),
+        setTimelineState: (index, length) => set({ timelineIndex: index, timelineLength: length }),
+
         // Derived actions
         initialize: async () => {
           const { fetchHospitals, setHydrated } = get();
-          
+
           try {
             await fetchHospitals();
             setHydrated(true);
           } catch (error) {
-            console.error('Failed to initialize store:', error);
+            logger.error('Failed to initialize store:', error);
             setHydrated(false);
           }
         },
-        
+
         fetchHospitals: async () => {
           const { setLoading, setError, setHospitals, applyFilters } = get();
-          
+
           try {
             setLoading(true);
             setError(null);
-            
-            const response = await fetch('/api/hospitals');
-            
-            if (!response.ok) {
-              throw new Error('Failed to fetch hospitals');
-            }
-            
-            const data = await response.json();
+
+            // Always use static data for consistency between dev and production-like builds
+            logger.debug('Using static hospital data (forced)');
+            const data = staticHospitals;
+
             setHospitals(data);
+
+            // --- Set initial currentDate to the earliest deployment date ---
+            if (data && data.length > 0) {
+              // Sort dates to find the earliest one
+              const sortedDates = data.map(h => h.deploymentDate).sort();
+              const earliestDate = sortedDates[0];
+              // Set the current date in the store if it's different from the initial one
+              // This prevents unnecessary updates if today happens to be the earliest date
+              if (earliestDate && get().currentDate !== earliestDate) {
+                set({ currentDate: earliestDate });
+              }
+            } // else: No data, keep default currentDate (today)
+            // --- End set initial currentDate ---
+
+            // Now apply filters using the potentially updated currentDate
             applyFilters();
           } catch (error) {
+            logger.error('Error fetching hospitals:', error);
+            // En cas d'erreur, utiliser les données statiques comme fallback
+            logger.debug('Error fetching from API, using static data as fallback');
+            // Ensure static data is set before potentially setting date
+            const fallbackData = staticHospitals;
+            setHospitals(fallbackData);
+            if (fallbackData && fallbackData.length > 0) {
+              const sortedDates = fallbackData.map(h => h.deploymentDate).sort();
+              const earliestDate = sortedDates[0];
+              if (earliestDate && get().currentDate !== earliestDate) {
+                set({ currentDate: earliestDate });
+              }
+            }
+            applyFilters(); // Apply filters even on error with fallback data
             setError(error instanceof Error ? error.message : 'Unknown error');
           } finally {
             setLoading(false);
           }
         },
-        
+
         applyFilters: () => {
           const { hospitals, selectedFilters, currentDate } = get();
-          
-          // Filter by status
-          const statusFiltered = hospitals.filter((hospital) => {
+
+          // Filter by status first (more efficient if many hospitals)
+          const statusFiltered = hospitals.filter(hospital => {
             if (hospital.status === 'Deployed' && selectedFilters.deployed) return true;
             if (hospital.status === 'Signed' && selectedFilters.signed) return true;
             return false;
           });
-          
-          // Filter by date, status, and status filter
-          const dateFiltered = statusFiltered.filter((hospital) => {
-            const hospitalDate = new Date(hospital.deploymentDate);
-            const current = new Date(currentDate);
-            
-            // Check if hospital is deployed or signed before or on current date
-            const isBeforeOrOnCurrentDate = hospitalDate <= current;
-            
-            // Check if hospital matches current status filters
-            const matchesStatusFilter = 
-              (hospital.status === 'Deployed' && selectedFilters.deployed) ||
-              (hospital.status === 'Signed' && selectedFilters.signed);
-            
-            return isBeforeOrOnCurrentDate && matchesStatusFilter;
+
+          // Filter by date, ignoring time component for robustness
+          const dateFiltered = statusFiltered.filter(hospital => {
+            try {
+              // Normalize current date from the store
+              const current = new Date(currentDate);
+              current.setUTCHours(0, 0, 0, 0); // Set to UTC midnight
+
+              // Normalize hospital deployment date
+              const hospitalDate = new Date(hospital.deploymentDate);
+              hospitalDate.setUTCHours(0, 0, 0, 0); // Set to UTC midnight
+
+              // Compare dates (UTC midnight vs UTC midnight)
+              const isBeforeOrOnCurrentDate = hospitalDate <= current;
+
+              // Check if hospital matches current status filters (this part was likely fine)
+              const matchesStatusFilter =
+                (hospital.status === 'Deployed' && selectedFilters.deployed) ||
+                (hospital.status === 'Signed' && selectedFilters.signed);
+
+              return isBeforeOrOnCurrentDate && matchesStatusFilter;
+            } catch (error) {
+              logger.error(
+                `Error parsing date for hospital ${hospital.id} or current date ${currentDate}:`,
+                error
+              );
+              return false; // Exclude if dates are invalid
+            }
           });
-          
+
           set({ filteredHospitals: dateFiltered });
           return dateFiltered;
         },
       }),
       {
         name: 'hospital-map-storage',
-        partialize: (state) => ({
+        partialize: state => ({
           language: state.language,
           selectedFilters: state.selectedFilters,
         }),

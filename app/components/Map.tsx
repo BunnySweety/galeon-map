@@ -1,268 +1,699 @@
 // File: app/components/Map.tsx
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useLingui } from '@lingui/react';
-import { format } from 'date-fns';
-import { useMapStore } from '../store/useMapStore';
-import { Hospital } from '../store/useMapStore';
-import { useGeolocation } from '../hooks/useGeolocation';
-import { applyMapboxPassiveEventsFix, removeMapboxPassiveEventsFix } from '../utils/mapbox-passive-fix';
-import { createBoundsFromHospitals, createMarkerElement } from '../utils/mapHelpers';
 import { createRoot } from 'react-dom/client';
-import HospitalDetail from './HospitalDetail';
 import { I18nProvider } from '@lingui/react';
-import ActionBar from './ActionBar';
+import { toast } from 'react-hot-toast';
+import screenfull from 'screenfull';
+import {
+  applyMapboxPassiveEventsFix,
+  removeMapboxPassiveEventsFix,
+} from '../utils/mapbox-passive-fix';
+import { useMapStore } from '../store/useMapStore';
+import { setupConsoleFilter } from '../utils/console-filter';
+import logger from '../utils/logger';
+import HospitalDetail from './HospitalDetail';
+import { useMapbox } from '../hooks/useMapbox';
 
 // Global RTL configuration to avoid multiple calls
 let rtlPluginLoaded = false;
 
-// Setup MapBox token
-if (!process.env.NEXT_PUBLIC_MAPBOX_TOKEN) {
-  console.error('Mapbox token is not configured. Please set NEXT_PUBLIC_MAPBOX_TOKEN in .env.local');
-}
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
-
-interface MapComponentProps {
+// Define MapComponent props (remove isMobileView)
+interface MapProps {
   className?: string;
 }
 
-const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
+// DÉBUT: Icône SVG pour la Localisation
+const LocationIcon: React.FC<{ isLocating?: boolean }> = ({ isLocating = false }) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle
+      cx="12"
+      cy="12"
+      r="8"
+      stroke="#A1CBF9"
+      strokeWidth="2"
+      className={isLocating ? 'animate-pulse' : ''}
+    ></circle>
+    <circle
+      cx="12"
+      cy="12"
+      r="3"
+      fill="#A1CBF9"
+      className={isLocating ? 'animate-ping' : ''}
+    ></circle>
+    <path d="M12 2V4" stroke="#A1CBF9" strokeWidth="2" strokeLinecap="round"></path>
+    <path d="M12 20V22" stroke="#A1CBF9" strokeWidth="2" strokeLinecap="round"></path>
+    <path d="M2 12L4 12" stroke="#A1CBF9" strokeWidth="2" strokeLinecap="round"></path>
+    <path d="M20 12L22 12" stroke="#A1CBF9" strokeWidth="2" strokeLinecap="round"></path>
+  </svg>
+);
+// FIN: Icône SVG pour la Localisation
+
+// DÉBUT: Icône SVG pour le Plein Écran
+const FullscreenEnterIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A1CBF9" strokeWidth="2">
+    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+    {/* Indicateur visuel pour debug */}
+    <circle cx="12" cy="12" r="1" fill="#A1CBF9" />
+  </svg>
+);
+
+const FullscreenExitIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A1CBF9" strokeWidth="2">
+    <path d="M3 8V5a2 2 0 0 1 2-2h3M16 3v3a2 2 0 0 0 2 2h3M21 16v3a2 2 0 0 1-2 2h-3M8 21v-3a2 2 0 0 0-2-2H3" />
+    {/* Indicateur visuel différent pour debug */}
+    <rect x="10" y="10" width="4" height="4" fill="#A1CBF9" />
+  </svg>
+);
+// FIN: Icône SVG pour le Plein Écran
+
+// Composant séparé pour l'icône plein écran
+const FullscreenIcon: React.FC<{ isFullscreen: boolean }> = ({ isFullscreen }) => {
+  return isFullscreen ? <FullscreenExitIcon /> : <FullscreenEnterIcon />;
+};
+
+const MapComponent: React.FC<MapProps> = ({ className = '' }) => {
   const { i18n } = useLingui();
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  
+  // Use the mapbox hook for dynamic loading
+  const { mapboxgl, isLoading: isMapboxLoading, error: mapboxError } = useMapbox();
 
   // Create a safe translation function that handles undefined i18n
-  const _ = useCallback((text: string) => {
-    try {
-      if (!i18n || !i18n._) {
+  const _ = useCallback(
+    (text: string) => {
+      try {
+        if (!i18n?._) {
+          return text;
+        }
+        const translated = i18n._(text);
+        return translated;
+      } catch (error) {
+        logger.error(`Error translating text in Map component: ${text}`, error);
         return text;
       }
-      const translated = i18n._(text);
-      return translated;
-    } catch (error) {
-      console.error(`Error translating text in Map component: ${text}`, error);
-      return text;
-    }
-  }, [i18n]);
-
-  const {
-    latitude,
-    longitude,
-    getPosition
-  } = useGeolocation();
-
-  // Define France bounds for reuse
-  const franceBounds = new mapboxgl.LngLatBounds(
-    [-5.142, 41.333], // South-west of France
-    [9.561, 51.089]   // North-east of France
+    },
+    [i18n]
   );
 
   const mapContainer = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<{ [key: string]: mapboxgl.Marker }>({});
-  const locationMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const mapRootContainer = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
+  const markersRef = useRef<{ [key: string]: any }>({});
+  const locationMarkerRef = useRef<any>(null);
   const locationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const geolocationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const progressToastRef = useRef<string | null>(null);
   const isTrackingRef = useRef<boolean>(false);
   const isFirstRenderRef = useRef<boolean>(true);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const popupRef = useRef<mapboxgl.Popup | null>(null);
+  const popupRef = useRef<any>(null);
 
   const {
     hospitals,
+    filteredHospitals,
     currentDate,
-    selectHospital
+    selectHospital,
+    selectedFilters,
+    timelineIndex,
+    timelineLength,
   } = useMapStore();
 
-  // Create custom control button styles
-  const createControlButton = useCallback((svgContent: string, onClick: () => void) => {
-    const button = document.createElement('button');
-    button.className = 'map-control-button';
-    button.innerHTML = svgContent;
-    button.style.width = 'clamp(45px, 5vw, 55px)';
-    button.style.height = 'clamp(45px, 5vw, 55px)';
-    button.style.padding = '8px';
-    button.style.background = 'rgba(217, 217, 217, 0.05)';
-    button.style.border = '1.95px solid rgba(255, 255, 255, 0.15)';
-    button.style.backdropFilter = 'blur(17.5px)';
-    button.style.borderRadius = '16px';
-    button.style.cursor = 'pointer';
-    button.style.margin = '8px 0';
-    button.style.display = 'flex';
-    button.style.alignItems = 'center';
-    button.style.justifyContent = 'center';
-    button.style.color = 'white';
-    button.onclick = onClick;
+  // Référence pour suivre si la carte a été initialisée
+  const mapInitializedRef = useRef<boolean>(false);
 
-    return button;
+  // Setup console filter for development
+  useEffect(() => {
+    setupConsoleFilter();
   }, []);
 
-  // Create footer element
-  const createFooter = useCallback(() => {
-    const footer = document.createElement('div');
-    footer.style.position = 'absolute';
-    footer.style.bottom = '20px';
-    footer.style.left = '0';
-    footer.style.right = '0';
-    footer.style.display = 'flex';
-    footer.style.justifyContent = 'space-between';
-    footer.style.alignItems = 'center';
-    footer.style.padding = '12px 16px';
-    footer.style.zIndex = '10';
 
-    return footer;
+
+  // Detect touch device
+  useEffect(() => {
+    const detectTouch = () => {
+      setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    };
+
+    detectTouch();
+    window.addEventListener('touchstart', () => setIsTouchDevice(true), { once: true });
+
+    return () => {
+      window.removeEventListener('touchstart', () => setIsTouchDevice(true));
+    };
   }, []);
 
-  // Create radar effect marker
-  const createRadarLocationMarker = useCallback(() => {
-    if (!mapRef.current || !latitude || !longitude) return null;
+  // Note: resetToFranceView function removed to prevent automatic zoom changes
+  // The map now maintains user-chosen zoom levels for better UX
 
-    // Remove existing location marker
-    if (locationMarkerRef.current) {
-      locationMarkerRef.current.remove();
-    }
+  // Créer un marqueur de localisation avec effet radar
+  const createLocationMarker = useCallback(
+    (lngLat: [number, number]) => {
+      if (!mapRef.current || !mapboxgl) return null;
 
-    // Create marker element with radar effect
-    const markerEl = document.createElement('div');
-    markerEl.style.position = 'relative';
-    markerEl.style.width = '50px';
-    markerEl.style.height = '50px';
+      // Supprimer le marqueur existant s'il y en a un
+      if (locationMarkerRef.current) {
+        locationMarkerRef.current.remove();
+        locationMarkerRef.current = null;
+      }
 
-    // Create radar pulse effect
-    const pulseRing = document.createElement('div');
-    pulseRing.style.position = 'absolute';
-    pulseRing.style.width = '100%';
-    pulseRing.style.height = '100%';
-    pulseRing.style.borderRadius = '50%';
-    pulseRing.style.border = '2px solid #3b82f6';
-    pulseRing.style.animation = 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite';
+      // Créer l'élément du marqueur
+      const markerEl = document.createElement('div');
+      markerEl.className = 'location-marker';
+      markerEl.style.width = '40px';
+      markerEl.style.height = '40px';
+      markerEl.style.position = 'relative';
+      markerEl.style.zIndex = '10'; // Assurer que le marqueur est au-dessus des autres éléments
 
-    // Create center dot
-    const centerDot = document.createElement('div');
-    centerDot.style.position = 'absolute';
-    centerDot.style.left = '50%';
-    centerDot.style.top = '50%';
-    centerDot.style.transform = 'translate(-50%, -50%)';
-    centerDot.style.width = '16px';
-    centerDot.style.height = '16px';
-    centerDot.style.backgroundColor = '#3b82f6';
-    centerDot.style.borderRadius = '50%';
-    centerDot.style.border = '2px solid white';
+      // Créer le premier effet de pulsation
+      const pulseRing1 = document.createElement('div');
+      pulseRing1.className = 'pulse-ring pulse-ring-1';
+      pulseRing1.style.position = 'absolute';
+      pulseRing1.style.width = '100%';
+      pulseRing1.style.height = '100%';
+      pulseRing1.style.borderRadius = '50%';
+      pulseRing1.style.backgroundColor = 'rgba(66, 133, 244, 0.2)';
+      pulseRing1.style.border = '2px solid rgba(66, 133, 244, 0.6)';
+      pulseRing1.style.opacity = '1';
 
-    // Add keyframe animation for pulse effect
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes pulse {
+      // Créer le second effet de pulsation avec un délai
+      const pulseRing2 = document.createElement('div');
+      pulseRing2.className = 'pulse-ring pulse-ring-2';
+      pulseRing2.style.position = 'absolute';
+      pulseRing2.style.width = '100%';
+      pulseRing2.style.height = '100%';
+      pulseRing2.style.borderRadius = '50%';
+      pulseRing2.style.backgroundColor = 'rgba(66, 133, 244, 0.2)';
+      pulseRing2.style.border = '2px solid rgba(66, 133, 244, 0.6)';
+      pulseRing2.style.opacity = '1';
+
+      // Créer le point central
+      const centerDot = document.createElement('div');
+      centerDot.className = 'center-dot';
+      centerDot.style.position = 'absolute';
+      centerDot.style.top = '50%';
+      centerDot.style.left = '50%';
+      centerDot.style.transform = 'translate(-50%, -50%)';
+      centerDot.style.width = '16px';
+      centerDot.style.height = '16px';
+      centerDot.style.borderRadius = '50%';
+      centerDot.style.backgroundColor = '#4285F4';
+      centerDot.style.border = '2px solid white';
+      centerDot.style.boxShadow = '0 0 5px rgba(0, 0, 0, 0.3)';
+      centerDot.style.zIndex = '2'; // S'assurer que le point est au-dessus des anneaux
+
+      // Ajouter l'animation CSS avec deux anneaux décalés pour un effet radar
+      const style = document.createElement('style');
+      style.textContent = `
+      @keyframes radarPulse {
         0% {
           transform: scale(0.5);
           opacity: 1;
         }
+        50% {
+          transform: scale(1.8);
+          opacity: 0.6;
+        }
         100% {
-          transform: scale(2);
+          transform: scale(3);
           opacity: 0;
         }
       }
+      .pulse-ring-1 {
+        animation: radarPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      .pulse-ring-2 {
+        animation: radarPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        animation-delay: 1s;
+      }
+      .location-marker {
+        filter: drop-shadow(0 0 8px rgba(66, 133, 244, 0.6));
+      }
     `;
-    document.head.appendChild(style);
+      document.head.appendChild(style);
 
-    markerEl.appendChild(pulseRing);
-    markerEl.appendChild(centerDot);
+      markerEl.appendChild(pulseRing1);
+      markerEl.appendChild(pulseRing2);
+      markerEl.appendChild(centerDot);
 
-    // Create and add marker
-    const marker = new mapboxgl.Marker({
-      element: markerEl,
-      anchor: 'center'
-    })
-      .setLngLat([longitude, latitude])
-      .addTo(mapRef.current);
+      // Créer et ajouter le marqueur
+      const marker = new mapboxgl.Marker({
+        element: markerEl,
+        anchor: 'center',
+      })
+        .setLngLat(lngLat)
+        .addTo(mapRef.current);
 
-    return marker;
-  }, [latitude, longitude]);
+      // Stocker le marqueur dans la référence
+      locationMarkerRef.current = marker;
+
+      // Configurer le timeout pour supprimer le marqueur après 10 secondes
+      if (locationTimeoutRef.current) {
+        clearTimeout(locationTimeoutRef.current);
+      }
+
+      locationTimeoutRef.current = setTimeout(() => {
+        if (locationMarkerRef.current) {
+          locationMarkerRef.current.remove();
+          locationMarkerRef.current = null;
+        }
+        isTrackingRef.current = false;
+
+        // Ne pas changer le zoom automatiquement
+        // L'utilisateur peut manuellement ajuster la vue si nécessaire
+
+        toast.success(_('Location marker automatically removed'), {
+          duration: 2000,
+          position: 'bottom-center',
+        });
+      }, 10000);
+
+      return marker;
+    },
+    [_, mapboxgl]
+  );
+
+  // Écouter les événements personnalisés pour le contrôle de la carte
+  useEffect(() => {
+    const handleZoomIn = () => {
+      if (mapRef.current) {
+        mapRef.current.zoomIn();
+      }
+    };
+
+    const handleZoomOut = () => {
+      if (mapRef.current) {
+        mapRef.current.zoomOut();
+      }
+    };
+
+    const handleCenterUser = (event: CustomEvent) => {
+      if (mapRef.current && event.detail) {
+        mapRef.current.flyTo({
+          center: [event.detail.lng, event.detail.lat],
+          zoom: 12,
+          duration: 1500,
+        });
+        // Créer un marqueur de localisation
+        createLocationMarker([event.detail.lng, event.detail.lat]);
+      }
+    };
+
+    window.addEventListener('mapZoomIn', handleZoomIn);
+    window.addEventListener('mapZoomOut', handleZoomOut);
+    window.addEventListener('mapCenterUser', handleCenterUser as EventListener);
+
+    return () => {
+      window.removeEventListener('mapZoomIn', handleZoomIn);
+      window.removeEventListener('mapZoomOut', handleZoomOut);
+      window.removeEventListener('mapCenterUser', handleCenterUser as EventListener);
+    };
+  }, [createLocationMarker]);
+
+  // Handler optimisé pour le bouton de test de géolocalisation avec factory pattern
+  const createTestLocationClickHandler = useMemo(() => {
+    return (toastId: string) => () => {
+      // Position de test : Paris, France
+      const testPosition: [number, number] = [2.3522, 48.8566]; // [longitude, latitude]
+
+      createLocationMarker(testPosition);
+
+      if (mapRef.current) {
+        // Fly to test location with smooth animation, preserving current zoom
+        const currentZoom = mapRef.current.getZoom();
+        mapRef.current.flyTo({
+          center: testPosition,
+          zoom: currentZoom, // Keep exact same zoom to avoid zoom animation
+          speed: 1.2, // Smooth flying speed
+          curve: 1.42, // Natural curve for the flight path
+          essential: true, // This animation is considered essential
+        });
+      }
+
+      toast.dismiss(toastId);
+      toast.success('Using test location: Paris, France', {
+        duration: 3000,
+        position: 'bottom-center',
+      });
+    };
+  }, [createLocationMarker]);
 
   // Handle location button click
   const handleLocationClick = useCallback(() => {
-    // Clear existing timeout if any
+    if (!mapRef.current || !mapboxgl) {
+      return;
+    }
+
+    // Si on est en train de localiser (recherche GPS en cours), annuler la géolocalisation
+    if (isLocating) {
+      setIsLocating(false);
+      isTrackingRef.current = false;
+
+      // Annuler le timeout de géolocalisation
+      if (geolocationTimeoutRef.current) {
+        clearTimeout(geolocationTimeoutRef.current);
+        geolocationTimeoutRef.current = null;
+      }
+
+      // Fermer le toast de progression
+      if (progressToastRef.current) {
+        toast.dismiss(progressToastRef.current);
+        progressToastRef.current = null;
+      }
+
+      toast.success(_('Geolocation cancelled'), {
+        duration: 2000,
+        position: 'bottom-center',
+      });
+
+      return;
+    }
+
+    // Si on a déjà un marqueur de localisation (radar actif), le supprimer
+    // Vérifier d'abord si le marqueur existe, même si isTrackingRef n'est pas encore mis à jour
+    if (locationMarkerRef.current) {
+      isTrackingRef.current = false;
+
+      // Supprimer le marqueur immédiatement
+      locationMarkerRef.current.remove();
+      locationMarkerRef.current = null;
+
+      // Annuler le timeout de suppression automatique
+      if (locationTimeoutRef.current) {
+        clearTimeout(locationTimeoutRef.current);
+        locationTimeoutRef.current = null;
+      }
+
+      // Ne pas changer le zoom automatiquement lors de la suppression manuelle
+
+      toast.success(_('Location marker removed'), {
+        duration: 2000,
+        position: 'bottom-center',
+      });
+
+      return;
+    }
+
+    // Clear existing location marker
+    if (locationMarkerRef.current) {
+      (locationMarkerRef.current as mapboxgl.Marker).remove();
+      locationMarkerRef.current = null;
+    }
+
+    // Clear existing timeout
     if (locationTimeoutRef.current) {
       clearTimeout(locationTimeoutRef.current);
       locationTimeoutRef.current = null;
     }
 
-    // If currently tracking, stop tracking
-    if (isTrackingRef.current) {
-      isTrackingRef.current = false;
-      if (locationMarkerRef.current) {
-        locationMarkerRef.current.remove();
-        locationMarkerRef.current = null;
-      }
-      return;
-    }
-
-    // Start tracking
+    // Set tracking flag and loading state
     isTrackingRef.current = true;
-    getPosition();
+    setIsLocating(true);
 
-    // Set timeout to disable tracking after 10 seconds
-    locationTimeoutRef.current = setTimeout(() => {
+    // Afficher un toast de progression avec timeout visuel
+    progressToastRef.current = toast.loading(_('Locating... Click again to cancel'), {
+      duration: 15000,
+      position: 'bottom-center',
+      style: {
+        background: '#333',
+        color: '#fff',
+        border: '1px solid #555',
+      },
+    });
+
+    // Timeout de sécurité pour annuler automatiquement après 15 secondes
+    geolocationTimeoutRef.current = setTimeout(() => {
+      setIsLocating(false);
       isTrackingRef.current = false;
-      if (locationMarkerRef.current) {
-        locationMarkerRef.current.remove();
-        locationMarkerRef.current = null;
+
+      if (progressToastRef.current) {
+        toast.dismiss(progressToastRef.current);
+        progressToastRef.current = null;
       }
-      // Force cleanup of any remaining markers
-      const mapElement = mapRef.current?.getContainer();
-      if (mapElement) {
-        const markers = mapElement.getElementsByClassName('mapboxgl-marker');
-        while (markers.length > 0) {
-          markers[0].remove();
+
+      toast.error(_('Geolocation timed out. Please try again.'), {
+        duration: 4000,
+        position: 'bottom-center',
+      });
+    }, 15000);
+
+    // Vérifier si nous sommes sur Cloudflare
+    const isCloudflare =
+      typeof window !== 'undefined' &&
+      (window.location.hostname.includes('cloudflare') ||
+        window.location.hostname.includes('galeon.community'));
+
+    // Informer l'utilisateur des limitations sur Cloudflare
+    if (isCloudflare) {
+      toast(
+        _('Note: Precise geolocation may be limited on this platform. Using approximate location.'),
+        {
+          duration: 4000,
+          position: 'bottom-center',
+          style: {
+            background: '#333',
+            color: '#fff',
+            border: '1px solid #555',
+          },
         }
+      );
+    }
+
+    try {
+      // Check if geolocation is available
+
+      if (!navigator.geolocation) {
+        const errorMsg = _('Geolocation is not supported by your browser');
+        toast.error(errorMsg, {
+          duration: 4000,
+          position: 'bottom-center',
+          style: {
+            background: '#333',
+            color: '#fff',
+            border: '1px solid #555',
+          },
+        });
+        isTrackingRef.current = false;
+        return;
       }
-    }, 10000);
-  }, [getPosition]);
 
-  // Update location marker when coordinates change
-  useEffect(() => {
-    // Always clean up existing marker first
-    if (locationMarkerRef.current) {
-      locationMarkerRef.current.remove();
-      locationMarkerRef.current = null;
-    }
+      // Check permissions first (if supported)
+      if ('permissions' in navigator) {
+        navigator.permissions
+          .query({ name: 'geolocation' })
+          .then(result => {
+            if (result.state === 'denied') {
+              const errorMsg = _(
+                'Location access was denied. Please check your browser permissions.'
+              );
+              toast.error(errorMsg, {
+                duration: 4000,
+                position: 'bottom-center',
+                style: {
+                  background: '#333',
+                  color: '#fff',
+                  border: '1px solid #555',
+                },
+              });
+              isTrackingRef.current = false;
+              return;
+            }
+          })
+          .catch(() => {
+            // Permissions API not supported, continue with geolocation request
+          });
+      }
 
-    // If not tracking or no coordinates, don't create new marker
-    if (!isTrackingRef.current || !latitude || !longitude || !mapLoaded) {
-      return;
-    }
+      // Request user location with appropriate options
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          // Nettoyer les états et timeouts
+          setIsLocating(false);
+          if (progressToastRef.current) {
+            toast.dismiss(progressToastRef.current);
+            progressToastRef.current = null;
+          }
+          if (geolocationTimeoutRef.current) {
+            clearTimeout(geolocationTimeoutRef.current);
+            geolocationTimeoutRef.current = null;
+          }
 
-    // Create and update marker
-    const marker = createRadarLocationMarker();
-    if (marker) {
-      locationMarkerRef.current = marker;
+          if (!mapRef.current || !isTrackingRef.current) {
+            return;
+          }
 
-      // Center map on user location without zoom
-      mapRef.current?.panTo([longitude, latitude], {
-        duration: 2000
+          const { longitude, latitude } = position.coords;
+
+          // Create marker at user location
+          createLocationMarker([longitude, latitude]);
+
+          // Fly to user location with smooth animation, preserving current zoom
+          const currentZoom = mapRef.current.getZoom();
+          mapRef.current.flyTo({
+            center: [longitude, latitude],
+            zoom: currentZoom, // Keep exact same zoom to avoid zoom animation
+            speed: 1.2, // Smooth flying speed
+            curve: 1.42, // Natural curve for the flight path
+            essential: true, // This animation is considered essential
+          });
+
+          // Afficher un message de succès
+          toast.success(_('Location found!'), {
+            duration: 3000,
+            position: 'bottom-center',
+          });
+        },
+        error => {
+          // Reset tracking state and loading on error
+          isTrackingRef.current = false;
+          setIsLocating(false);
+          if (progressToastRef.current) {
+            toast.dismiss(progressToastRef.current);
+            progressToastRef.current = null;
+          }
+          if (geolocationTimeoutRef.current) {
+            clearTimeout(geolocationTimeoutRef.current);
+            geolocationTimeoutRef.current = null;
+          }
+
+          // Provide user feedback based on error type
+          let errorMessage = _('Unable to get your location');
+
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = _(
+                'Location access was denied. Please check your browser permissions.'
+              );
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = _(
+                'Location information is unavailable. This often happens on localhost. Try using HTTPS or a different network.'
+              );
+              break;
+            case error.TIMEOUT:
+              errorMessage = _('The request to get your location timed out.');
+              break;
+          }
+
+          logger.warn(`Geolocation error (${error.code}): ${error.message ?? 'No message'}`);
+
+          // Pour le développement local, proposer une position de test
+          if (error.code === error.POSITION_UNAVAILABLE && process.env.NODE_ENV === 'development') {
+            // Afficher un toast avec option de test
+            toast(
+              t => (
+                <div className="flex flex-col gap-2">
+                  <div className="text-sm">{errorMessage}</div>
+                  <button
+                    onClick={createTestLocationClickHandler(t.id)}
+                    className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600"
+                  >
+                    Use Test Location (Paris)
+                  </button>
+                </div>
+              ),
+              {
+                duration: 8000,
+                position: 'bottom-center',
+                style: {
+                  background: '#333',
+                  color: '#fff',
+                  border: '1px solid #555',
+                },
+              }
+            );
+          } else {
+            // Display normal error message
+            toast.error(errorMessage, {
+              duration: 4000,
+              position: 'bottom-center',
+              style: {
+                background: '#333',
+                color: '#fff',
+                border: '1px solid #555',
+              },
+            });
+          }
+        },
+        {
+          enableHighAccuracy: false, // Try with less accuracy first
+          timeout: 15000, // Increased timeout
+          maximumAge: 300000, // Allow cached position up to 5 minutes
+        }
+      );
+    } catch (error) {
+      logger.error('Geolocation try-catch error:', error);
+      isTrackingRef.current = false;
+      setIsLocating(false);
+      if (progressToastRef.current) {
+        toast.dismiss(progressToastRef.current);
+        progressToastRef.current = null;
+      }
+      if (geolocationTimeoutRef.current) {
+        clearTimeout(geolocationTimeoutRef.current);
+        geolocationTimeoutRef.current = null;
+      }
+      const errorMsg = _('Error accessing geolocation. Please try again.');
+
+      toast.error(errorMsg, {
+        duration: 4000,
+        position: 'bottom-center',
+        style: {
+          background: '#333',
+          color: '#fff',
+          border: '1px solid #555',
+        },
       });
     }
+  }, [createLocationMarker, _, isLocating, createTestLocationClickHandler, mapboxgl]);
 
-    // Cleanup marker when effect is re-run or component unmounts
-    return () => {
-      if (locationMarkerRef.current) {
-        locationMarkerRef.current.remove();
-        locationMarkerRef.current = null;
-      }
-      // Force cleanup of any remaining markers
-      const mapElement = mapRef.current?.getContainer();
-      if (mapElement) {
-        const markers = mapElement.getElementsByClassName('mapboxgl-marker');
-        while (markers.length > 0) {
-          markers[0].remove();
-        }
+  const handleFullscreenToggle = useCallback(() => {
+    if (screenfull.isEnabled && mapRootContainer.current) {
+      screenfull.toggle(mapRootContainer.current);
+    }
+  }, []);
+
+
+
+
+
+
+
+  useEffect(() => {
+    const handleChange = () => {
+      if (screenfull.isEnabled) {
+        setIsFullscreen(screenfull.isFullscreen);
       }
     };
-  }, [mapLoaded, latitude, longitude, createRadarLocationMarker]);
+
+    if (screenfull.isEnabled) {
+      // Initialiser l'état au chargement
+      setIsFullscreen(screenfull.isFullscreen);
+
+      // Écouter les changements
+      screenfull.on('change', handleChange);
+
+      return () => {
+        screenfull.off('change', handleChange);
+      };
+    }
+
+    // Return empty cleanup function if screenfull is not enabled
+    return () => {};
+  }, []);
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || mapRef.current) return;
+    if (!mapContainer.current || mapRef.current || mapInitializedRef.current || !mapboxgl) {
+      return () => {}; // Return empty cleanup function for early returns
+    }
+
+    mapInitializedRef.current = true;
 
     // Clear container before initializing
     while (mapContainer.current.firstChild) {
@@ -283,8 +714,8 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
       const newMap = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/dark-v11',
-        center: [2.213749, 46.5],
-        zoom: 5.5,
+        center: [2.213749, 46.5], // Centre de la France
+        zoom: 4.8, // Zoom approprié pour voir toute la France
         attributionControl: false,
         touchZoomRotate: true,
         dragRotate: true,
@@ -292,28 +723,75 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
         interactive: true,
         preserveDrawingBuffer: true,
         antialias: true,
-        maxBounds: franceBounds,
-        minZoom: 5.5,
+        // Temporarily remove maxBounds to see if it causes zoom issues
+        // maxBounds: franceBounds,
+        minZoom: 4.0,
         maxZoom: 10,
         fadeDuration: 0,
         trackResize: true,
         refreshExpiredTiles: true,
-        renderWorldCopies: false
+        renderWorldCopies: false,
       });
 
-      // Initialisation simple
+      // Désactiver explicitement les fonctionnalités qui causent des avertissements
       newMap.once('load', () => {
+        // Désactiver le terrain si disponible dans cette version de mapbox
+        if (newMap.setTerrain && typeof newMap.setTerrain === 'function') {
+          newMap.setTerrain(null);
+        }
+
+        // Désactiver le brouillard si disponible
+        if (newMap.setFog && typeof newMap.setFog === 'function') {
+          newMap.setFog(null);
+        }
+
+        // Désactiver hillshade layers qui peuvent causer des problèmes Canvas2D
+        const style = newMap.getStyle();
+        if (style?.layers) {
+          style.layers.forEach((layer: any) => {
+            if (layer.id.includes('hillshade') || layer.type === 'hillshade') {
+              try {
+                newMap.removeLayer(layer.id);
+              } catch (e) {
+                // Ignorer les erreurs si la couche n'existe pas
+              }
+            }
+          });
+        }
+
+        // Ajouter un gestionnaire pour les erreurs Canvas2D
+        // eslint-disable-next-line no-console
+        const originalConsoleError = console.error;
+        // eslint-disable-next-line no-console
+        console.error = function (...args) {
+          // Filtrer les erreurs liées à Canvas2D et fingerprinting
+          const errorMessage = args.join(' ');
+          if (
+            (typeof errorMessage === 'string' &&
+              errorMessage.includes('Canvas2D') &&
+              errorMessage.includes('fingerprinting')) ||
+            (args[0] && typeof args[0] === 'string' && args[0].includes('hook.js:608'))
+          ) {
+            // Ignorer silencieusement cette erreur spécifique
+            return;
+          }
+          // Passer les autres erreurs au gestionnaire d'origine
+          originalConsoleError.apply(console, args);
+        };
+
         // Correctif pour le problème de dézoom bloqué
         // Désactiver le zoom par défaut et implémenter notre propre gestionnaire
         newMap.scrollZoom.disable();
 
-        // Ajouter un gestionnaire d'événements pour la molette
+        // Ajouter un gestionnaire d'événements pour la molette avec l'option passive: false
+        const mapContainer = newMap.getContainer();
+
         const wheelHandler = (e: WheelEvent) => {
-          // Empêcher le comportement par défaut
+          // Empêcher le comportement par défaut pour éviter le défilement de la page
           e.preventDefault();
+          e.stopPropagation();
 
           // Calculer le delta de zoom en utilisant les mêmes facteurs que Mapbox par défaut
-          // La valeur par défaut de Mapbox est d'environ 0.0025 * wheelDelta
           const wheelZoomRate = 0.0025;
           const delta = -e.deltaY * wheelZoomRate;
 
@@ -329,39 +807,54 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
           // Appliquer le zoom uniquement s'il a changé
           if (newZoom !== currentZoom) {
             // Obtenir la position du curseur par rapport à la carte
-            const rect = mapContainer.current.getBoundingClientRect();
-            const point = new mapboxgl.Point(
-              e.clientX - rect.left,
-              e.clientY - rect.top
-            );
+            const rect = mapContainer.getBoundingClientRect();
+            const point: [number, number] = [e.clientX - rect.left, e.clientY - rect.top];
 
             // Convertir en coordonnées géographiques
             const lngLat = newMap.unproject(point);
 
-            // Appliquer le zoom
+            // Appliquer le zoom en gardant le curseur au même point
             newMap.easeTo({
               zoom: newZoom,
-              duration: 0,
-              around: lngLat
+              center: lngLat,
+              duration: 0, // Zoom instantané
+              around: lngLat, // Zoomer autour du point du curseur
             });
           }
-
-          return false;
         };
 
-        // Ajouter l'écouteur d'événements
-        mapContainer.current.addEventListener('wheel', wheelHandler, { passive: false });
+        // Utiliser l'API addEventListener directement avec passive: false
+        // Cela permet d'appeler preventDefault() dans le gestionnaire
+        mapContainer.addEventListener('wheel', wheelHandler, { passive: false });
 
-        // Indiquer que la carte est chargée
-        setMapLoaded(true);
-      });
+        // Ajouter un nettoyage pour cet écouteur
+        newMap.once('remove', () => {
+          mapContainer.removeEventListener('wheel', wheelHandler);
+        });
 
-      // Apply passive events fix
-      applyMapboxPassiveEventsFix();
+        // Améliorer la gestion des événements tactiles pour la carte
+        if (isTouchDevice) {
+          // Désactiver le comportement de zoom par défaut du navigateur sur double-tap
+          mapContainer.style.touchAction = 'manipulation';
 
-      // Wait for both map and style to be loaded
-      newMap.on('style.load', () => {
-        // Set map reference only after style is loaded
+          // Améliorer la réactivité des gestes de pincement pour le zoom
+          newMap.touchZoomRotate.enable();
+          newMap.touchZoomRotate.disableRotation();
+
+          // Améliorer la sensibilité du zoom tactile
+          // La méthode setZoomRate n'existe pas, utilisons une approche alternative
+          // en ajustant les options de la carte
+          newMap.setMaxZoom(newMap.getMaxZoom()); // Rafraîchir les paramètres de zoom
+
+          // Désactiver le comportement de rotation pour éviter les rotations accidentelles
+          newMap.dragRotate.disable();
+          newMap.touchPitch.disable();
+        }
+
+        // Apply passive events fix
+        applyMapboxPassiveEventsFix();
+
+        // Set map reference and initialize layers
         mapRef.current = newMap;
 
         try {
@@ -370,8 +863,8 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
             type: 'geojson',
             data: {
               type: 'FeatureCollection',
-              features: []
-            }
+              features: [],
+            },
           });
 
           mapRef.current.addLayer({
@@ -379,61 +872,34 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
             type: 'circle',
             source: 'hospitals',
             paint: {
-              'circle-radius': 6,
+              'circle-radius': [
+                'case',
+                ['boolean', ['get', 'isActive'], false],
+                9, // Larger radius for active points
+                6, // Default radius for inactive points
+              ],
               'circle-color': [
                 'match',
                 ['get', 'status'],
-                'Deployed', '#42A5F5',
-                'Signed', '#4CAF50',
-                '#42A5F5'  // Default color
+                'Deployed',
+                '#42A5F5', // Blue for Deployed
+                'Signed',
+                '#4CAF50', // Green for Signed
+                '#cccccc', // Default fallback color (grey)
               ],
-              'circle-stroke-width': 2,
-              'circle-stroke-color': '#ffffff'
-            }
-          });
-
-          // Add click handler for the points
-          mapRef.current.on('click', 'hospital-points', (e) => {
-            if (!e.features?.length || !mapRef.current) return;
-
-            const feature = e.features[0];
-            const coordinates = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
-            const hospital = hospitals.find(h => h.id === feature.properties?.id);
-
-            if (hospital) {
-              // Handle popup creation and display
-              if (popupRef.current) {
-                popupRef.current.remove();
-                popupRef.current = null;
-              }
-
-              const popupNode = document.createElement('div');
-              const root = createRoot(popupNode);
-              root.render(
-                <I18nProvider i18n={i18n}>
-                  <HospitalDetail hospital={hospital} />
-                </I18nProvider>
-              );
-
-              const popup = new mapboxgl.Popup({
-                closeButton: false,
-                closeOnClick: true,
-                maxWidth: '300px',
-                className: 'hospital-popup',
-                offset: [0, 0]
-              })
-                .setLngLat(coordinates)
-                .setDOMContent(popupNode)
-                .addTo(mapRef.current);
-
-              popupRef.current = popup;
-              selectHospital(hospital);
-
-              popup.on('close', () => {
-                popupRef.current = null;
-                selectHospital(null);
-              });
-            }
+              'circle-stroke-width': [
+                'case',
+                ['boolean', ['get', 'isActive'], false],
+                2.5, // Thicker stroke for active points
+                1.5, // Default stroke for inactive points
+              ],
+              'circle-stroke-color': [
+                'case',
+                ['boolean', ['get', 'isActive'], false],
+                '#ffffff', // White stroke for active points
+                '#ffffff', // White stroke for inactive points (or change if desired)
+              ],
+            },
           });
 
           // Add hover effects
@@ -449,217 +915,358 @@ const MapComponent: React.FC<MapComponentProps> = ({ className = '' }) => {
             }
           });
         } catch (error) {
-          console.error('Error initializing map layers:', error);
+          logger.error('Error initializing map layers:', error);
         }
 
-        // Create and add controls
-        const controlContainer = document.createElement('div');
-        controlContainer.style.position = 'absolute';
-        controlContainer.style.top = '250px';
-        controlContainer.style.right = '20px';
-        controlContainer.style.zIndex = '10';
-        controlContainer.style.display = 'flex';
-        controlContainer.style.flexDirection = 'column';
-
-        // Add controls to container
-        controlContainer.appendChild(createControlButton(`
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A1CBF9" stroke-width="2">
-            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-          </svg>
-        `, () => {
-          if (!document.fullscreenElement) {
-            mapContainer.current?.requestFullscreen();
-          } else if (document.exitFullscreen) {
-            document.exitFullscreen();
-          }
-        }));
-
-        controlContainer.appendChild(createControlButton(`
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="12" cy="12" r="8" stroke="#A1CBF9" stroke-width="2"/>
-            <circle cx="12" cy="12" r="3" fill="#A1CBF9"/>
-            <path d="M12 2V4" stroke="#A1CBF9" stroke-width="2" stroke-linecap="round"/>
-            <path d="M12 20V22" stroke="#A1CBF9" stroke-width="2" stroke-linecap="round"/>
-            <path d="M2 12L4 12" stroke="#A1CBF9" stroke-width="2" stroke-linecap="round"/>
-            <path d="M20 12L22 12" stroke="#A1CBF9" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-        `, handleLocationClick));
-
-        // Add custom container to map
-        newMap.getContainer().appendChild(controlContainer);
-
-        // Add footer to map
-        newMap.getContainer().appendChild(createFooter());
+        // Zoom change listener removed - no longer needed for debugging
 
         // Set map as loaded and trigger initial marker update
         setMapLoaded(true);
       });
 
-      // Adjust initial view to see entire France
-      newMap.fitBounds(franceBounds, {
-        padding: { top: 150, bottom: 50, left: 100, right: 100 },
-        duration: 0,
-        maxZoom: 4.5
-      });
+      // Initial view is set via map constructor parameters
+      // No fitBounds needed to avoid unwanted zoom animation
 
       // Cleanup on unmount
       return () => {
         removeMapboxPassiveEventsFix();
-        if (mapRef.current) {
-          // Remove all markers first
-          Object.values(markersRef.current).forEach(marker => marker.remove());
-          markersRef.current = {};
 
-          // Then remove the map
+        // Nettoyer tous les marqueurs
+        Object.values(markersRef.current).forEach(marker => marker.remove());
+        markersRef.current = {};
+
+        // Nettoyer le marqueur de localisation
+        if (locationMarkerRef.current) {
+          locationMarkerRef.current.remove();
+          locationMarkerRef.current = null;
+        }
+
+        // Nettoyer les timeouts
+        if (locationTimeoutRef.current) {
+          clearTimeout(locationTimeoutRef.current);
+          locationTimeoutRef.current = null;
+        }
+
+        if (geolocationTimeoutRef.current) {
+          clearTimeout(geolocationTimeoutRef.current);
+          geolocationTimeoutRef.current = null;
+        }
+
+        // Nettoyer le toast de progression
+        if (progressToastRef.current) {
+          toast.dismiss(progressToastRef.current);
+          progressToastRef.current = null;
+        }
+
+        // Nettoyer les popups
+        if (popupRef.current) {
+          popupRef.current.remove();
+          popupRef.current = null;
+        }
+
+        // Supprimer la carte en dernier
+        if (mapRef.current) {
           mapRef.current.remove();
           mapRef.current = null;
         }
+
+        // Réinitialiser les états et références
+        mapInitializedRef.current = false;
+        isTrackingRef.current = false;
+        isFirstRenderRef.current = true;
       };
     } catch (e) {
-      console.error('Error initializing map:', e);
+      logger.error('Error initializing map:', e);
+      // Réinitialiser la référence d'initialisation en cas d'erreur
+      mapInitializedRef.current = false;
+      // Return empty cleanup function for error case
+      return () => {};
     }
-  }, []);
+  }, [isTouchDevice, mapboxgl]);
 
-  // Update displayed hospitals based on current date
+  // Update displayed hospitals based on current date and filters
   useEffect(() => {
-    if (!mapRef.current || !hospitals.length || !mapLoaded) return;
+    // Ensure map, source, and base hospital data are ready
+    if (!mapRef.current || !hospitals || !mapLoaded) {
+      return;
+    }
+
+    const source = mapRef.current.getSource('hospitals') as mapboxgl.GeoJSONSource;
+    if (!source) {
+      return; // Exit if source doesn't exist yet
+    }
 
     try {
-      // Sort hospitals by deployment date
-      const sortedHospitals = [...hospitals].sort((a, b) =>
-        new Date(a.deploymentDate).getTime() - new Date(b.deploymentDate).getTime()
-      );
+      // --- Re-implement filtering logic directly in the map component ---
 
-      // Get date of the first hospital
-      const firstHospitalDate = new Date(sortedHospitals[0].deploymentDate);
-      const currentDateObj = new Date(currentDate);
+      // 1. Filter by status based on selectedFilters
+      const statusFiltered = hospitals.filter(hospital => {
+        if (hospital.status === 'Deployed' && selectedFilters.deployed) return true;
+        if (hospital.status === 'Signed' && selectedFilters.signed) return true;
+        return false;
+      });
 
-      // Check if we are at the beginning of the animation
-      const isStartOfAnimation = isFirstRenderRef.current ||
-        currentDateObj.getTime() <= firstHospitalDate.getTime();
+      // 2. Filter by date (using normalized dates) - Skip on mobile
+      const isMobile = window.innerWidth <= 768;
+      const dateFiltered = isMobile ? statusFiltered : statusFiltered.filter(hospital => {
+        try {
+          const current = new Date(currentDate);
+          current.setUTCHours(0, 0, 0, 0);
+          const hospitalDate = new Date(hospital.deploymentDate);
+          hospitalDate.setUTCHours(0, 0, 0, 0);
+          return hospitalDate <= current;
+        } catch (error) {
+          logger.error(`Error parsing date during map update for hospital ${hospital.id}:`, error);
+          return false;
+        }
+      });
+      // --- End re-implemented filtering ---
 
-      // Get hospitals up to current date
-      const hospitalsUpToCurrentDate = sortedHospitals
-        .filter(h => new Date(h.deploymentDate) <= currentDateObj);
+      // Sort hospitals by status for consistent rendering (optional, based on preference)
+      const finalHospitalsToShow = [...dateFiltered].sort((a, b) => {
+        if (a.status === 'Deployed' && b.status !== 'Deployed') return 1;
+        if (a.status !== 'Deployed' && b.status === 'Deployed') return -1;
+        return 0;
+      });
 
-      // Convert hospitals to GeoJSON features
-      const features = hospitalsUpToCurrentDate.map(h => ({
+      // Update the GeoJSON source with the locally filtered hospitals
+      const features = finalHospitalsToShow.map(hospital => ({
         type: 'Feature' as const,
         geometry: {
           type: 'Point' as const,
-          coordinates: h.coordinates
+          coordinates: hospital.coordinates ?? [0, 0],
         },
         properties: {
-          id: h.id,
-          name: h.name,
-          status: h.status,
-          deploymentDate: h.deploymentDate
-        }
+          id: hospital.id,
+          name: hospital.name,
+          status: hospital.status,
+          isActive: hospital.deploymentDate === currentDate && timelineIndex < timelineLength - 1,
+        },
       }));
 
-      // Update source data
-      const source = mapRef.current.getSource('hospitals') as mapboxgl.GeoJSONSource;
-      if (source) {
-        // Display only the first hospital at the beginning
-        const displayFeatures = isStartOfAnimation ?
-          [{ // Only first hospital
-            type: 'Feature' as const,
-            geometry: {
-              type: 'Point' as const,
-              coordinates: sortedHospitals[0].coordinates
-            },
-            properties: {
-              id: sortedHospitals[0].id,
-              name: sortedHospitals[0].name,
-              status: sortedHospitals[0].status,
-              deploymentDate: sortedHospitals[0].deploymentDate
-            }
-          }] :
-          features;
+      source.setData({
+        type: 'FeatureCollection',
+        features: features,
+      });
+    } catch (error) {
+      logger.error('Error updating hospitals source data:', error);
+    }
+  }, [hospitals, currentDate, selectedFilters, mapLoaded, timelineIndex, timelineLength]);
 
-        source.setData({
-          type: 'FeatureCollection',
-          features: displayFeatures
-        });
+  // Add click handler for hospital points
+  useEffect(() => {
+    if (!mapRef.current || !mapLoaded) return;
 
-        // Adjust view only on initial render
-        if (isFirstRenderRef.current) {
-          mapRef.current.fitBounds(franceBounds, {
-            padding: { top: 100, bottom: 100, left: 100, right: 100 },
-            duration: 0
+    const clickHandler = (
+      e: any
+    ) => {
+      if (!e.features?.length || !mapRef.current) return;
+
+      const feature = e.features[0];
+      if (!feature) return;
+
+      const coordinates = (feature.geometry as GeoJSON.Point).coordinates.slice() as [
+        number,
+        number,
+      ];
+      const isMobile = window.innerWidth <= 768;
+      const hospitalList = isMobile ? hospitals : filteredHospitals;
+      const hospital = hospitalList.find(h => h.id === feature.properties?.id);
+
+      if (hospital) {
+        if (isMobile) {
+          // Sur mobile, pas de popup - juste sélectionner l'hôpital
+          // Forcer une mise à jour même si c'est le même hôpital
+          selectHospital(null); // Réinitialiser d'abord
+          setTimeout(() => {
+            selectHospital(hospital); // Puis sélectionner
+          }, 0);
+          // Centrer la carte sur l'hôpital avec décalage vers le haut pour le panneau
+          // Décaler le centre vers le haut pour que l'hôpital soit visible au-dessus du panneau
+          const offsetLat = coordinates[1] + 0.006; // Décalage vers le haut ajusté pour panneau au-dessus de la nav
+          mapRef.current.flyTo({
+            center: [coordinates[0], offsetLat],
+            zoom: 14,
+            duration: 1000,
           });
-          isFirstRenderRef.current = false;
+        } else {
+          // Sur desktop, afficher le popup
+          if (popupRef.current) {
+            popupRef.current.remove();
+            popupRef.current = null;
+          }
+
+          const popupNode = document.createElement('div');
+          const root = createRoot(popupNode);
+          root.render(
+            <I18nProvider i18n={i18n}>
+              <HospitalDetail hospital={hospital} />
+            </I18nProvider>
+          );
+
+          const popup = new mapboxgl.Popup({
+            closeButton: false,
+            closeOnClick: true,
+            maxWidth: '300px',
+            className: 'hospital-popup',
+            offset: [0, 0],
+          })
+            .setLngLat(coordinates)
+            .setDOMContent(popupNode)
+            .addTo(mapRef.current);
+
+          popupRef.current = popup;
+          selectHospital(hospital);
+
+          popup.on('close', () => {
+            popupRef.current = null;
+            selectHospital(null);
+          });
         }
       }
-    } catch (e) {
-      console.error('Error updating hospital points:', e);
-    }
+    };
 
+    // Add click handler
+    mapRef.current.on('click', 'hospital-points', clickHandler);
+
+    // Cleanup function
     return () => {
       if (mapRef.current) {
-        const source = mapRef.current.getSource('hospitals') as mapboxgl.GeoJSONSource;
-        if (source) {
-          source.setData({
-            type: 'FeatureCollection',
-            features: []
-          });
-        }
-      }
-
-      if (popupRef.current) {
-        popupRef.current.remove();
-        popupRef.current = null;
+        mapRef.current.off('click', 'hospital-points', clickHandler);
       }
     };
-  }, [currentDate, hospitals, mapLoaded]);
+  }, [mapLoaded, filteredHospitals, hospitals, selectHospital, i18n]);
 
-  // Nettoyer les écouteurs lors du démontage du composant
+  // Note: Initial France view is set during map initialization
+  // No need for additional fitBounds after map loads to avoid unwanted zoom changes
+
+  // Détecter la vue mobile pour ajuster la position des boutons
   useEffect(() => {
-    return () => {
-      // Nettoyage si nécessaire
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth < 768); // Seuil pour la vue mobile, à ajuster si besoin
     };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Positions simplifiées et corrigées avec l'espacement standard
+  const getButtonPosition = () => {
+    if (isFullscreen) {
+      return 'top-24'; // Position plus basse en plein écran
+    }
+    // Position normale - ajustée pour mobile et desktop
+    return isMobileView ? 'top-32' : 'top-44';
+  };
+
+  // Show loading state while mapbox is loading
+  if (isMapboxLoading) {
+    return (
+      <div className={`relative w-full h-screen bg-slate-900 flex flex-col ${className}`}>
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <h2 className="text-xl font-semibold text-white mb-2">Loading Map</h2>
+            <p className="text-gray-300">Initializing Mapbox...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if mapbox failed to load
+  if (mapboxError) {
+    return (
+      <div className={`relative w-full h-screen bg-slate-900 flex flex-col ${className}`}>
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-red-500 mb-4">⚠️</div>
+            <h2 className="text-xl font-semibold text-white mb-2">Map Loading Failed</h2>
+            <p className="text-gray-300">{mapboxError}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <>
-      <div
-        ref={mapContainer}
-        className={`relative w-full h-full ${className}`}
-        style={{ position: 'relative', height: '100%' }}
-        data-testid="map-container"
-      />
-      {/* Action Bar positioned to match timeline position */}
-      <div className="absolute top-[190px] left-[clamp(350px,calc(330px+3vw),410px)] w-[calc(100%-clamp(370px,calc(350px+3vw),430px))] z-[9999]">
-        <div className="relative w-full overflow-visible px-[2.5%]">
-          <div className="absolute w-[calc(100%-120px)] left-[80px] flex justify-center">
-            <div className="absolute w-full flex justify-center">
-              <ActionBar className="!my-0" />
-            </div>
-          </div>
+    <div ref={mapRootContainer} className="relative w-full h-screen bg-slate-900 flex flex-col">
+      {/* Map container - Takes remaining space */}
+      <div className="relative flex-grow">
+        <div
+          ref={mapContainer}
+          className={`w-full h-full ${className}`}
+          style={{ position: 'relative', height: '100%' }}
+          data-testid="map-container"
+        />
+
+        <div
+          className={`absolute ${isMobileView ? 'right-2' : 'right-6'} ${isFullscreen ? 'z-[9999]' : 'z-[60]'} flex flex-col ${getButtonPosition()}`}
+          style={{
+            gap: '4px', // Espacement réduit entre les boutons
+          }}
+        >
+          <button
+            onClick={handleLocationClick}
+            className="map-control-button touch-manipulation hover:bg-white/20 transition-colors"
+            style={{
+              width: 'clamp(45px, 5vw, 55px)',
+              height: 'clamp(45px, 5vw, 55px)',
+              padding: 'calc(var(--standard-spacing) * 0.4)',
+              background: 'rgba(217, 217, 217, 0.05)',
+              border: '1.95px solid rgba(71,154,243,0.3)',
+              backdropFilter: 'blur(17.5px)',
+              borderRadius: '16px',
+              cursor: 'pointer',
+              margin: 'calc(var(--standard-spacing) * 0.4) 0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              touchAction: 'manipulation',
+            }}
+            aria-label="Show my location"
+            title={isLocating ? _('Click to cancel') : _('Geolocate')}
+          >
+            <LocationIcon isLocating={isLocating} />
+          </button>
+          {screenfull.isEnabled && (
+            <button
+              key={`fullscreen-${isFullscreen}`} // Forcer le re-rendu avec une clé unique
+              onClick={handleFullscreenToggle}
+              className="map-control-button touch-manipulation hover:bg-white/20 transition-colors"
+              style={{
+                width: 'clamp(45px, 5vw, 55px)',
+                height: 'clamp(45px, 5vw, 55px)',
+                padding: 'calc(var(--standard-spacing) * 0.4)',
+                background: 'rgba(217, 217, 217, 0.05)',
+                border: '1.95px solid rgba(71,154,243,0.3)',
+                backdropFilter: 'blur(17.5px)',
+                borderRadius: '16px',
+                cursor: 'pointer',
+                margin: 'calc(var(--standard-spacing) * 0.4) 0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                touchAction: 'manipulation',
+              }}
+              aria-label={isFullscreen ? _('Exit fullscreen') : _('Enter fullscreen')}
+              title={isFullscreen ? _('Exit fullscreen') : _('Enter fullscreen')}
+            >
+              <FullscreenIcon isFullscreen={isFullscreen} />
+            </button>
+          )}
         </div>
-      </div>
-      {/* Author credit */}
-      <div className="absolute bottom-[80px] left-[clamp(350px,calc(330px+3vw),410px)] w-[calc(100%-clamp(370px,calc(350px+3vw),430px))] z-[9999]">
-        <div className="relative w-full overflow-visible px-[2.5%]">
-          <div className="absolute w-[calc(100%-120px)] left-[80px] flex justify-center">
-            <div className="border-2 border-[rgba(71,154,243,0.3)] rounded-lg px-6 py-2 bg-[rgba(217,217,217,0.05)] backdrop-blur-[17.5px] text-[#A1CBF9] text-[clamp(12px,0.9vw,14px)] transition-all duration-200 whitespace-nowrap">
-              {_("Made with")} <span className="text-[#3b82f6]"> ♥ </span>{_("by")} BunnySweety
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Version display */}
-      <div className="absolute bottom-[80px] right-[80px] z-[9999]">
-        <div className="relative w-full overflow-visible">
-          <div className="absolute w-full flex justify-center">
-            <div className="border-2 border-[rgba(71,154,243,0.3)] rounded-lg px-6 py-2 bg-[rgba(217,217,217,0.05)] backdrop-blur-[17.5px] text-[#A1CBF9] text-[clamp(12px,0.9vw,14px)] transition-all duration-200 whitespace-nowrap">
-              {process.env.NEXT_PUBLIC_APP_VERSION || 'v1.0.0'}
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
+      </div>{' '}
+      {/* End Map Container */}
+    </div>
   );
 };
 

@@ -1,0 +1,311 @@
+/* Mobile V2 - Styles optimisés pour la nouvelle version mobile */
+
+/* Variables CSS pour mobile */
+:root {
+  --mobile-header-height: 56px;
+  --mobile-nav-height: 60px;
+  --mobile-safe-area-bottom: env(safe-area-inset-bottom, 0);
+  --mobile-safe-area-top: env(safe-area-inset-top, 0);
+  
+  /* Couleurs optimisées pour mobile */
+  --mobile-bg-primary: #0f172a;
+  --mobile-bg-secondary: #1e293b;
+  --mobile-bg-overlay: rgba(15, 23, 42, 0.95);
+  --mobile-border-color: rgba(71, 85, 105, 0.3);
+  
+  /* Animations */
+  --mobile-transition-fast: 150ms;
+  --mobile-transition-normal: 250ms;
+  --mobile-transition-slow: 350ms;
+}
+
+/* Mobile App Container */
+.mobile-app {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: none;
+}
+
+/* Mobile Header */
+.mobile-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  min-height: var(--mobile-header-height);
+  padding-top: var(--mobile-safe-area-top);
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+}
+
+/* Mobile Bottom Navigation */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  min-height: var(--mobile-nav-height);
+  padding-bottom: var(--mobile-safe-area-bottom);
+  box-shadow: 0 -1px 3px 0 rgb(0 0 0 / 0.1);
+}
+
+/* Safe area helper */
+.h-safe-area-inset-bottom {
+  height: var(--mobile-safe-area-bottom);
+}
+
+/* Touch optimized buttons */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Smooth scrolling */
+.smooth-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Virtual scroll container */
+.virtual-scroll {
+  contain: strict;
+  will-change: transform;
+}
+
+/* Performance optimizations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Prevent text selection on interactive elements */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Mobile map styles */
+.mobile-map-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  contain: paint layout;
+}
+
+/* Fix pour la carte Mapbox sur mobile */
+.mapboxgl-map {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.mapboxgl-canvas-container {
+  position: absolute !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.mapboxgl-canvas {
+  position: absolute !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Hospital marker animation */
+@keyframes hospital-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.hospital-marker-mobile {
+  animation: hospital-pulse 2s ease-in-out infinite;
+}
+
+/* Timeline mobile styles */
+.mobile-timeline-container {
+  position: relative;
+  padding: 1rem;
+  max-height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-timeline-point {
+  transition: all var(--mobile-transition-normal) ease;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-timeline-point:active {
+  transform: scale(0.95);
+}
+
+/* List view optimizations */
+.mobile-list-item {
+  contain: layout style;
+  will-change: height;
+}
+
+/* Gesture areas */
+.swipe-area {
+  touch-action: pan-y;
+}
+
+.pinch-zoom-area {
+  touch-action: pinch-zoom;
+}
+
+/* Loading states */
+.skeleton-loading {
+  background: linear-gradient(
+    90deg,
+    #1e293b 0%,
+    #334155 50%,
+    #1e293b 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Sheet/Modal animations */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 200;
+}
+
+.sheet-content {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--mobile-bg-secondary);
+  border-radius: 1rem 1rem 0 0;
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  z-index: 201;
+}
+
+/* PWA specific styles */
+@media (display-mode: standalone) {
+  .mobile-header {
+    padding-top: calc(var(--mobile-safe-area-top) + 0.5rem);
+  }
+}
+
+/* Landscape optimizations */
+@media (orientation: landscape) and (max-height: 500px) {
+  .mobile-header {
+    min-height: 48px;
+  }
+  
+  .mobile-bottom-nav {
+    min-height: 48px;
+  }
+  
+  .mobile-bottom-nav span {
+    display: none;
+  }
+}
+
+/* Dark mode optimizations */
+@media (prefers-color-scheme: dark) {
+  .mobile-app {
+    color-scheme: dark;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .mobile-header,
+  .mobile-bottom-nav {
+    border-width: 2px;
+  }
+  
+  button {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  button, a, .clickable {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Increase tap target size */
+  .mobile-bottom-nav button {
+    padding: 0.75rem;
+  }
+}
+
+/* Fold detection for foldable devices */
+@media (horizontal-viewport-segments: 2) {
+  .mobile-app {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: env(fold-width);
+  }
+}
+
+/* Performance optimizations for low-end devices */
+@media (max-width: 320px), (prefers-reduced-data: reduce) {
+  /* Disable complex animations */
+  .hospital-marker-mobile {
+    animation: none;
+  }
+  
+  /* Reduce blur effects */
+  .backdrop-blur-sm,
+  .backdrop-blur-md {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background-color: var(--mobile-bg-overlay);
+  }
+}
