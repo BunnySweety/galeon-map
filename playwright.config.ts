@@ -1,6 +1,8 @@
 // File: playwright.config.ts
 import { defineConfig, devices } from '@playwright/test';
 
+const isProdE2E = !!process.env.E2E_PROD;
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -34,9 +36,15 @@ export default defineConfig({
       use: { ...devices['iPhone 12'] },
     },
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: isProdE2E
+    ? {
+        command: 'npm run build && npx serve -s out -l 3000',
+        url: 'http://localhost:3000',
+        reuseExistingServer: !process.env.CI,
+      }
+    : {
+        command: 'npm run dev',
+        url: 'http://localhost:3000',
+        reuseExistingServer: !process.env.CI,
+      },
 });

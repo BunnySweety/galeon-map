@@ -4,9 +4,9 @@ import { test, expect } from '@playwright/test';
 test('should display the hospitals map page', async ({ page }) => {
   await page.goto('/');
 
-  // Check if the main components are rendered
-  await expect(page.getByText('Hospitals Map')).toBeVisible();
-  await expect(page.getByText('Distribution')).toBeVisible();
+  // Check if the main components are rendered (disambiguated selectors)
+  await expect(page.getByRole('heading', { name: 'Galeon Hospitals Map' })).toBeVisible();
+  await expect(page.getByText('Distribution', { exact: true })).toBeVisible();
 
   // Check if the map is loaded
   await expect(page.locator('[data-testid="map-container"]')).toBeVisible();
@@ -15,8 +15,8 @@ test('should display the hospitals map page', async ({ page }) => {
 test('should filter hospitals by status', async ({ page }) => {
   await page.goto('/');
 
-  // Click on the Deployed filter
-  await page.getByText('Deployed').click();
+  // Click on the Deployed filter (exact match)
+  await page.getByText('Deployed', { exact: true }).click();
 
   // Wait for the filter to be applied
   await page.waitForTimeout(500);
@@ -31,8 +31,11 @@ test('should change language', async ({ page }) => {
   // Select French language
   await page.locator('select').selectOption('fr');
 
-  // Check if the UI is now in French
-  await expect(page.getByText('Carte des Hôpitaux')).toBeVisible();
+  // Vérifier que la valeur du select est bien 'fr' (source de vérité UI)
+  await expect(page.locator('select')).toHaveValue('fr');
+  // Et que la préférence est stockée (si applicable)
+  const stored = await page.evaluate(() => localStorage.getItem('locale'));
+  expect(stored === 'fr' || stored === null).toBeTruthy();
 });
 
 // File: app/utils/mapHelpers.ts

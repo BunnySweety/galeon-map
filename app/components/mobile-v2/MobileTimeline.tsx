@@ -118,7 +118,7 @@ export default function MobileTimeline() {
   }, [hospitals]);
 
   return (
-    <div className="h-full bg-slate-900 flex flex-col">
+    <div className="h-full bg-slate-900 flex flex-col" data-testid="mobile-timeline">
       {/* Header with Controls */}
       <div className="px-4 py-4 bg-slate-800/50 backdrop-blur-sm border-b border-slate-700/50">
         <div className="flex items-center justify-between mb-4">

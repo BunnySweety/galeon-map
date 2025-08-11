@@ -3,9 +3,9 @@ import { hospitals } from '../../api/hospitals/data';
 import HospitalPageClient from './HospitalPageClient';
 
 interface HospitalPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 // Génération statique des paramètres
@@ -17,7 +17,8 @@ export async function generateStaticParams() {
 
 // Métadonnées dynamiques
 export async function generateMetadata({ params }: HospitalPageProps) {
-  const hospital = hospitals.find(h => h.id === params.id);
+  const { id } = await params;
+  const hospital = hospitals.find(h => h.id === id);
   
   if (!hospital) {
     return {
@@ -46,6 +47,7 @@ export async function generateMetadata({ params }: HospitalPageProps) {
   };
 }
 
-export default function HospitalPage({ params }: HospitalPageProps) {
-  return <HospitalPageClient hospitalId={params.id} />;
+export default async function HospitalPage({ params }: HospitalPageProps) {
+  const { id } = await params;
+  return <HospitalPageClient hospitalId={id} />;
 }

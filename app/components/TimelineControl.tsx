@@ -336,7 +336,7 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
     : 'absolute top-[var(--standard-spacing)] left-[calc(var(--standard-spacing)*2+clamp(280px,22vw,340px))] right-[var(--standard-spacing)] z-20';
 
   return (
-    <div className={`${timelinePosition} ${className}`}>
+    <div className={`${timelinePosition} ${className}`} data-testid="timeline-root">
       {/* Outer container with background/border */}
       <div
         className={`timeline-container ${
