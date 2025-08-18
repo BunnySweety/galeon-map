@@ -1,0 +1,1 @@
+self.__NEXT_FONT_MANIFEST="{\"pages\":{},\"app\":{\"/data/Projects/Galeon projects/galeon-community-hospital-map/main/app/layout\":[\"static/media/6bb207c51f1cd798-s.p.otf\"]},\"appUsingSizeAdjust\":true,\"pagesUsingSizeAdjust\":false}"

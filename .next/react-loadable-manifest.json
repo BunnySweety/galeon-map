@@ -1,0 +1,134 @@
+{
+  "app/components/Layout.tsx -> ./MapWrapperCDN": {
+    "id": "app/components/Layout.tsx -> ./MapWrapperCDN",
+    "files": [
+      "static/chunks/_app-pages-browser_app_components_MapWrapperCDN_tsx.js"
+    ]
+  },
+  "app/components/MapWrapperCDN.tsx -> ./Map": {
+    "id": "app/components/MapWrapperCDN.tsx -> ./Map",
+    "files": [
+      "static/chunks/_app-pages-browser_app_components_Map_tsx.js"
+    ]
+  },
+  "app/components/MapWrapperCDN.tsx -> ./MapCDN": {
+    "id": "app/components/MapWrapperCDN.tsx -> ./MapCDN",
+    "files": [
+      "static/chunks/_app-pages-browser_app_components_MapCDN_tsx.js"
+    ]
+  },
+  "app/components/OptimizedLayout.tsx -> ./Layout": {
+    "id": "app/components/OptimizedLayout.tsx -> ./Layout",
+    "files": [
+      "static/chunks/_app-pages-browser_app_components_Layout_tsx.js"
+    ]
+  },
+  "app/components/OptimizedLayout.tsx -> ./mobile-v2/MobileApp": {
+    "id": "app/components/OptimizedLayout.tsx -> ./mobile-v2/MobileApp",
+    "files": [
+      "static/chunks/_app-pages-browser_app_components_mobile-v2_MobileApp_tsx.js"
+    ]
+  },
+  "app/components/QueryProviderWrapper.tsx -> @tanstack/react-query": {
+    "id": "app/components/QueryProviderWrapper.tsx -> @tanstack/react-query",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_tanstack_react-query_build_modern_index_js.js"
+    ]
+  },
+  "app/components/QueryProviderWrapper.tsx -> @tanstack/react-query-devtools": {
+    "id": "app/components/QueryProviderWrapper.tsx -> @tanstack/react-query-devtools",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_tanstack_react-query-devtools_build_modern_index_js.js"
+    ]
+  },
+  "app/components/mobile-v2/MobileApp.tsx -> ./MobileHospitalList": {
+    "id": "app/components/mobile-v2/MobileApp.tsx -> ./MobileHospitalList",
+    "files": [
+      "static/chunks/_app-pages-browser_app_components_mobile-v2_MobileHospitalList_tsx.js"
+    ]
+  },
+  "app/components/mobile-v2/MobileApp.tsx -> ./MobileMap": {
+    "id": "app/components/mobile-v2/MobileApp.tsx -> ./MobileMap",
+    "files": [
+      "static/chunks/_app-pages-browser_app_components_mobile-v2_MobileMap_tsx.js"
+    ]
+  },
+  "app/components/mobile-v2/MobileApp.tsx -> ./MobileSettings": {
+    "id": "app/components/mobile-v2/MobileApp.tsx -> ./MobileSettings",
+    "files": [
+      "static/chunks/_app-pages-browser_app_components_mobile-v2_MobileSettings_tsx.js"
+    ]
+  },
+  "app/components/mobile-v2/MobileApp.tsx -> ./MobileTimeline": {
+    "id": "app/components/mobile-v2/MobileApp.tsx -> ./MobileTimeline",
+    "files": [
+      "static/chunks/_app-pages-browser_app_components_mobile-v2_MobileTimeline_tsx.js"
+    ]
+  },
+  "app/components/mobile-v2/MobileMap.tsx -> ../MapWrapperCDN": {
+    "id": "app/components/mobile-v2/MobileMap.tsx -> ../MapWrapperCDN",
+    "files": [
+      "static/chunks/_app-pages-browser_app_components_MapWrapperCDN_tsx.js"
+    ]
+  },
+  "app/hooks/useMapbox.ts -> mapbox-gl": {
+    "id": "app/hooks/useMapbox.ts -> mapbox-gl",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_mapbox-gl_dist_mapbox-gl_js.js"
+    ]
+  },
+  "app/page.tsx -> ./components/OptimizedLayout": {
+    "id": "app/page.tsx -> ./components/OptimizedLayout",
+    "files": [
+      "static/chunks/_app-pages-browser_app_components_OptimizedLayout_tsx.js"
+    ]
+  },
+  "app/utils/export-utils.ts -> jspdf": {
+    "id": "app/utils/export-utils.ts -> jspdf",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_jspdf_dist_jspdf_es_min_js.js"
+    ]
+  },
+  "app/utils/export-utils.ts -> jspdf-autotable": {
+    "id": "app/utils/export-utils.ts -> jspdf-autotable",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_jspdf-autotable_dist_jspdf_plugin_autotable_mjs.js"
+    ]
+  },
+  "app/utils/export-utils.ts -> xlsx": {
+    "id": "app/utils/export-utils.ts -> xlsx",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_xlsx_xlsx_mjs.js"
+    ]
+  },
+  "node_modules/@tanstack/query-devtools/build/dev.js -> ./DevtoolsComponent/EDEL3XIZ.js": {
+    "id": "node_modules/@tanstack/query-devtools/build/dev.js -> ./DevtoolsComponent/EDEL3XIZ.js",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_tanstack_query-devtools_build_DevtoolsComponent_EDEL3XIZ_js.js"
+    ]
+  },
+  "node_modules/@tanstack/query-devtools/build/dev.js -> ./DevtoolsPanelComponent/RN252AT2.js": {
+    "id": "node_modules/@tanstack/query-devtools/build/dev.js -> ./DevtoolsPanelComponent/RN252AT2.js",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_tanstack_query-devtools_build_DevtoolsPanelComponent_RN252AT2_js.js"
+    ]
+  },
+  "node_modules/jspdf/dist/jspdf.es.min.js -> canvg": {
+    "id": "node_modules/jspdf/dist/jspdf.es.min.js -> canvg",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_canvg_lib_index_es_js.js"
+    ]
+  },
+  "node_modules/jspdf/dist/jspdf.es.min.js -> dompurify": {
+    "id": "node_modules/jspdf/dist/jspdf.es.min.js -> dompurify",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_dompurify_dist_purify_es_mjs.js"
+    ]
+  },
+  "node_modules/jspdf/dist/jspdf.es.min.js -> html2canvas": {
+    "id": "node_modules/jspdf/dist/jspdf.es.min.js -> html2canvas",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_html2canvas_dist_html2canvas_js.js"
+    ]
+  }
+}

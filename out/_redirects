@@ -1,0 +1,17 @@
+# Fichiers statiques servis directement
+/favicon.ico /favicon.ico 200
+/_next/* /_next/:splat 200
+/static/* /static/:splat 200
+/images/* /images/:splat 200
+/*.js /:splat.js 200
+/*.css /:splat.css 200
+/*.json /:splat.json 200
+
+# API routes
+/api/hospitals/* /api/hospitals/:splat 200
+
+# Routes dynamiques
+/hospitals/* /index.html 200
+
+# Toutes les autres routes (sauf index.html)
+/* /index.html 200!

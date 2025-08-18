@@ -1,0 +1,92 @@
+{
+  "timestamp": "2025-05-26T23:25:28.304Z",
+  "totalSize": 2930968,
+  "jsFiles": 20,
+  "cssFiles": 0,
+  "chunks": [
+    {
+      "name": "react-44eca7a8e1dad332.js",
+      "size": 716321
+    },
+    {
+      "name": "vendors-8e7bc33c51ab48f0.js",
+      "size": 547302
+    },
+    {
+      "name": "xlsx.242aa28224cc5b30.js",
+      "size": 413559
+    },
+    {
+      "name": "jspdf.5076ddec4e6442ee.js",
+      "size": 366356
+    },
+    {
+      "name": "polyfills-42372ed130431b0a.js",
+      "size": 112594
+    },
+    {
+      "name": "703.21da8c4fce7a7285.js",
+      "size": 55359
+    },
+    {
+      "name": "date-fns-666d3406748180ab.js",
+      "size": 26932
+    },
+    {
+      "name": "122.daba8c75ca15b44c.js",
+      "size": 16486
+    },
+    {
+      "name": "922.e6716221277c1da9.js",
+      "size": 11990
+    },
+    {
+      "name": "ui-libs-5b82c55c85fcc019.js",
+      "size": 11445
+    },
+    {
+      "name": "216-09f59dfc84323b1f.js",
+      "size": 11022
+    },
+    {
+      "name": "821.bdcea04a363d75e1.js",
+      "size": 5279
+    },
+    {
+      "name": "webpack-219201bee19bdeff.js",
+      "size": 5060
+    },
+    {
+      "name": "519.dc41b27ba0126716.js",
+      "size": 4715
+    },
+    {
+      "name": "0.f11f2e85fb79bfa2.js",
+      "size": 3990
+    },
+    {
+      "name": "455.0c6f852b842310c6.js",
+      "size": 3462
+    },
+    {
+      "name": "140.c5e24d67ec2563cf.js",
+      "size": 2576
+    },
+    {
+      "name": "main-app-9733dfb67814399a.js",
+      "size": 517
+    },
+    {
+      "name": "main-e0883b7fe4065b8c.js",
+      "size": 142
+    },
+    {
+      "name": "436.423bff32fd4fbec0.js",
+      "size": 92
+    }
+  ],
+  "largestChunk": {
+    "name": "react-44eca7a8e1dad332.js",
+    "size": 716321
+  }
+}

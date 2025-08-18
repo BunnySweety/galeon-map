@@ -1,0 +1,35 @@
+User-agent: *
+Allow: /
+Allow: /hospitals/
+Allow: /images/
+Allow: /_next/static/
+
+# Disallow admin or private areas (if any)
+Disallow: /api/
+Disallow: /_next/
+Disallow: /out/
+
+# Sitemap location
+Sitemap: https://galeon-community-map.pages.dev/sitemap.xml
+
+# Crawl delay (optional, helps with server load)
+Crawl-delay: 1
+
+# Specific rules for major search engines
+User-agent: Googlebot
+Allow: /
+Allow: /hospitals/
+Allow: /images/
+Crawl-delay: 1
+
+User-agent: Bingbot
+Allow: /
+Allow: /hospitals/
+Allow: /images/
+Crawl-delay: 1
+
+User-agent: Slurp
+Allow: /
+Allow: /hospitals/
+Allow: /images/
+Crawl-delay: 2 
