@@ -1,12 +1,10 @@
 // File: app/components/TimelineControl.tsx
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { format } from 'date-fns';
-import { useMapStore } from '../store/useMapStore';
-import type { Hospital } from '../store/useMapStore';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useLingui } from '@lingui/react';
-import { useDrag } from 'react-use-gesture';
+import { useMapStore } from '../store/useMapStore';
+import TimelinePoint from './TimelinePoint';
 
 interface TimelineControlProps {
   className?: string;
@@ -14,358 +12,365 @@ interface TimelineControlProps {
 
 const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => {
   const { i18n } = useLingui();
-  const { 
-    hospitals, 
-    currentDate, 
-    setCurrentDate 
-  } = useMapStore();
-  
+  const { hospitals, setCurrentDate, setTimelineState, language } = useMapStore();
   const [timelineDates, setTimelineDates] = useState<string[]>([]);
   const [currentDateIndex, setCurrentDateIndex] = useState(0);
-  const timelineRef = useRef<HTMLDivElement>(null);
-  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // État pour le déplacement de la timeline
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [isSmallMobile, setIsSmallMobile] = useState(false); // For < 480px
   const [dragOffset, setDragOffset] = useState(0);
-  const [lastMx, setLastMx] = useState(0);
-  const [moveStartTime, setMoveStartTime] = useState(0);
-  const [indexChangeTime, setIndexChangeTime] = useState(0);
-  const [isChangingIndex, setIsChangingIndex] = useState(false);
-  const [totalDragDistance, setTotalDragDistance] = useState(0); // Nouvelle variable pour suivre la distance totale
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [lastProcessedIndex, setLastProcessedIndex] = useState(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null); // Ref for the scrollable container
+  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitializedRef = useRef(false); // Ref to track initialization
 
-  // Create a safe translation function that handles undefined i18n
-  const _ = useCallback((text: string) => {
-    try {
-      return i18n && i18n._ ? i18n._(text) : text;
-    } catch {
-      return text;
-    }
-  }, [i18n]);
+  // Windowed layout state
+  const [pointWidthPx, setPointWidthPx] = useState(240);
+  const [visibleStartIndex, setVisibleStartIndex] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(9);
 
-  // Extract unique deployment dates
+  // Check screen sizes
   useEffect(() => {
-    if (!hospitals.length) return;
-    
+    const handleResize = () => {
+      const width = window.innerWidth;
+      setIsMobileView(width < 768);
+      setIsSmallMobile(width <= 480);
+    };
+    handleResize(); // Initial check
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Create a safe translation function
+  const _ = useCallback(
+    (text: string) => {
+      try {
+        return i18n?._ ? i18n._(text) : text;
+      } catch {
+        return text;
+      }
+    },
+    [i18n]
+  );
+
+  // Extract unique deployment dates and set initial index ONCE
+  useEffect(() => {
+    // Only run if hospitals are loaded and initialization hasn't happened yet
+    if (!hospitals.length || isInitializedRef.current) return;
+
     const dates = [...new Set(hospitals.map(h => h.deploymentDate))].sort();
     setTimelineDates(dates);
-    
-    const index = dates.findIndex(date => date === currentDate);
+
+    // --- Ensure store's currentDate is the actual first date ON INIT ---
+    const firstDate = dates[0];
+    // Get the store's current date at this moment
+    const storeCurrentDate = useMapStore.getState().currentDate;
+
+    let dateToUseForIndex = storeCurrentDate;
+
+    if (firstDate && storeCurrentDate !== firstDate) {
+      // If the store's date isn't the first one, update the store.
+      setCurrentDate(firstDate);
+      // Use the first date to determine the initial index
+      dateToUseForIndex = firstDate;
+    }
+    // else: Store date is already correct, use it for index.
+
+    // Find index based on the date we decided to use (either store's or firstDate)
+    const index = dates.findIndex(date => date === dateToUseForIndex);
     setCurrentDateIndex(index > -1 ? index : 0);
-  }, [hospitals, currentDate]);
+    // --- End Ensure store date ---
+
+    // Mark initialization as complete
+    isInitializedRef.current = true;
+
+    // Set initial timeline state in the store
+    setTimelineState(index > -1 ? index : 0, dates.length);
+  }, [hospitals, setCurrentDate, setTimelineState]); // Added setTimelineState dependency
 
   // Animate timeline progression
   useEffect(() => {
-    // Clear any existing timeout
-    if (animationTimeoutRef.current) {
-      clearTimeout(animationTimeoutRef.current);
-    }
-
+    if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
     const animateTimeline = () => {
-      // Move to next point if not at the end
       if (currentDateIndex < timelineDates.length - 1) {
         const nextIndex = currentDateIndex + 1;
-        const nextDate = timelineDates[nextIndex];
-        
-        // Update current date and index
-        setCurrentDate(nextDate);
         setCurrentDateIndex(nextIndex);
+        const nextDate = timelineDates[nextIndex];
+        if (nextDate) {
+          setCurrentDate(nextDate);
+        }
+        setTimelineState(nextIndex, timelineDates.length); // Update store on animation
       }
     };
-
-    // Set up timer for progression (increased delay to 4 seconds)
     animationTimeoutRef.current = setTimeout(animateTimeline, 4000);
-
-    // Cleanup
     return () => {
-      if (animationTimeoutRef.current) {
-        clearTimeout(animationTimeoutRef.current);
-      }
+      if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
     };
-  }, [currentDateIndex, timelineDates, setCurrentDate]);
-
-  // Skip to the end of the timeline
-  const handleSkip = useCallback(() => {
-    if (!timelineDates.length) return;
-    
-    const lastDate = timelineDates[timelineDates.length - 1];
-    setCurrentDate(lastDate);
-    setCurrentDateIndex(timelineDates.length - 1);
-  }, [timelineDates, setCurrentDate]);
+  }, [currentDateIndex, timelineDates, setCurrentDate, setTimelineState]); // Added setTimelineState dependency
 
   // Find hospital for a specific date
   const getHospitalForDate = (date: string) => {
     return hospitals.find(h => h.deploymentDate === date);
   };
 
-  // Handle click on timeline point
-  const handlePointClick = useCallback((date: string, index: number) => {
-    setCurrentDateIndex(index);
-    setCurrentDate(date);
-    setDragOffset(0); // Réinitialiser le décalage lors d'un clic direct
-  }, [setCurrentDate]);
+  // --- Centering and Drag Logic ---
 
-  // Gestion du déplacement de la timeline
-  const bind = useDrag(({ movement, last, velocity, first, down }) => {
-    // Extraire les valeurs de mouvement et vélocité
-    const mx = movement[0];
-    const vx = velocity[0];
-    
-    // Annuler l'animation automatique au premier contact
-    if (first) {
-      if (animationTimeoutRef.current) {
-        clearTimeout(animationTimeoutRef.current);
-        animationTimeoutRef.current = null;
+  const getPointWidth = useCallback(() => pointWidthPx, [pointWidthPx]);
+
+  // calculateCenterOffset supprimé; l'offset est géré par l'effet fenêtré
+
+  // Recalcul fenêtré: taille par point, indices visibles, offset de centrage
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || timelineDates.length === 0) return;
+
+    const containerWidth = container.offsetWidth;
+    const computedStyle = window.getComputedStyle(container);
+    const paddingRight = parseFloat(computedStyle.paddingRight) || 0;
+    const visibleWidth = containerWidth - paddingRight;
+    if (visibleWidth <= 0) return;
+
+    // Densité cible par device (plus de points visibles)
+    const targetCount = isSmallMobile ? 9 : isMobileView ? 11 : 13;
+    // Taille mini/maxi par point (écart réduit)
+    const minPx = isSmallMobile ? 140 : isMobileView ? 150 : 160;
+    const maxPx = isSmallMobile ? 180 : isMobileView ? 190 : 200;
+
+    // Calcule une largeur qui fasse rentrer targetCount points
+    let px = Math.floor(visibleWidth / targetCount);
+    px = Math.min(maxPx, Math.max(minPx, px));
+
+    // Calcule le repère (séparateur de la barre d'action) comme ancre
+    let anchor = visibleWidth / 2;
+    try {
+      const actionBarEl = document.querySelector('.action-bar-container') as HTMLElement | null;
+      if (actionBarEl) {
+        const actionRect = actionBarEl.getBoundingClientRect();
+        const scrollRect = container.getBoundingClientRect();
+        anchor = Math.max(0, Math.min(visibleWidth, actionRect.left + actionRect.width / 2 - scrollRect.left));
       }
-      setMoveStartTime(Date.now());
-      setLastMx(0);
-      setTotalDragDistance(0);
-      setLastProcessedIndex(currentDateIndex); // Réinitialiser l'index traité au début du geste
+    } catch {}
+
+    // Si l'actif est le dernier, recentrer strictement
+    if (currentDateIndex === timelineDates.length - 1) {
+      anchor = visibleWidth / 2;
     }
-    
-    // Appliquer le déplacement pendant le glissement
-    if (down) {
-      // Calculer le temps écoulé depuis le début du mouvement
-      const elapsedTime = Date.now() - moveStartTime;
-      
-      // Appliquer une rampe d'accélération pour un démarrage doux
-      const accelerationFactor = Math.min(elapsedTime / 400, 1);
-      
-      // Calculer le delta de mouvement depuis la dernière mise à jour
-      const deltaX = mx - lastMx;
-      
-      // Appliquer un amortissement au delta pour un mouvement plus doux
-      const smoothedDeltaX = deltaX * (0.25 + accelerationFactor * 0.65);
-      
-      // Mettre à jour le décalage de manière progressive
-      setDragOffset(prev => prev + smoothedDeltaX);
-      setLastMx(mx);
-      
-      // Calculer l'index basé sur le décalage amorti
-      const pointWidth = 160; // Largeur approximative de chaque point
-      
-      // Vérifier si nous sommes dans la période de verrouillage après un changement d'index
-      const now = Date.now();
-      const timeSinceIndexChange = now - indexChangeTime;
-      
-      // Si nous ne sommes pas en train de changer d'index et que suffisamment de temps s'est écoulé
-      if (!isChangingIndex && timeSinceIndexChange > 350) {
-        // Calculer le décalage d'index en fonction du décalage de glissement
-        // Utiliser Math.round au lieu de Math.floor pour un comportement plus prévisible
-        const rawOffset = dragOffset / (pointWidth / 1.8);
-        const direction = Math.sign(rawOffset);
-        const indexOffset = direction * Math.min(1, Math.floor(Math.abs(rawOffset)));
-        
-        // Ne changer l'index que si le décalage est suffisant et que nous ne sommes pas déjà à la limite
-        if (indexOffset !== 0) {
-          // Calculer le nouvel index potentiel
-          const targetIndex = currentDateIndex - indexOffset;
-          
-          // Vérifier que l'index est dans les limites et qu'il est différent de l'index actuel
-          if (targetIndex >= 0 && targetIndex < timelineDates.length && targetIndex !== currentDateIndex) {
-            // Vérifier que nous n'avons pas déjà traité cet index ou que nous ne sautons pas d'index
-            const isNextIndex = Math.abs(targetIndex - lastProcessedIndex) <= 1;
-            
-            if (isNextIndex) {
-              setCurrentDateIndex(targetIndex);
-              setCurrentDate(timelineDates[targetIndex]);
-              setIsChangingIndex(true);
-              setIndexChangeTime(now);
-              setLastProcessedIndex(targetIndex);
-              
-              // Réduire partiellement le décalage pour permettre un mouvement continu
-              setDragOffset(dragOffset * 0.3);
-              
-              // Réinitialiser après un court délai
-              setTimeout(() => {
-                setIsChangingIndex(false);
-              }, 350);
-            }
-          }
-        }
-      }
+
+    // Capacités gauche/droite en nombre de points entiers (utiliser round pour limiter la dérive)
+    const leftCap = Math.round(anchor / px);
+    const rightCap = Math.round((visibleWidth - anchor) / px);
+    const count = Math.max(3, Math.min(timelineDates.length, leftCap + 1 + rightCap));
+
+    // Début de fenêtre pour aligner l'actif sur l'ancre
+    let start = currentDateIndex - leftCap;
+    if (start < 0) start = 0;
+    if (start + count > timelineDates.length) start = Math.max(0, timelineDates.length - count);
+
+    setPointWidthPx(px);
+    setVisibleStartIndex(start);
+    setVisibleCount(count);
+
+    // Offset pour aligner l'actif sur l'ancre, indépendamment de start
+    const offset = Math.round(anchor - (currentDateIndex * px + px / 2));
+    setDragOffset(offset);
+  }, [timelineDates.length, currentDateIndex, isMobileView, isSmallMobile]);
+
+  // Plus aucun recalcul concurrent de l'offset ici; évite les sauts visuels
+
+  // Drag désactivé pour garantir un centrage constant du point actif
+
+  // Handle click on timeline point
+  const handlePointClick = useCallback(
+    (date: string, index: number) => {
+      if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+      setCurrentDateIndex(index);
+      setCurrentDate(date);
+      setTimelineState(index, timelineDates.length); // Update store on click
+      // Offset is handled by useEffect for currentDateIndex
+    },
+    [setCurrentDate, setTimelineState, timelineDates.length]
+  );
+
+  // Skip to the end of the timeline
+  const handleSkip = useCallback(() => {
+    if (!timelineDates.length) return;
+    if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+    const lastDate = timelineDates[timelineDates.length - 1];
+    const lastIndex = timelineDates.length - 1;
+    if (lastDate) {
+      setCurrentDate(lastDate);
     }
-    
-    // Réinitialiser lorsque le glissement est terminé
-    if (last) {
-      setLastMx(0);
-      setMoveStartTime(0);
-      setTotalDragDistance(0);
-      
-      // Vérifier si c'était un swipe rapide
-      const swipeSpeed = Math.abs(vx);
-      if (swipeSpeed > 0.25) {
-        const swipeDirection = -Math.sign(vx);
-        
-        // Pour les swipes, limiter à un seul point à la fois pour éviter les sauts
-        const pointsToMove = 1;
-        
-        // Calculer le nouvel index
-        const targetIndex = currentDateIndex + swipeDirection * pointsToMove;
-        const newIndex = Math.min(Math.max(targetIndex, 0), timelineDates.length - 1);
-        
-        // Ne mettre à jour que si l'index est différent
-        if (newIndex !== currentDateIndex) {
-          setCurrentDateIndex(newIndex);
-          setCurrentDate(timelineDates[newIndex]);
-          setLastProcessedIndex(newIndex);
-        }
-      }
-      
-      // Réinitialiser le décalage avec une animation douce
-      const startTime = Date.now();
-      const startOffset = dragOffset;
-      const duration = 800; // Durée de l'animation de retour
-      
-      const animateToCenter = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        // Utiliser une fonction d'easing douce
-        const easeOutSextic = 1 - Math.pow(1 - progress, 6);
-        
-        const newOffset = startOffset * (1 - easeOutSextic);
-        setDragOffset(newOffset);
-        
-        if (progress < 1) {
-          requestAnimationFrame(animateToCenter);
-        } else {
-          setDragOffset(0);
-        }
-      };
-      
-      requestAnimationFrame(animateToCenter);
-    }
-  }, {
-    axis: 'x',
-    rubberband: true,
-    filterTaps: true,
-    bounds: { left: -2000, right: 2000 },
-    threshold: 8 // Seuil légèrement plus élevé pour éviter les déplacements accidentels
-  });
+    setCurrentDateIndex(lastIndex);
+    setTimelineState(lastIndex, timelineDates.length); // Update store on skip
+    // Offset is handled by useEffect for currentDateIndex
+  }, [timelineDates, setCurrentDate, setTimelineState]); // Added setTimelineState dependency
+
+  // --- JSX Structure ---
+
+  // Calculate timeline position based on screen size
+  const timelinePosition = isMobileView
+    ? 'absolute top-[var(--standard-spacing)] left-[var(--standard-spacing)] right-[var(--standard-spacing)] z-50'
+    : 'absolute top-[var(--standard-spacing)] left-[calc(var(--standard-spacing)*5+clamp(260px,18vw,320px))] right-[var(--standard-spacing)] z-20';
 
   return (
-    <div className={`absolute top-8 left-[clamp(350px,calc(330px+3vw),410px)] 
-      w-[calc(100%-clamp(370px,calc(350px+3vw),430px))] h-[150px] rounded-2xl 
-      bg-gradient-to-r from-[rgba(71,154,243,0.5)] to-[rgba(71,154,243,0.1)] 
-      backdrop-blur-[17.5px] flex flex-col items-center justify-center z-20 ${className}`}>
-      <div className="relative w-full h-[120px] overflow-visible px-[2.5%]">
-        {/* Timeline bar and points container */}
-        <div className="absolute w-[calc(100%-120px)] top-[50px] left-0 flex justify-center">
-          {/* Timeline bar */}
-          <div className="absolute w-full h-1 bg-blue-500/30 rounded"></div>
-          
-          {/* Timeline progress */}
-          <div 
-            className="absolute h-1 bg-blue-500 rounded" 
-            style={{ 
-              width: `${(currentDateIndex / (timelineDates.length - 1)) * 100}%`,
-              left: 0
+    <div className={`${timelinePosition} ${className}`}>
+      {/* Outer container with background/border */}
+      <div
+        className={`timeline-container ${
+          isMobileView
+            ? 'p-[var(--standard-spacing)] rounded-[16px] border border-white/15 backdrop-blur-[17.5px] bg-[rgba(217,217,217,0.05)]'
+            : 'h-[clamp(120px,16vh,180px)] rounded-2xl bg-gradient-to-r from-[rgba(71,154,243,0.5)] to-[rgba(71,154,243,0.1)] backdrop-blur-[17.5px]'
+        }`}
+        role="region"
+        aria-label={_('Timeline')}
+        style={
+          {
+            '--timeline-bg-color': isMobileView ? 'rgba(217,217,217,0.05)' : 'rgba(71,154,243,0.1)',
+          } as React.CSSProperties
+        }
+      >
+        {/* Inner container managing layout */}
+        <div className="relative w-full h-full flex items-center">
+          {/* Scrollable Area (takes full width except button) */}
+          <div
+            ref={scrollContainerRef}
+            className="timeline-scroll-container hide-scrollbar"
+            role="slider"
+            aria-label={_('Timeline slider')}
+            aria-valuemin={0}
+            aria-valuemax={timelineDates.length - 1}
+            aria-valuenow={currentDateIndex}
+            aria-valuetext={timelineDates[currentDateIndex] || ''}
+            // Dragging disabled; we always center the active point
+            style={{
+              touchAction: 'pan-y', // Allow vertical scroll on page, horizontal handled by useDrag
+              clipPath: isMobileView
+                ? (isSmallMobile ? 'inset(0 78px 0 0)' : 'inset(0 68px 0 0)')
+                : 'inset(0 100px 0 0)', // Ajusté pour que la barre s'arrête au bouton Skip
             }}
-          ></div>
-
-          {/* Conteneur principal avec masque pour éviter les débordements */}
-          <div className="absolute w-full h-[150px] top-[-45px] overflow-hidden">
-            {/* Container avec overflow hidden */}
-            <div 
-              ref={containerRef}
-              className="absolute cursor-grab active:cursor-grabbing left-1/2 -translate-x-1/2" 
-              style={{ 
-                height: '150px',
-                width: '100%'
+          >
+            {/* Wrapper for the visual bar, centered */}
+            <div
+              style={{
+                position: 'absolute',
+                left: '0px',
+                right: isMobileView 
+                  ? (isSmallMobile ? '78px' : '68px') 
+                  : '100px', // Ajusté pour que la barre s'arrête au bouton Skip
+                top: '50%',
+                transform: 'translateY(-50%)',
+                height: '2px',
+                zIndex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                overflow: 'hidden',
               }}
-              {...bind()}
             >
-              {/* Timeline points container with sliding effect */}
-              <div 
-                className="flex absolute transition-transform duration-800 ease-out"
-                style={{ 
-                  transform: `translateX(calc(-${currentDateIndex * 160}px + ${dragOffset}px))`,
-                  width: `${timelineDates.length * 160}px`,
-                  top: '45px',
-                  left: '50%',
-                  marginLeft: '-80px'
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  position: 'relative',
                 }}
-              >
-                {/* Élément vide au début pour éviter la coupure du premier point */}
-                <div className="flex-shrink-0 w-[80px]"></div>
-                
-                {timelineDates.map((date, index) => {
-                  const hospital = getHospitalForDate(date);
-                  
-                  return (
-                    <div 
-                      key={date} 
-                      className="flex-shrink-0 flex flex-col items-center w-[160px] relative"
-                    >
-                      {/* Deployment date */}
-                      <div className={`text-[clamp(10px,0.8vw,12px)] text-white opacity-70 absolute -top-12 w-full text-center ${
-                        index === currentDateIndex ? 'font-bold' : ''
-                      }`}>
-                        {format(new Date(date), 'dd/MM/yyyy')}
-                      </div>
+              />
+              <div
+                style={(() => {
+                  const style: React.CSSProperties = {
+                    position: 'absolute',
+                    height: '100%',
+                    background: '#479AF3',
+                    transition: 'width 0.3s ease, left 0.3s ease',
+                    top: '0',
+                    left: '0',
+                    width: '0px',
+                  };
 
-                      {/* Timeline point */}
-                      <button
-                        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center absolute 
-                          ${index < currentDateIndex 
-                            ? 'bg-blue-500 border-white' 
-                            : index === currentDateIndex 
-                              ? 'bg-blue-500 border-white scale-125' 
-                              : 'bg-white border-blue-300'
-                          }`}
-                        style={{ top: '-16px' }}
-                        onClick={() => handlePointClick(date, index)}
-                      >
-                        {index <= currentDateIndex && (
-                          <svg className="w-full h-full p-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                          </svg>
-                        )}
-                      </button>
+                  const scrollContainer = scrollContainerRef.current;
+                  if (!scrollContainer || timelineDates.length === 0) return style;
 
-                      {/* Hospital name */}
-                      <div className={`text-[clamp(10px,0.8vw,12px)] leading-tight font-semibold text-white text-center absolute top-6
-                        ${index === currentDateIndex ? 'font-bold text-[clamp(11px,0.9vw,13px)]' : 'opacity-70'}`}
-                        style={{
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 3, // Réduit à 3 lignes
-                          WebkitBoxOrient: 'vertical',
-                          width: '130px',  // Largeur maintenue
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          maxHeight: '4.2em', // Hauteur réduite
-                          padding: '0 2px', // Padding maintenu
-                          wordBreak: 'break-word' // Césure des mots maintenue
-                        }}
-                      >
-                        {hospital ? (
-                          i18n.locale === 'fr' ? hospital.nameFr : hospital.nameEn
-                        ) : ''}
-                      </div>
-                    </div>
-                  );
-                })}
-                
-                {/* Élément vide à la fin pour éviter la coupure du dernier point */}
-                <div className="flex-shrink-0 w-[80px]"></div>
-              </div>
+                  const pointWidth = getPointWidth();
+                  const scrollContainerWidth = scrollContainer.offsetWidth;
+                  const computedStyle = window.getComputedStyle(scrollContainer);
+                  const paddingRight = parseFloat(computedStyle.paddingRight) || 0;
+                  const visibleWidth = scrollContainerWidth - paddingRight;
+                  let anchor = visibleWidth / 2;
+                  try {
+                    const actionBarEl = document.querySelector('.action-bar-container') as HTMLElement | null;
+                    if (actionBarEl) {
+                      const actionRect = actionBarEl.getBoundingClientRect();
+                      const scrollRect = scrollContainer.getBoundingClientRect();
+                      const anchorX = actionRect.left + actionRect.width / 2; // separator at center
+                      anchor = Math.max(0, Math.min(visibleWidth, anchorX - scrollRect.left));
+                    }
+                  } catch {}
+                  if (currentDateIndex === timelineDates.length - 1) {
+                    anchor = visibleWidth / 2;
+                  }
+
+                  // Déterminer le premier index visible pour garder l'actif aligné avec l'ancre (séparateur)
+                  // On aligne l'actif sur l'ancre et on découpe la barre à droite
+                  const actionBarEl = document.querySelector('.action-bar-container') as HTMLElement | null;
+                  const halfCount = Math.round(anchor / pointWidth);
+                  const firstVisibleIndex = Math.max(0, currentDateIndex - halfCount);
+
+                  // Centre du premier point visible et de l'actif
+                  const firstVisibleCenter = anchor - (currentDateIndex - firstVisibleIndex) * pointWidth;
+                  const activeCenter = anchor;
+
+                  const leftPx = Math.max(0, Math.min(visibleWidth, firstVisibleCenter));
+                  const widthPx = Math.max(0, Math.min(visibleWidth - leftPx, activeCenter - leftPx));
+
+                  style.left = `${leftPx}px`;
+                  style.width = `${widthPx}px`;
+
+                  return style;
+                })()}
+              />
             </div>
-          </div>
-        </div>
 
-        {/* Skip button */}
-        <button 
-          className="absolute right-[20px] top-[34px]
-            min-w-[100px] px-6 py-2 bg-[rgba(71,154,243,0.3)] text-[#A1CBF9] rounded-lg text-[clamp(12px,0.9vw,14px)]
-            hover:bg-[rgba(71,154,243,0.4)] transition-colors duration-200 z-30
-            border border-[rgba(71,154,243,0.3)] border-2"
-          onClick={handleSkip}
-        >
-          {_('Skip')}
-        </button>
+            {/* Container holding and moving all the points */}
+            <div
+              className="timeline-points-container"
+              style={{ transform: `translateX(${dragOffset}px)` }}
+            >
+              {timelineDates.map((date, index) => {
+                const hospital = getHospitalForDate(date);
+                const isActive = index === currentDateIndex;
+                const pointWidth = getPointWidth();
+
+                // Fenêtrage: afficher seulement la tranche visible
+                if (index < visibleStartIndex || index >= visibleStartIndex + visibleCount) {
+                  return null;
+                }
+
+                return (
+                  <TimelinePoint
+                    key={date}
+                    date={date}
+                    index={index}
+                    currentDateIndex={currentDateIndex}
+                    hospitalName={
+                      hospital ? (language === 'fr' ? hospital.nameFr : hospital.nameEn) : null
+                    }
+                    isActive={isActive}
+                    pointWidth={pointWidth}
+                    onPointClick={handlePointClick}
+                    translate={_}
+                  />
+                );
+              })}
+            </div>
+          </div>{' '}
+          {/* End timeline-scroll-container */}
+          {/* Skip button */}
+          <button
+            onClick={handleSkip}
+            className="timeline-skip-button"
+            disabled={currentDateIndex === timelineDates.length - 1}
+            aria-label={_('Skip to end')}
+          >
+            {_('Skip')}
+          </button>
+        </div>
       </div>
     </div>
   );

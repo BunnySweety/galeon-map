@@ -1,6 +1,6 @@
 // File: app/utils/mapHelpers.ts
 import mapboxgl from 'mapbox-gl';
-import { Hospital } from '../store/useMapStore';
+import type { Hospital } from '../types';
 
 /**
  * Creates a bounds object from an array of hospitals
@@ -9,11 +9,11 @@ export function createBoundsFromHospitals(hospitals: Hospital[]): mapboxgl.LngLa
   if (!hospitals.length) return null;
 
   const bounds = new mapboxgl.LngLatBounds();
-  
+
   hospitals.forEach(hospital => {
-    bounds.extend(hospital.coordinates);
+    bounds.extend(hospital.coordinates as [number, number]);
   });
-  
+
   return bounds;
 }
 

@@ -1,63 +1,177 @@
 // File: app/components/Layout.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { useMapStore } from '../store/useMapStore';
-import Sidebar from './Sidebar';
+import { useLingui } from '@lingui/react';
+import logger from '../utils/logger';
+import SidebarFinal from './SidebarFinal';
 import TimelineControl from './TimelineControl';
+import ActionBar from './ActionBar';
 
-// Dynamically import Map to avoid SSR issues
-const Map = dynamic(() => import('./Map'), { 
+const MapWrapperCDN = dynamic(() => import('./MapWrapperCDN'), {
   ssr: false,
-  loading: () => (
-    <div className="h-screen w-screen flex items-center justify-center bg-slate-900">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-    </div>
-  )
 });
 
+
+
 const Layout: React.FC = () => {
-  const [isInitialized, setIsInitialized] = useState(false);
+  const { i18n } = useLingui();
 
-  // Simulate initialization process
-  useEffect(() => {
-    const initializeApp = async () => {
+  const _ = useCallback(
+    (text: string) => {
       try {
-        // Perform any necessary initialization
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setIsInitialized(true);
+        if (!i18n?._) return text;
+        return i18n._(text);
       } catch (error) {
-        console.error('Initialization failed', error);
+        logger.error(`Error translating text in Layout component: ${text}`, error);
+        return text;
       }
-    };
+    },
+    [i18n]
+  );
 
-    initializeApp();
-  }, []);
 
-  if (!isInitialized) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-slate-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
 
   return (
-    <div className="relative h-screen bg-slate-900 overflow-hidden">
-      {/* Map container */}
-      <div className="absolute inset-0">
-        <Map />
-      </div>
-      
-      {/* Sidebar - explicitly positioned with z-index, aligned with timeline at top-8 */}
-      <div className="absolute top-4 left-0 z-10 p-4 h-[calc(100%-2rem)] overflow-y-auto hide-scrollbar">
-        <Sidebar />
-      </div>
-      
-      {/* Timeline */}
-      <TimelineControl />
-    </div>
+    // Main container: Use flex column, full height, hidden overflow
+    <div className="w-full h-screen bg-slate-900 flex flex-col overflow-hidden">
+      {/* Map Area: Relative for sidebar, grows but CAN shrink (min-h-0) */}
+      <div className="relative flex-grow min-h-0">
+        <MapWrapperCDN />
+
+        {/* Sidebar */}
+        <div
+          className="absolute top-[var(--standard-spacing)] left-[var(--standard-spacing)] bottom-[var(--standard-spacing)] z-10 sidebar-position"
+        >
+          <SidebarFinal />
+        </div>
+        {/* Timeline: Positioned absolutely by its own internal styles now */}
+        <TimelineControl />
+        {/* Action Bar: Centered on timeline area only */}
+        <div
+          className="absolute actionbar-top z-20 pointer-events-auto
+                     left-[calc(var(--standard-spacing)*5+clamp(260px,18vw,320px))]
+                     right-[var(--standard-spacing)]
+                     flex justify-center"
+        >
+          <ActionBar />
+        </div>
+        
+        {/* Credits: Centered on timeline area, aligned with sidebar bottom, compact design */}
+        <div
+          className="absolute z-10 pointer-events-auto
+                     bottom-[var(--standard-spacing)]
+                     left-[calc(var(--standard-spacing)*5+clamp(260px,18vw,320px))]
+                     right-[var(--standard-spacing)]
+                     flex justify-center"
+        >
+          <div style={{
+            boxSizing: 'border-box',
+            display: 'flex',
+            flexDirection: 'row',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '6px 10px',
+            gap: '2px',
+            height: '28px',
+            background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.05) 100%)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            backdropFilter: 'blur(17.5px)',
+            WebkitBackdropFilter: 'blur(17.5px)',
+            borderRadius: '6px'
+          }}>
+            <span style={{
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontStyle: 'normal',
+              fontWeight: '500',
+              fontSize: '11px',
+              lineHeight: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              textAlign: 'center',
+              letterSpacing: '-0.15px',
+              color: '#A1CBF9',
+              flex: 'none',
+              flexGrow: 0
+            }}>
+              {_('Made with')}
+            </span>
+            <span style={{
+              fontFamily: 'Arial',
+              fontStyle: 'normal',
+              fontWeight: '400',
+              fontSize: '12px',
+              lineHeight: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              textAlign: 'center',
+              letterSpacing: '-0.15px',
+              color: '#479AF3',
+              textShadow: '0px 2px 8px rgba(71, 154, 243, 0.6), 0px 1px 4px rgba(71, 154, 243, 0.4)',
+              flex: 'none',
+              flexGrow: 0
+            }}>
+              ♥
+            </span>
+            <span style={{
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontStyle: 'normal',
+              fontWeight: '500',
+              fontSize: '11px',
+              lineHeight: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              textAlign: 'center',
+              letterSpacing: '-0.15px',
+              color: '#A1CBF9',
+              flex: 'none',
+              flexGrow: 0
+            }}>
+              {_('by')} BunnySweety
+            </span>
+          </div>
+        </div>
+
+        {/* Version: Coin bas-droit, design compact */}
+        <div className="absolute right-[var(--standard-spacing)] bottom-[var(--standard-spacing)] z-10 pointer-events-auto">
+          <div style={{
+            boxSizing: 'border-box',
+            display: 'flex',
+            flexDirection: 'row',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '6px 10px',
+            gap: '2px',
+            height: '28px',
+            background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.05) 100%)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            backdropFilter: 'blur(17.5px)',
+            WebkitBackdropFilter: 'blur(17.5px)',
+            borderRadius: '6px'
+          }}>
+            <span style={{
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontStyle: 'normal',
+              fontWeight: '500',
+              fontSize: '11px',
+              lineHeight: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              textAlign: 'center',
+              letterSpacing: '-0.15px',
+              color: '#A1CBF9',
+              flex: 'none',
+              flexGrow: 0,
+              whiteSpace: 'nowrap'
+            }}>
+              {process.env.NEXT_PUBLIC_APP_VERSION ?? 'v1.0.0'}
+            </span>
+          </div>
+        </div>
+      </div>{' '}
+      {/* End Map Area */}
+    </div> // End Main Container
   );
 };
 

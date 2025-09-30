@@ -8,6 +8,6 @@ module.exports = {
     '.vscode/**/*',
     'webpack/**/*',
     '**/*.pack',
-    '**/*.map'
-  ]
-}; 
+    '**/*.map',
+  ],
+};

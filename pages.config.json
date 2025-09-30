@@ -1,9 +1,0 @@
-{
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "installCommand": "npm install",
-  "nodeVersion": "20.11.1",
-  "routes": [
-    { "src": "/(.*)", "dest": "/$1" }
-  ]
-} 

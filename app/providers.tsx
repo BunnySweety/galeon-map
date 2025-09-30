@@ -7,30 +7,19 @@ import { I18nProvider } from '@lingui/react';
 import { useEffect, useState } from 'react';
 import { activateLocale, initI18n, LocaleType } from './i18n';
 import { useMapStore } from './store/useMapStore';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import logger from './utils/logger';
+import QueryProviderWrapper from './components/QueryProviderWrapper';
 
 interface ProvidersProps {
   children: ReactNode;
+  enableQuery?: boolean;
 }
 
-export function Providers({ children }: ProvidersProps) {
-  const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 60 * 1000,
-        refetchOnWindowFocus: false,
-      },
-    },
-  }));
-
+export function Providers({ children, enableQuery = false }: ProvidersProps) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <I18nProviderWrapper>
-        {children}
-      </I18nProviderWrapper>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    <QueryProviderWrapper enableQuery={enableQuery}>
+      <I18nProviderWrapper>{children}</I18nProviderWrapper>
+    </QueryProviderWrapper>
   );
 }
 
@@ -71,20 +60,20 @@ export function I18nProviderWrapper({ children }: I18nProviderWrapperProps) {
       try {
         // Initialize i18n first
         await initI18n();
-        
+
         // Then activate the initial locale
         const initialLocale = getInitialLocale();
         await activateLocale(initialLocale);
-        
+
         // Update the store
         setLanguage(initialLocale);
-        
+
         // Mark as loaded
         setIsLoaded(true);
-        
-        console.log(`I18nProviderWrapper: Initialized with locale ${initialLocale}`);
+
+        logger.debug(`I18nProviderWrapper: Initialized with locale ${initialLocale}`);
       } catch (error) {
-        console.error('Failed to initialize locale:', error);
+        logger.error('Failed to initialize locale:', error);
         // Fallback to English if initialization fails
         await activateLocale('en');
         setLanguage('en');
@@ -96,14 +85,12 @@ export function I18nProviderWrapper({ children }: I18nProviderWrapperProps) {
   }, [setLanguage]);
 
   if (!isLoaded) {
-    return <div className="flex items-center justify-center h-screen">
-      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-    </div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+      </div>
+    );
   }
 
-  return (
-    <I18nProvider i18n={i18n}>
-      {children}
-    </I18nProvider>
-  );
+  return <I18nProvider i18n={i18n}>{children}</I18nProvider>;
 }

@@ -6,4 +6,4 @@
   "dependencies": {
     "@cloudflare/kv-asset-handler": "^0.3.0"
   }
-} 
+}

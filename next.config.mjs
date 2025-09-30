@@ -1,157 +1,108 @@
-// File: next.config.js
-import UnoCSS from '@unocss/webpack';
-import { fileURLToPath } from 'url';
-import { resolve, dirname } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    reactStrictMode: true,
-    images: {
-      remotePatterns: [
-        {
-          protocol: 'https',
-          hostname: 'example.com',
-          pathname: '/**',
-        },
-      ],
-      unoptimized: true,
-      domains: ['api.mapbox.com', 'maps.googleapis.com']
-    },
-    // Environment variables that will be available at build time on the client side
-    env: {
-      NEXT_PUBLIC_MAPBOX_TOKEN: process.env.NEXT_PUBLIC_MAPBOX_TOKEN,
-    },
-    webpack: (config, { dev, isServer }) => {
-      config.plugins.push(
-        UnoCSS({
-          cache: false
-        })
-      );
-
-      // Désactiver complètement le cache webpack
-      config.cache = false;
-
-      // Désactiver le cache pour les modules problématiques
-      config.module.rules.push({
-        test: /[\\/]node_modules[\\/](unconfig|jiti)[\\/]/,
-        use: {
-          loader: 'babel-loader',
-          options: {
-            cacheDirectory: false,
-          },
-        },
-      });
-
-      // Ignorer les modules problématiques dans le cache
-      config.snapshot = {
-        ...config.snapshot,
-        managedPaths: [
-          /^(.+?[\\/]node_modules[\\/](?!(unconfig|jiti)[\\/]))/, // Exclure unconfig et jiti
-        ],
-      };
-
-      // Ignorer les avertissements spécifiques
-      config.ignoreWarnings = [
-        { message: /Failed to parse source map/ },
-        { message: /Critical dependency: the request of a dependency is an expression/ },
-        { module: /unconfig[\\/]dist[\\/]index\.mjs/ },
-        { module: /jiti[\\/]lib[\\/]jiti\.mjs/ }
-      ];
-
-      // Optimiser la taille des bundles
-      if (!dev && !isServer) {
-        // Activer la compression des chunks
-        config.optimization.splitChunks = {
+  reactStrictMode: true,
+  
+  // ===== EXPORT STATIQUE OPTIMISÉ =====
+  output: process.env.NODE_ENV === 'production' ? 'export' : undefined,
+  
+  // ===== PERFORMANCE GLOBALE =====
+  poweredByHeader: false,
+  compress: true,
+  // swcMinify est maintenant par défaut dans Next.js 15
+  
+  // ===== OPTIMISATION IMAGES =====
+  images: {
+    unoptimized: process.env.NODE_ENV === 'production',
+    formats: ['image/avif', 'image/webp'], // AVIF en priorité (meilleure compression)
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'api.mapbox.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+  },
+  
+  // ===== OPTIMISATION BUILD =====
+  experimental: {
+    // Optimisations experimentales stables (optimizeCss désactivé temporairement)
+    optimizePackageImports: ['@lingui/core', '@lingui/react', 'mapbox-gl'], // Tree-shaking amélioré
+  },
+  
+  // ===== GESTION D'ERREURS EN PRODUCTION =====
+  eslint: {
+    ignoreDuringBuilds: false, // Toujours vérifier ESLint
+  },
+  typescript: {
+    ignoreBuildErrors: false, // Toujours vérifier TypeScript
+  },
+  
+  // ===== CONFIGURATION DE BASE =====
+  distDir: '.next',
+  trailingSlash: true,
+  generateEtags: false, // Désactiver ETags pour Cloudflare
+  
+  // ===== VARIABLES D'ENVIRONNEMENT OPTIMISÉES =====
+  env: {
+    // Variables essentielles seulement
+    NEXT_PUBLIC_MAPBOX_TOKEN: process.env.NEXT_PUBLIC_MAPBOX_TOKEN,
+    NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION || 'v0.2.0',
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://galeon-community-map.pages.dev',
+  },
+  
+  // ===== OPTIMISATION WEBPACK =====
+  webpack: (config, { dev, isServer }) => {
+    // Optimisations spécifiques à la production
+    if (!dev && !isServer) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
           chunks: 'all',
-          maxInitialRequests: 25,
-          minSize: 20000,
-          maxSize: 10000000, // Réduire la taille maximale des chunks à 10 Mo
           cacheGroups: {
-            default: false,
-            vendors: false,
-            framework: {
-              name: 'framework',
-              test: /[\\/]node_modules[\\/](react|react-dom|scheduler|next)[\\/]/,
-              priority: 40,
-              enforce: true,
-            },
-            lib: {
+            // Vendor chunk pour les dépendances externes
+            vendor: {
               test: /[\\/]node_modules[\\/]/,
-              name(module) {
-                // Vérifier si module.context existe et contient le pattern recherché
-                const packageNameMatch = module.context && module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/);
-                return packageNameMatch 
-                  ? `npm.${packageNameMatch[1].replace('@', '')}`
-                  : 'npm.unknown';
-              },
-              priority: 30,
-              minChunks: 1,
-              reuseExistingChunk: true,
+              name: 'vendors',
+              chunks: 'all',
+              priority: 10,
+            },
+            // Chunk séparé pour Mapbox (large librairie)
+            mapbox: {
+              test: /[\\/]node_modules[\\/]mapbox-gl[\\/]/,
+              name: 'mapbox',
+              chunks: 'all',
+              priority: 20,
+            },
+            // Chunk pour les utilitaires de date
+            dateUtils: {
+              test: /[\\/]node_modules[\\/]date-fns[\\/]/,
+              name: 'date-utils',
+              chunks: 'all',
+              priority: 15,
             },
           },
-        };
-        
-        // Désactiver la persistance du cache
-        config.optimization.moduleIds = 'named';
-        config.optimization.chunkIds = 'named';
-      }
-
-      return config;
+        },
+      };
+    }
+    
+    return config;
+  },
+  
+  // ===== LOGGING OPTIMISÉ =====
+  logging: {
+    fetches: {
+      fullUrl: process.env.NODE_ENV === 'development',
     },
-    output: 'export',
-    
-    // Optimize build performance
-    typescript: {
-      ignoreBuildErrors: true, // Ignorer les erreurs TypeScript pendant la build
-    },
-    eslint: {
-      ignoreDuringBuilds: true, // Ignorer les erreurs ESLint pendant la build
-    },
-    
-    // Exclure les fichiers de cache webpack du déploiement
-    outputFileTracingExcludes: {
-      '*': [
-        'node_modules/@swc/core-linux-x64-gnu',
-        'node_modules/@swc/core-linux-x64-musl',
-        'node_modules/@esbuild/linux-x64',
-        '.next/cache/**/*',
-        'cache/**/*',
-        'node_modules/**/*.md',
-        'node_modules/**/*.d.ts',
-        'node_modules/**/*.map',
-        'node_modules/**/*.ts',
-        'node_modules/**/*.mjs.map'
-      ],
-    },
-    
-    // Désactiver la génération de source maps en production
-    productionBrowserSourceMaps: false,
-    
-    // Désactiver la génération de cache
-    generateBuildId: async () => {
-      return `build-${Date.now()}`;
-    },
-    
-    // Désactiver la compression des assets
-    compress: false,
-
-    // Configuration spécifique pour Cloudflare Pages
-    trailingSlash: false,
-    
-    // Spécifier le répertoire de sortie pour Cloudflare Pages
-    distDir: 'out',
-    
-    // Configuration pour le routage côté client
-    experimental: {
-      optimizePackageImports: ['react', 'react-dom', 'mapbox-gl']
-    },
-    
-    // Désactiver le serveur pour Cloudflare Pages
-    basePath: '',
-    assetPrefix: ''
-}
+  },
+  
+  // Headers désactivés pour l'export statique (incompatible)
+  // Les headers de sécurité devront être configurés au niveau du serveur/CDN
+};
 
 export default nextConfig;

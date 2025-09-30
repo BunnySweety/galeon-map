@@ -46,11 +46,11 @@ export function createBoundsFromHospitals(hospitals: Hospital[]): mapboxgl.LngLa
   if (!hospitals.length) return null;
 
   const bounds = new mapboxgl.LngLatBounds();
-  
+
   hospitals.forEach(hospital => {
-    bounds.extend(hospital.coordinates);
+    bounds.extend(hospital.coordinates as [number, number]);
   });
-  
+
   return bounds;
 }
 

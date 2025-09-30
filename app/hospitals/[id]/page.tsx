@@ -1,22 +1,51 @@
 // File: app/hospitals/[id]/page.tsx
 import { hospitals } from '../../api/hospitals/data';
-import HospitalDetailClient from './HospitalDetailClient';
+import HospitalPageClient from './HospitalPageClient';
 
-// Cette fonction est nécessaire pour l'export statique
-// Elle génère tous les chemins possibles pour cette page dynamique
+interface HospitalPageProps {
+  params: {
+    id: string;
+  };
+}
+
+// Génération statique des paramètres
 export async function generateStaticParams() {
-  // Retourne un tableau d'objets avec les paramètres pour chaque chemin
   return hospitals.map((hospital) => ({
     id: hospital.id,
   }));
 }
 
-// Définir que cette page est statique
-export const dynamic = 'force-static';
-export const revalidate = false;
-
-export default function HospitalDetailPage({ params }: { params: { id: string } }) {
-  const hospitalId = params.id;
+// Métadonnées dynamiques
+export async function generateMetadata({ params }: HospitalPageProps) {
+  const hospital = hospitals.find(h => h.id === params.id);
   
-  return <HospitalDetailClient hospitalId={hospitalId} />;
+  if (!hospital) {
+    return {
+      title: 'Hospital Not Found - Galeon',
+      description: 'The requested hospital could not be found.',
+    };
+  }
+
+  return {
+    title: `${hospital.nameEn} - Galeon Hospital Map`,
+    description: `Details for ${hospital.nameEn}, deployed on ${hospital.deploymentDate}. View location, contact information, and more.`,
+    keywords: ['hospital', 'galeon', 'healthcare', hospital.nameEn],
+    openGraph: {
+      title: `${hospital.nameEn} - Galeon`,
+      description: `Hospital details for ${hospital.nameEn}`,
+      type: 'website',
+      images: [
+        {
+          url: hospital.imageUrl,
+          width: 1200,
+          height: 630,
+          alt: hospital.nameEn,
+        },
+      ],
+    },
+  };
+}
+
+export default function HospitalPage({ params }: HospitalPageProps) {
+  return <HospitalPageClient hospitalId={params.id} />;
 }

@@ -1,6 +1,6 @@
 // File: app/store/useQueryHooks.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Hospital } from './useMapStore';
+import type { Hospital } from '../types';
 
 // Hook for fetching all hospitals
 export function useHospitalsQuery() {
@@ -34,7 +34,7 @@ export function useHospitalQuery(id: string) {
 // Hook for adding a new hospital
 export function useAddHospitalMutation() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (newHospital: Omit<Hospital, 'id'>) => {
       const response = await fetch('/api/hospitals', {
@@ -44,11 +44,11 @@ export function useAddHospitalMutation() {
         },
         body: JSON.stringify(newHospital),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to add hospital');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -61,7 +61,7 @@ export function useAddHospitalMutation() {
 // Hook for updating a hospital
 export function useUpdateHospitalMutation() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (updatedHospital: Hospital) => {
       const response = await fetch(`/api/hospitals/${updatedHospital.id}`, {
@@ -71,11 +71,11 @@ export function useUpdateHospitalMutation() {
         },
         body: JSON.stringify(updatedHospital),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to update hospital');
       }
-      
+
       return response.json();
     },
     onSuccess: (_, variables) => {
@@ -89,17 +89,17 @@ export function useUpdateHospitalMutation() {
 // Hook for deleting a hospital
 export function useDeleteHospitalMutation() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (id: string) => {
       const response = await fetch(`/api/hospitals/${id}`, {
         method: 'DELETE',
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to delete hospital');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
