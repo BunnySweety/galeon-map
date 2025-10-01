@@ -1,10 +1,9 @@
 // File: app/utils/__tests__/export-utils.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { exportToCSV, exportToJSON, exportFilteredHospitals } from '../export-utils';
 import type { Hospital } from '../../types';
 
-// Mock dependencies
-const mockSaveAs = vi.fn();
+// Mock dependencies with vi.hoisted
+const mockSaveAs = vi.hoisted(() => vi.fn());
 vi.mock('file-saver', () => ({
   saveAs: mockSaveAs,
 }));
@@ -26,6 +25,9 @@ vi.mock('../date-utils', () => ({
     return 'June 15, 2023';
   }),
 }));
+
+// Import after mocks
+import { exportToCSV, exportToJSON, exportFilteredHospitals } from '../export-utils';
 
 // Create mock hospital data
 const mockHospitals: Hospital[] = [
@@ -99,9 +101,9 @@ describe('export-utils', () => {
       // Check CSV headers
       expect(text).toContain('Hospital Name,Status,Address,Deployment Date,Website,Coordinates');
 
-      // Check hospital data
-      expect(text).toContain('Hospital A,Deployed,123 Main St, Paris');
-      expect(text).toContain('Hospital B,Signed,456 Oak Ave, Paris');
+      // Check hospital data (addresses are quoted because they contain commas)
+      expect(text).toContain('Hospital A,Deployed,"123 Main St, Paris"');
+      expect(text).toContain('Hospital B,Signed,"456 Oak Ave, Paris"');
 
       // Check coordinates format
       expect(text).toContain('48.8566, 2.3522'); // lat, lon format
@@ -157,6 +159,7 @@ describe('export-utils', () => {
       const hospitalWithSpecialChars: Hospital = {
         ...mockHospitals[0],
         name: 'Hospital "Special", Inc.',
+        nameEn: 'Hospital "Special", Inc.', // Used by getHospitalName for locale 'en'
         address: 'Street with, commas and "quotes"',
       } as Hospital;
 

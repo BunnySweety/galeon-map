@@ -2,20 +2,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { createRef } from 'react';
-import MapControls from '../MapControls';
 
-// Mock screenfull
-const mockScreenfull = {
+// Use vi.hoisted to ensure mockScreenfull is available during hoisting
+const mockScreenfull = vi.hoisted(() => ({
   isEnabled: true,
   toggle: vi.fn(),
   on: vi.fn(),
   off: vi.fn(),
   isFullscreen: false,
-};
+}));
 
 vi.mock('screenfull', () => ({
   default: mockScreenfull,
 }));
+
+import MapControls from '../MapControls';
 
 describe('MapControls', () => {
   const defaultProps = {

@@ -128,6 +128,29 @@ global.HTMLCanvasElement.prototype.getBoundingClientRect = mockCanvas.getBoundin
 global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
 global.URL.revokeObjectURL = vi.fn();
 
+// Polyfill Blob.text() and Blob.arrayBuffer() for jsdom
+if (!Blob.prototype.text) {
+  Blob.prototype.text = async function () {
+    const reader = new FileReader();
+    return new Promise((resolve, reject) => {
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsText(this);
+    });
+  };
+}
+
+if (!Blob.prototype.arrayBuffer) {
+  Blob.prototype.arrayBuffer = async function () {
+    const reader = new FileReader();
+    return new Promise((resolve, reject) => {
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(this);
+    });
+  };
+}
+
 // Mock Image constructor
 global.Image = class {
   onload: (() => void) | null = null;

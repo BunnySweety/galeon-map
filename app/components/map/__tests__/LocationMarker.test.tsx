@@ -1,16 +1,17 @@
 // File: app/components/map/__tests__/LocationMarker.test.tsx
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useLocationMarker } from '../LocationMarker';
 
-// Mock dependencies
-const mockToast = {
+// Mock dependencies with vi.hoisted
+const mockToast = vi.hoisted(() => ({
   success: vi.fn(),
-};
+}));
 
 vi.mock('react-hot-toast', () => ({
   toast: mockToast,
 }));
+
+import { useLocationMarker } from '../LocationMarker';
 
 vi.mock('../../utils/logger', () => ({
   default: {
@@ -47,10 +48,14 @@ describe('useLocationMarker', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    // Clean up any existing style elements
+    document.querySelectorAll('#location-marker-styles').forEach(el => el.remove());
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    // Clean up style elements after each test
+    document.querySelectorAll('#location-marker-styles').forEach(el => el.remove());
   });
 
   it('should create location marker with correct coordinates', () => {
@@ -171,19 +176,25 @@ describe('useLocationMarker', () => {
       result.current.createLocationMarker([2.3522, 48.8566]);
     });
 
-    // Create second marker before timeout
+    const removeCallsAfterFirst = mockMarker.remove.mock.calls.length;
+
+    // Create second marker before timeout - should remove first marker and clear its timeout
     act(() => {
       vi.advanceTimersByTime(5000); // Half the timeout
       result.current.createLocationMarker([2.2945, 48.8584]);
     });
 
-    // Fast forward to when first timeout would have fired
+    // First marker should have been removed
+    expect(mockMarker.remove).toHaveBeenCalledTimes(removeCallsAfterFirst + 1);
+
+    // Fast forward past when first timeout would have fired (should not fire)
     act(() => {
       vi.advanceTimersByTime(6000); // Total 11 seconds
     });
 
-    // Only the second marker should be removed
-    expect(mockMarker.remove).toHaveBeenCalledTimes(2); // Once for replacement, once for timeout
+    // Still only one more call (first timeout was cleared)
+    // Second marker timeout has not fired yet (needs 10s from second creation)
+    expect(mockMarker.remove).toHaveBeenCalledTimes(removeCallsAfterFirst + 1);
   });
 
   it('should remove marker manually', () => {
