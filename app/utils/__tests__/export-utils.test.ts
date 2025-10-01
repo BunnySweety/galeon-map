@@ -19,7 +19,7 @@ vi.mock('../logger', () => ({
 
 // Mock date-utils
 vi.mock('../date-utils', () => ({
-  formatDateWithLocale: vi.fn((date, format, locale) => {
+  formatDateWithLocale: vi.fn((date: string, format: string, locale: string) => {
     if (locale === 'fr') {
       return '15 juin 2023';
     }
@@ -69,11 +69,11 @@ describe('export-utils', () => {
         locale: 'en',
         translations: {
           'Hospital Name': 'Hospital Name',
-          'Status': 'Status',
-          'Address': 'Address',
+          Status: 'Status',
+          Address: 'Address',
           'Deployment Date': 'Deployment Date',
-          'Website': 'Website',
-          'Coordinates': 'Coordinates',
+          Website: 'Website',
+          Coordinates: 'Coordinates',
           'Export Information': 'Export Information',
           'Export Date': 'Export Date',
           'Total Hospitals': 'Total Hospitals',
@@ -95,17 +95,17 @@ describe('export-utils', () => {
 
       // Read blob content
       const text = await blob.text();
-      
+
       // Check CSV headers
       expect(text).toContain('Hospital Name,Status,Address,Deployment Date,Website,Coordinates');
-      
+
       // Check hospital data
       expect(text).toContain('Hospital A,Deployed,123 Main St, Paris');
       expect(text).toContain('Hospital B,Signed,456 Oak Ave, Paris');
-      
+
       // Check coordinates format
       expect(text).toContain('48.8566, 2.3522'); // lat, lon format
-      
+
       // Check metadata section
       expect(text).toContain('Export Information');
       expect(text).toContain('Total Hospitals,2');
@@ -118,14 +118,14 @@ describe('export-utils', () => {
         hospitals: mockHospitals,
         locale: 'fr',
         translations: {
-          'Hospital Name': 'Nom de l\'hôpital',
-          'Status': 'Statut',
-          'Address': 'Adresse',
+          'Hospital Name': "Nom de l'hôpital",
+          Status: 'Statut',
+          Address: 'Adresse',
           'Deployment Date': 'Date de déploiement',
-          'Website': 'Site web',
-          'Coordinates': 'Coordonnées',
-          'Export Information': 'Informations d\'export',
-          'Export Date': 'Date d\'export',
+          Website: 'Site web',
+          Coordinates: 'Coordonnées',
+          'Export Information': "Informations d'export",
+          'Export Date': "Date d'export",
           'Total Hospitals': 'Total des hôpitaux',
           'Deployed Hospitals': 'Hôpitaux déployés',
           'Signed Hospitals': 'Hôpitaux signés',
@@ -140,16 +140,16 @@ describe('export-utils', () => {
       expect(filename).toMatch(/^galeon-hopitaux-\d{4}-\d{2}-\d{2}\.csv$/);
 
       const text = await blob.text();
-      
+
       // Check French headers
-      expect(text).toContain('Nom de l\'hôpital,Statut,Adresse');
-      
+      expect(text).toContain("Nom de l'hôpital,Statut,Adresse");
+
       // Check French status translations
       expect(text).toContain('Hôpital A,Déployé');
       expect(text).toContain('Hôpital B,Signé');
-      
+
       // Check French metadata
-      expect(text).toContain('Informations d\'export');
+      expect(text).toContain("Informations d'export");
       expect(text).toContain('Total des hôpitaux,2');
     });
 
@@ -158,12 +158,12 @@ describe('export-utils', () => {
         ...mockHospitals[0],
         name: 'Hospital "Special", Inc.',
         address: 'Street with, commas and "quotes"',
-      };
+      } as Hospital;
 
       const exportData = {
         hospitals: [hospitalWithSpecialChars],
         locale: 'en',
-        translations: { 'Hospital Name': 'Hospital Name', 'Address': 'Address' },
+        translations: { 'Hospital Name': 'Hospital Name', Address: 'Address' },
       };
 
       await exportToCSV(exportData);
@@ -190,9 +190,9 @@ describe('export-utils', () => {
       const uint8Array = new Uint8Array(arrayBuffer);
 
       // Check for UTF-8 BOM (EF BB BF)
-      expect(uint8Array[0]).toBe(0xEF);
-      expect(uint8Array[1]).toBe(0xBB);
-      expect(uint8Array[2]).toBe(0xBF);
+      expect(uint8Array[0]).toBe(0xef);
+      expect(uint8Array[1]).toBe(0xbb);
+      expect(uint8Array[2]).toBe(0xbf);
     });
   });
 
@@ -280,7 +280,7 @@ describe('export-utils', () => {
           id: '3',
           status: 'Deployed' as const,
           deploymentDate: '2023-09-01', // Future date
-        },
+        } as Hospital,
       ];
 
       await exportFilteredHospitals(
@@ -345,7 +345,7 @@ describe('export-utils', () => {
       const hospitalWithInvalidDate: Hospital = {
         ...mockHospitals[0],
         deploymentDate: 'invalid-date',
-      };
+      } as Hospital;
 
       await exportFilteredHospitals(
         [hospitalWithInvalidDate],

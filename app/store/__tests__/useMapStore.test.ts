@@ -52,7 +52,7 @@ vi.mock('../../api/hospitals/data', () => ({
       status: 'Deployed' as const,
       deploymentDate: '2023-08-01',
       website: 'https://hospital-c.com',
-      coordinates: [2.3020, 48.8600] as [number, number],
+      coordinates: [2.302, 48.86] as [number, number],
       address: '789 Pine St, Paris',
       imageUrl: '/images/hospital-c.png',
     },
@@ -93,7 +93,7 @@ const mockHospitals: Hospital[] = [
     status: 'Deployed' as const,
     deploymentDate: '2023-08-01',
     website: 'https://hospital-c.com',
-    coordinates: [2.3020, 48.8600] as [number, number],
+    coordinates: [2.302, 48.86] as [number, number],
     address: '789 Pine St, Paris',
     imageUrl: '/images/hospital-c.png',
   },
@@ -200,7 +200,7 @@ describe('useMapStore', () => {
       const { result } = renderHook(() => useMapStore());
 
       act(() => {
-        result.current.selectHospital(mockHospitals[0]);
+        result.current.selectHospital(mockHospitals[0]!);
       });
 
       expect(result.current.selectedHospital).toEqual(mockHospitals[0]);
@@ -307,10 +307,10 @@ describe('useMapStore', () => {
       const hospitalsWithInvalidDate = [
         ...mockHospitals,
         {
-          ...mockHospitals[0],
+          ...mockHospitals[0]!,
           id: '4',
           deploymentDate: 'invalid-date',
-        },
+        } as Hospital,
       ];
 
       act(() => {
@@ -319,7 +319,7 @@ describe('useMapStore', () => {
       });
 
       const filtered = result.current.applyFilters();
-      
+
       // Should exclude the hospital with invalid date
       expect(filtered).toHaveLength(3);
       expect(filtered.every(h => h.id !== '4')).toBe(true);

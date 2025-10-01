@@ -19,7 +19,7 @@ Application Next.js 15 moderne pour la cartographie interactive d'hôpitaux avec
 
 ### ✅ Points Forts
 
-1. **En-têtes de sécurité bien configurés** ([_headers](public/_headers), [wrangler.toml](wrangler.toml))
+1. **En-têtes de sécurité bien configurés** ([\_headers](public/_headers), [wrangler.toml](wrangler.toml))
    - X-Frame-Options: SAMEORIGIN
    - X-Content-Type-Options: nosniff
    - X-XSS-Protection: 1; mode=block
@@ -42,15 +42,18 @@ Application Next.js 15 moderne pour la cartographie interactive d'hôpitaux avec
 ### ⚠️ Problèmes Critiques
 
 1. **🔴 Token Mapbox exposé dans le code source** ([app/hooks/useMapbox.ts:40](app/hooks/useMapbox.ts#L40))
+
    ```typescript
-   mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ??
+   mapboxgl.accessToken =
+     process.env.NEXT_PUBLIC_MAPBOX_TOKEN ??
      'pk.eyJ1IjoiamVhbmJvbjkxIiwiYSI6ImNtNDlhMHMzNTA3YnkycXM2dmYxc281MHkifQ.taYYM3jxELZ5CZuOH9_3SQ';
    ```
+
    - **Risque ÉLEVÉ**: Token de fallback hardcodé visible publiquement
    - **Impact**: Utilisation abusive possible, quota Mapbox dépassé, coûts imprévus
    - **Action immédiate**: Retirer ce token et régénérer un nouveau sur mapbox.com
 
-2. **🔴 CSP trop permissive** ([public/_headers:10-13](public/_headers#L10-L13))
+2. **🔴 CSP trop permissive** ([public/\_headers:10-13](public/_headers#L10-L13))
    - `'unsafe-inline'` et `'unsafe-eval'` dans script-src
    - **Risque**: Vulnérabilité XSS potentielle
    - **Recommandation**: Utiliser des nonces ou des hashs pour les scripts inline
@@ -107,6 +110,7 @@ export default {
    - Composants modulaires dans [app/components/map/](app/components/map/)
 
 2. **Configuration Webpack Optimisée** ([next.config.mjs:60-95](next.config.mjs#L60-L95))
+
    ```javascript
    splitChunks: {
      mapbox: { priority: 20 },    // Chunk séparé pour Mapbox (large)
@@ -184,6 +188,7 @@ getLCP(sendToAnalytics);
 ### ✅ Points Forts
 
 1. **TypeScript Strict Mode Activé** ([tsconfig.json:7-34](tsconfig.json#L7-L34))
+
    ```json
    {
      "strict": true,
@@ -312,6 +317,7 @@ class ErrorBoundary extends React.Component<Props, State> {
    - Support FR/EN complet
 
 4. **Structure Modulaire Exemplaire**
+
    ```
    app/
    ├── components/
@@ -438,7 +444,7 @@ npm run test -- --run
    - Setup files bien organisés
 
 2. **Tests Unitaires Bien Écrits**
-   - Mocks appropriés ([app/utils/__tests__/navigation-utils.test.ts](app/utils/__tests__/navigation-utils.test.ts))
+   - Mocks appropriés ([app/utils/**tests**/navigation-utils.test.ts](app/utils/__tests__/navigation-utils.test.ts))
    - Tests d'accessibilité (a11y)
    - Assertions claires et descriptives
 
@@ -449,6 +455,7 @@ npm run test -- --run
 ### ⚠️ Problèmes Critiques
 
 1. **🔴 Couverture Insuffisante**
+
    ```
    Fichiers testés / Total:
    - Components: 1/30+ (HospitalDetail uniquement)
@@ -484,7 +491,7 @@ describe('useMapStore', () => {
   beforeEach(() => {
     useMapStore.setState({
       hospitals: mockHospitals,
-      currentDate: '2024-01-01'
+      currentDate: '2024-01-01',
     });
   });
 
@@ -583,12 +590,12 @@ test.describe('Export Features', () => {
 
 ### Métriques Cibles
 
-| Métrique | Actuel | Cible 1 mois | Cible 3 mois |
-|----------|--------|--------------|--------------|
-| Couverture globale | ~20% | 60% | 80% |
-| Tests unitaires | 3 | 25 | 40 |
-| Tests E2E | 3 | 15 | 25 |
-| Tests d'intégration | 0 | 5 | 10 |
+| Métrique            | Actuel | Cible 1 mois | Cible 3 mois |
+| ------------------- | ------ | ------------ | ------------ |
+| Couverture globale  | ~20%   | 60%          | 80%          |
+| Tests unitaires     | 3      | 25           | 40           |
+| Tests E2E           | 3      | 15           | 25           |
+| Tests d'intégration | 0      | 5            | 10           |
 
 ---
 
@@ -597,6 +604,7 @@ test.describe('Export Features', () => {
 ### Analyse des Packages Outdated
 
 **Mises à jour mineures disponibles (faible risque):**
+
 ```json
 {
   "@lingui/*": "5.2.0 → 5.5.0",
@@ -609,6 +617,7 @@ test.describe('Export Features', () => {
 ```
 
 **Mises à jour majeures disponibles (risque modéré):**
+
 ```json
 {
   "@typescript-eslint/*": "6.21.0 → 8.45.0",
@@ -692,15 +701,15 @@ button:focus-visible {
 
 ### Scores par Catégorie
 
-| Catégorie | Score | État | Priorité |
-|-----------|-------|------|----------|
-| **Sécurité** | 6.5/10 | 🔴 Attention | CRITIQUE |
-| **Performance** | 8.5/10 | 🟢 Bon | Moyen |
-| **Qualité Code** | 8.0/10 | 🟡 Satisfaisant | Important |
-| **Architecture** | 9.0/10 | 🟢 Excellent | Faible |
-| **Tests** | 4.0/10 | 🔴 Insuffisant | CRITIQUE |
-| **Accessibilité** | 7.0/10 | 🟡 Acceptable | Moyen |
-| **Dépendances** | 7.5/10 | 🟡 À jour | Moyen |
+| Catégorie         | Score  | État            | Priorité  |
+| ----------------- | ------ | --------------- | --------- |
+| **Sécurité**      | 6.5/10 | 🔴 Attention    | CRITIQUE  |
+| **Performance**   | 8.5/10 | 🟢 Bon          | Moyen     |
+| **Qualité Code**  | 8.0/10 | 🟡 Satisfaisant | Important |
+| **Architecture**  | 9.0/10 | 🟢 Excellent    | Faible    |
+| **Tests**         | 4.0/10 | 🔴 Insuffisant  | CRITIQUE  |
+| **Accessibilité** | 7.0/10 | 🟡 Acceptable   | Moyen     |
+| **Dépendances**   | 7.5/10 | 🟡 À jour       | Moyen     |
 
 ### **Score Global: 7.2/10**
 
@@ -716,6 +725,7 @@ button:focus-visible {
    - Ajouter validation environnement
 
 2. **Auditer les dépendances**
+
    ```bash
    npm audit fix
    npm audit --production
@@ -850,5 +860,5 @@ Avec les corrections prioritaires appliquées, cette application atteindrait fac
 
 ---
 
-*Généré le 2025-10-01 par Claude Code Assistant*
-*Version du rapport: 1.0*
+_Généré le 2025-10-01 par Claude Code Assistant_
+_Version du rapport: 1.0_

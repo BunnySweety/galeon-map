@@ -7,10 +7,12 @@ Si vous découvrez une vulnérabilité de sécurité dans ce projet, **ne créez
 ### Processus de Signalement
 
 **Méthode préférée:** Email sécurisé
+
 - **Email:** security@galeon.community
 - **Objet:** [SECURITY] Description courte de la vulnérabilité
 
 **Informations à inclure:**
+
 - Description détaillée de la vulnérabilité
 - Étapes pour reproduire le problème
 - Impact potentiel
@@ -19,28 +21,29 @@ Si vous découvrez une vulnérabilité de sécurité dans ce projet, **ne créez
 
 ### Engagement de Réponse
 
-| Délai | Action |
-|-------|--------|
-| **< 24h** | Accusé de réception |
-| **< 3 jours** | Évaluation initiale et classification |
-| **< 1 semaine** | Plan de correction communiqué |
-| Variable | Déploiement du correctif (selon sévérité) |
+| Délai           | Action                                    |
+| --------------- | ----------------------------------------- |
+| **< 24h**       | Accusé de réception                       |
+| **< 3 jours**   | Évaluation initiale et classification     |
+| **< 1 semaine** | Plan de correction communiqué             |
+| Variable        | Déploiement du correctif (selon sévérité) |
 
 ## 🔒 Versions Supportées
 
 Nous prenons en charge activement la sécurité pour les versions suivantes:
 
-| Version | Support Sécurité | Status |
-|---------|------------------|--------|
-| 0.2.x | ✅ Support complet | Version actuelle |
-| 0.1.x | ⚠️ Corrections critiques uniquement | Maintenance |
-| < 0.1 | ❌ Non supporté | Obsolète |
+| Version | Support Sécurité                    | Status           |
+| ------- | ----------------------------------- | ---------------- |
+| 0.2.x   | ✅ Support complet                  | Version actuelle |
+| 0.1.x   | ⚠️ Corrections critiques uniquement | Maintenance      |
+| < 0.1   | ❌ Non supporté                     | Obsolète         |
 
 ## 🛡️ Bonnes Pratiques de Sécurité
 
 ### 1. Variables d'Environnement
 
 **À FAIRE:**
+
 - ✅ Ne JAMAIS committer les fichiers `.env.local` ou `.env.production`
 - ✅ Utiliser `.env.example` comme template documentation
 - ✅ Rotation des tokens tous les 3-6 mois
@@ -50,6 +53,7 @@ Nous prenons en charge activement la sécurité pour les versions suivantes:
 - ✅ Stocker les secrets dans Cloudflare Workers Secrets
 
 **À ÉVITER:**
+
 - ❌ Tokens hardcodés dans le code source
 - ❌ Fallback tokens en production
 - ❌ Tokens avec wildcard scopes
@@ -58,6 +62,7 @@ Nous prenons en charge activement la sécurité pour les versions suivantes:
 ### 2. Gestion des Dépendances
 
 **Processus:**
+
 ```bash
 # Audit hebdomadaire (automatisé via CI/CD recommandé)
 npm audit --production
@@ -70,6 +75,7 @@ npm audit --json > audit-report.json
 ```
 
 **Monitoring:**
+
 - Dependabot activé (GitHub)
 - Snyk ou similaire (optionnel)
 - Revue mensuelle des mises à jour majeures
@@ -77,6 +83,7 @@ npm audit --json > audit-report.json
 ### 3. Content Security Policy (CSP)
 
 **Configuration actuelle:**
+
 ```
 default-src 'self';
 script-src 'self' 'nonce-{random}' https://api.mapbox.com;
@@ -87,6 +94,7 @@ connect-src 'self' https://api.mapbox.com https://events.mapbox.com;
 ```
 
 **Règles:**
+
 - ❌ Pas de `unsafe-inline` ou `unsafe-eval`
 - ✅ Nonces générés dynamiquement pour chaque requête
 - ✅ Liste blanche stricte des domaines externes
@@ -95,6 +103,7 @@ connect-src 'self' https://api.mapbox.com https://events.mapbox.com;
 ### 4. Headers HTTP de Sécurité
 
 **Configuration obligatoire:**
+
 ```
 X-Frame-Options: SAMEORIGIN
 X-Content-Type-Options: nosniff
@@ -106,6 +115,7 @@ Permissions-Policy: geolocation=(self), camera=(), microphone=()
 ```
 
 **Fichiers de configuration:**
+
 - `middleware.ts` - Headers Next.js
 - `public/_headers` - Headers Cloudflare Pages
 - `wrangler.toml` - Configuration Workers
@@ -113,6 +123,7 @@ Permissions-Policy: geolocation=(self), camera=(), microphone=()
 ### 5. Validation des Données
 
 **Schéma Zod (app/types/index.ts):**
+
 ```typescript
 export const HospitalSchema = z.object({
   id: z.string(),
@@ -127,6 +138,7 @@ export const HospitalSchema = z.object({
 ```
 
 **Règles:**
+
 - ✅ Toutes les entrées utilisateur validées avec Zod
 - ✅ Sanitization des données avant affichage (React le fait par défaut)
 - ✅ Validation côté client ET serveur (si applicable)
@@ -134,12 +146,14 @@ export const HospitalSchema = z.object({
 ### 6. Protection Exports
 
 **Rate Limiting (app/utils/rate-limiter.ts):**
+
 - Exports PDF: 5/minute
 - Exports Excel: 5/minute
 - Exports JSON: 5/minute
 - Requêtes API: 100/minute
 
 **Protection CSV Injection:**
+
 ```typescript
 // Fonction escapeCsvValue dans export-utils.ts
 function escapeCsvValue(value: string): string {
@@ -154,6 +168,7 @@ function escapeCsvValue(value: string): string {
 ## 🔍 Classification des Vulnérabilités
 
 ### Sévérité CRITIQUE
+
 - Exposition de secrets (tokens, clés API)
 - RCE (Remote Code Execution)
 - XSS stored
@@ -161,6 +176,7 @@ function escapeCsvValue(value: string): string {
 - **Délai de correction:** < 48h
 
 ### Sévérité HAUTE
+
 - XSS reflected
 - CSRF
 - Path Traversal
@@ -168,12 +184,14 @@ function escapeCsvValue(value: string): string {
 - **Délai de correction:** < 1 semaine
 
 ### Sévérité MOYENNE
+
 - Information Disclosure
 - CORS misconfiguration
 - Manque de rate limiting
 - **Délai de correction:** < 2 semaines
 
 ### Sévérité BASSE
+
 - Problèmes de configuration mineurs
 - Headers manquants non critiques
 - **Délai de correction:** < 1 mois
@@ -182,10 +200,10 @@ function escapeCsvValue(value: string): string {
 
 ### Historique des Audits
 
-| Date | Type | Score | Vulnérabilités | Actions |
-|------|------|-------|----------------|---------|
-| 2025-10-01 | Complet | 7.2/10 | 1 critique, 2 hautes | Plan d'action créé |
-| 2025-10-01 | Correctif | 8.5/10 | 0 critique, 0 haute | Token sécurisé, CSP renforcée |
+| Date       | Type      | Score  | Vulnérabilités       | Actions                       |
+| ---------- | --------- | ------ | -------------------- | ----------------------------- |
+| 2025-10-01 | Complet   | 7.2/10 | 1 critique, 2 hautes | Plan d'action créé            |
+| 2025-10-01 | Correctif | 8.5/10 | 0 critique, 0 haute  | Token sécurisé, CSP renforcée |
 
 ### Prochains Audits Planifiés
 
@@ -196,19 +214,22 @@ function escapeCsvValue(value: string): string {
 ### Checklist d'Audit
 
 **Sécurité:**
+
 - [ ] Pas de secrets hardcodés
 - [ ] Variables d'environnement correctement configurées
-- [ ] CSP stricte sans unsafe-*
+- [ ] CSP stricte sans unsafe-\*
 - [ ] Headers de sécurité présents
 - [ ] Dépendances à jour (0 vulnérabilités critiques/hautes)
 
 **Performance:**
+
 - [ ] Lighthouse Performance > 95
 - [ ] Bundle JS < 200KB (gzipped)
 - [ ] LCP < 2.5s
 - [ ] FID < 100ms
 
 **Tests:**
+
 - [ ] Coverage > 70%
 - [ ] Tests E2E passent sur 3+ navigateurs
 - [ ] Tests de régression OK
@@ -221,11 +242,13 @@ function escapeCsvValue(value: string): string {
 Token Mapbox hardcodé dans le code source avec fallback non sécurisé.
 
 **Impact:**
+
 - Risque: Utilisation abusive du quota Mapbox
 - Portée: Code source public sur GitHub
 - Données exposées: Token API Mapbox
 
 **Actions correctives:**
+
 1. ✅ Token hardcodé retiré du code
 2. ✅ Ancien token révoqué sur Mapbox
 3. ✅ Nouveau token créé avec restrictions strictes
@@ -234,6 +257,7 @@ Token Mapbox hardcodé dans le code source avec fallback non sécurisé.
 6. ✅ Validation ajoutée (erreur si token manquant)
 
 **Leçons apprises:**
+
 - Ne JAMAIS utiliser de fallback tokens en production
 - Implémenter des validations strictes des variables d'env
 - Rotation régulière des tokens (tous les 3 mois)
@@ -245,34 +269,37 @@ Token Mapbox hardcodé dans le code source avec fallback non sécurisé.
 ### RGPD (Règlement Général sur la Protection des Données)
 
 **Données collectées:**
+
 - ✅ Geolocation (uniquement avec consentement utilisateur explicite)
 - ✅ Préférences de langue (localStorage)
 - ✅ Web Vitals (anonymisées)
 
 **Données NON collectées:**
+
 - ❌ Informations personnelles
 - ❌ Cookies de tracking
 - ❌ Données sensibles
 
 **Droits utilisateurs:**
+
 - Droit à l'effacement: `localStorage.clear()`
 - Droit d'accès: Données stockées localement uniquement
 - Droit de portabilité: Export JSON disponible
 
 ### OWASP Top 10 (2021)
 
-| Vulnérabilité | Status | Protection |
-|---------------|--------|------------|
-| A01: Broken Access Control | ✅ | Application publique, pas d'auth |
-| A02: Cryptographic Failures | ✅ | HTTPS obligatoire, pas de données sensibles |
-| A03: Injection | ✅ | Validation Zod, React auto-escape |
-| A04: Insecure Design | ✅ | Architecture revue |
-| A05: Security Misconfiguration | ⚠️ | En cours (CSP renforcée) |
-| A06: Vulnerable Components | ✅ | npm audit automatisé |
-| A07: Identification Failures | N/A | Pas d'authentification |
-| A08: Software Integrity Failures | ✅ | Package-lock.json, SRI à ajouter |
-| A09: Security Logging Failures | ⚠️ | Logs dev uniquement, monitoring à améliorer |
-| A10: SSRF | N/A | Pas d'appels serveur externes |
+| Vulnérabilité                    | Status | Protection                                  |
+| -------------------------------- | ------ | ------------------------------------------- |
+| A01: Broken Access Control       | ✅     | Application publique, pas d'auth            |
+| A02: Cryptographic Failures      | ✅     | HTTPS obligatoire, pas de données sensibles |
+| A03: Injection                   | ✅     | Validation Zod, React auto-escape           |
+| A04: Insecure Design             | ✅     | Architecture revue                          |
+| A05: Security Misconfiguration   | ⚠️     | En cours (CSP renforcée)                    |
+| A06: Vulnerable Components       | ✅     | npm audit automatisé                        |
+| A07: Identification Failures     | N/A    | Pas d'authentification                      |
+| A08: Software Integrity Failures | ✅     | Package-lock.json, SRI à ajouter            |
+| A09: Security Logging Failures   | ⚠️     | Logs dev uniquement, monitoring à améliorer |
+| A10: SSRF                        | N/A    | Pas d'appels serveur externes               |
 
 **Dernière revue:** 2025-10-01
 
@@ -281,24 +308,29 @@ Token Mapbox hardcodé dans le code source avec fallback non sécurisé.
 ### Équipe Sécurité
 
 **Responsable Sécurité:**
+
 - Email: security@galeon.community
 - Temps de réponse: < 24h
 
 **Tech Lead:**
+
 - Email: tech-lead@galeon.community
 - Disponible pour questions techniques
 
 **DevOps:**
+
 - Email: devops@galeon.community
 - Infrastructure et déploiement
 
 ### Canaux de Communication
 
 **Urgent (Critique/Haute):**
+
 - Email: security@galeon.community
 - Ne PAS utiliser d'issues publiques
 
 **Non-urgent (Moyenne/Basse):**
+
 - GitHub Issues (pour bugs non-security)
 - Email: tech@galeon.community
 
@@ -328,4 +360,4 @@ Ce document est maintenu par l'équipe sécurité Galeon et est revu trimestriel
 
 ---
 
-*Pour toute question sur cette politique de sécurité, contactez security@galeon.community*
+_Pour toute question sur cette politique de sécurité, contactez security@galeon.community_

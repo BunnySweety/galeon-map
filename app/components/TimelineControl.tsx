@@ -145,7 +145,10 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
       if (actionBarEl) {
         const actionRect = actionBarEl.getBoundingClientRect();
         const scrollRect = container.getBoundingClientRect();
-        anchor = Math.max(0, Math.min(visibleWidth, actionRect.left + actionRect.width / 2 - scrollRect.left));
+        anchor = Math.max(
+          0,
+          Math.min(visibleWidth, actionRect.left + actionRect.width / 2 - scrollRect.left)
+        );
       }
     } catch {}
 
@@ -203,6 +206,64 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
     // Offset is handled by useEffect for currentDateIndex
   }, [timelineDates, setCurrentDate, setTimelineState]); // Added setTimelineState dependency
 
+  // Keyboard navigation for timeline
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!timelineDates.length) return;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+        case 'Left':
+          e.preventDefault();
+          if (currentDateIndex > 0) {
+            const prevIndex = currentDateIndex - 1;
+            const prevDate = timelineDates[prevIndex];
+            if (prevDate) {
+              if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+              setCurrentDateIndex(prevIndex);
+              setCurrentDate(prevDate);
+              setTimelineState(prevIndex, timelineDates.length);
+            }
+          }
+          break;
+
+        case 'ArrowRight':
+        case 'Right':
+          e.preventDefault();
+          if (currentDateIndex < timelineDates.length - 1) {
+            const nextIndex = currentDateIndex + 1;
+            const nextDate = timelineDates[nextIndex];
+            if (nextDate) {
+              if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+              setCurrentDateIndex(nextIndex);
+              setCurrentDate(nextDate);
+              setTimelineState(nextIndex, timelineDates.length);
+            }
+          }
+          break;
+
+        case 'Home':
+          e.preventDefault();
+          if (currentDateIndex !== 0) {
+            const firstDate = timelineDates[0];
+            if (firstDate) {
+              if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+              setCurrentDateIndex(0);
+              setCurrentDate(firstDate);
+              setTimelineState(0, timelineDates.length);
+            }
+          }
+          break;
+
+        case 'End':
+          e.preventDefault();
+          handleSkip();
+          break;
+      }
+    },
+    [currentDateIndex, timelineDates, setCurrentDate, setTimelineState, handleSkip]
+  );
+
   // --- JSX Structure ---
 
   // Calculate timeline position based on screen size
@@ -239,11 +300,15 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
             aria-valuemax={timelineDates.length - 1}
             aria-valuenow={currentDateIndex}
             aria-valuetext={timelineDates[currentDateIndex] || ''}
+            tabIndex={0}
+            onKeyDown={handleKeyDown}
             // Dragging disabled; we always center the active point
             style={{
               touchAction: 'pan-y', // Allow vertical scroll on page, horizontal handled by useDrag
               clipPath: isMobileView
-                ? (isSmallMobile ? 'inset(0 78px 0 0)' : 'inset(0 68px 0 0)')
+                ? isSmallMobile
+                  ? 'inset(0 78px 0 0)'
+                  : 'inset(0 68px 0 0)'
                 : 'inset(0 100px 0 0)', // Ajusté pour que la barre s'arrête au bouton Skip
             }}
           >
@@ -252,9 +317,7 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
               style={{
                 position: 'absolute',
                 left: '0px',
-                right: isMobileView 
-                  ? (isSmallMobile ? '78px' : '68px') 
-                  : '100px', // Ajusté pour que la barre s'arrête au bouton Skip
+                right: isMobileView ? (isSmallMobile ? '78px' : '68px') : '100px', // Ajusté pour que la barre s'arrête au bouton Skip
                 top: '50%',
                 transform: 'translateY(-50%)',
                 height: '2px',
@@ -294,7 +357,9 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
                   const visibleWidth = scrollContainerWidth - paddingRight;
                   let anchor = visibleWidth / 2;
                   try {
-                    const actionBarEl = document.querySelector('.action-bar-container') as HTMLElement | null;
+                    const actionBarEl = document.querySelector(
+                      '.action-bar-container'
+                    ) as HTMLElement | null;
                     if (actionBarEl) {
                       const actionRect = actionBarEl.getBoundingClientRect();
                       const scrollRect = scrollContainer.getBoundingClientRect();
@@ -308,16 +373,22 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
 
                   // Déterminer le premier index visible pour garder l'actif aligné avec l'ancre (séparateur)
                   // On aligne l'actif sur l'ancre et on découpe la barre à droite
-                  const actionBarEl = document.querySelector('.action-bar-container') as HTMLElement | null;
+                  const actionBarEl = document.querySelector(
+                    '.action-bar-container'
+                  ) as HTMLElement | null;
                   const halfCount = Math.round(anchor / pointWidth);
                   const firstVisibleIndex = Math.max(0, currentDateIndex - halfCount);
 
                   // Centre du premier point visible et de l'actif
-                  const firstVisibleCenter = anchor - (currentDateIndex - firstVisibleIndex) * pointWidth;
+                  const firstVisibleCenter =
+                    anchor - (currentDateIndex - firstVisibleIndex) * pointWidth;
                   const activeCenter = anchor;
 
                   const leftPx = Math.max(0, Math.min(visibleWidth, firstVisibleCenter));
-                  const widthPx = Math.max(0, Math.min(visibleWidth - leftPx, activeCenter - leftPx));
+                  const widthPx = Math.max(
+                    0,
+                    Math.min(visibleWidth - leftPx, activeCenter - leftPx)
+                  );
 
                   style.left = `${leftPx}px`;
                   style.width = `${widthPx}px`;

@@ -179,14 +179,14 @@ export const useMapStore = create<MapStore>()(
           });
 
           // Filter by search term if provided
-          const searchFiltered = searchTerm.trim() 
+          const searchFiltered = searchTerm.trim()
             ? dateFiltered.filter(hospital => {
                 const searchLower = searchTerm.toLowerCase().trim();
                 const nameEn = hospital.nameEn?.toLowerCase() ?? '';
                 const nameFr = hospital.nameFr?.toLowerCase() ?? '';
                 const address = hospital.address?.toLowerCase() ?? '';
                 const website = hospital.website?.toLowerCase() ?? '';
-                
+
                 return (
                   nameEn.includes(searchLower) ||
                   nameFr.includes(searchLower) ||

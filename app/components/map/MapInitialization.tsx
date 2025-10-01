@@ -178,12 +178,7 @@ export const useMapInitialization = ({
             type: 'circle',
             source: 'hospitals',
             paint: {
-              'circle-radius': [
-                'case',
-                ['boolean', ['get', 'isActive'], false],
-                9,
-                6,
-              ],
+              'circle-radius': ['case', ['boolean', ['get', 'isActive'], false], 9, 6],
               'circle-color': [
                 'match',
                 ['get', 'status'],
@@ -193,12 +188,7 @@ export const useMapInitialization = ({
                 '#10b981',
                 '#cccccc',
               ],
-              'circle-stroke-width': [
-                'case',
-                ['boolean', ['get', 'isActive'], false],
-                2.5,
-                1.5,
-              ],
+              'circle-stroke-width': ['case', ['boolean', ['get', 'isActive'], false], 2.5, 1.5],
               'circle-stroke-color': [
                 'case',
                 ['boolean', ['get', 'isActive'], false],
@@ -229,7 +219,7 @@ export const useMapInitialization = ({
 
       return () => {
         removeMapboxPassiveEventsFix();
-        
+
         if (mapRef.current) {
           mapRef.current.remove();
           mapRef.current = null;

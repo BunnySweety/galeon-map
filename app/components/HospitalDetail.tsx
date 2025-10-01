@@ -25,9 +25,9 @@ const HospitalDetail: React.FC<HospitalDetailProps> = ({ hospital, className = '
   );
 
   // Fonction pour ouvrir l'itinéraire (simple version)
-    const handleGetDirections = useCallback(() => {
+  const handleGetDirections = useCallback(() => {
     if (!hospital) return;
-    
+
     const hospitalName = i18n.locale === 'fr' ? hospital.nameFr : hospital.nameEn;
     openDirections(hospital.coordinates, hospitalName);
   }, [hospital, i18n.locale]);
@@ -54,8 +54,17 @@ const HospitalDetail: React.FC<HospitalDetailProps> = ({ hospital, className = '
   const hospitalName = i18n.locale === 'fr' ? hospital.nameFr : hospital.nameEn;
 
   return (
-    <div className={`bg-white rounded-lg shadow-lg overflow-hidden ${className}`} role="article" aria-label={_('Hospital details')}>
-      <div className="relative w-full" style={{ height: '120px' }} role="img" aria-label={hospitalName}>
+    <div
+      className={`bg-white rounded-lg shadow-lg overflow-hidden ${className}`}
+      role="article"
+      aria-label={_('Hospital details')}
+    >
+      <div
+        className="relative w-full"
+        style={{ height: '120px' }}
+        role="img"
+        aria-label={hospitalName}
+      >
         <style jsx global>{`
           .gradient-mask {
             mask-image: linear-gradient(to top, transparent, black 50%);
@@ -66,10 +75,10 @@ const HospitalDetail: React.FC<HospitalDetailProps> = ({ hospital, className = '
           src={hospital.imageUrl}
           alt={hospitalName}
           fill
-          sizes="100%"
+          sizes="(max-width: 768px) 100vw, 320px"
           className="gradient-mask"
           style={{ objectFit: 'cover' }}
-          priority
+          loading="lazy"
         />
       </div>
       <div className="p-3 md:p-4">
@@ -106,7 +115,7 @@ const HospitalDetail: React.FC<HospitalDetailProps> = ({ hospital, className = '
               backdropFilter: 'blur(10px)',
               minWidth: '44px',
               minHeight: '44px',
-              touchAction: 'manipulation'
+              touchAction: 'manipulation',
             }}
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -122,7 +131,7 @@ const HospitalDetail: React.FC<HospitalDetailProps> = ({ hospital, className = '
               backdropFilter: 'blur(10px)',
               minWidth: '44px',
               minHeight: '44px',
-              touchAction: 'manipulation'
+              touchAction: 'manipulation',
             }}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}

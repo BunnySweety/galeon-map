@@ -9,16 +9,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./app/utils/__tests__/setup.ts'],
-    include: [
-      'app/**/*.{test,spec}.{js,ts,tsx}',
-      'tests/**/*.{test,spec}.{js,ts,tsx}'
-    ],
-    exclude: [
-      'node_modules/**',
-      '.next/**',
-      'out/**',
-      'playwright.config.ts'
-    ],
+    include: ['app/**/*.{test,spec}.{js,ts,tsx}', 'tests/**/*.{test,spec}.{js,ts,tsx}'],
+    exclude: ['node_modules/**', '.next/**', 'out/**', 'playwright.config.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'json'],
@@ -32,8 +24,8 @@ export default defineConfig({
         '**/*.d.ts',
         'app/api/hospitals/data.ts', // Static data
         'app/translations/**', // Translation files
-      ]
-    }
+      ],
+    },
   },
   resolve: {
     alias: {
@@ -42,6 +34,6 @@ export default defineConfig({
       '@/utils': path.resolve(__dirname, './app/utils'),
       '@/store': path.resolve(__dirname, './app/store'),
       '@/api': path.resolve(__dirname, './app/api'),
-    }
+    },
   },
 });

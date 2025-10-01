@@ -12,12 +12,12 @@ type AutoTableType = typeof import('jspdf-autotable').autoTable;
 const loadPDFLibraries = async (): Promise<{ jsPDF: jsPDFType; autoTable: AutoTableType }> => {
   const [jsPDFModule, autoTableModule] = await Promise.all([
     import('jspdf'),
-    import('jspdf-autotable')
+    import('jspdf-autotable'),
   ]);
-  
+
   return {
     jsPDF: jsPDFModule.default,
-    autoTable: autoTableModule.autoTable
+    autoTable: autoTableModule.autoTable,
   };
 };
 
@@ -121,7 +121,12 @@ const loadImageAsBase64 = (
 };
 
 // Function to draw the Galeon logo using PNG image
-const drawGaleonLogo = async (doc: InstanceType<jsPDFType>, x: number, y: number, scale: number = 1) => {
+const drawGaleonLogo = async (
+  doc: InstanceType<jsPDFType>,
+  x: number,
+  y: number,
+  scale: number = 1
+) => {
   try {
     // Calculate target dimensions for ultra-high quality
     const targetWidth = 200; // Ultra-high resolution base width
@@ -182,7 +187,7 @@ const drawGaleonLogo = async (doc: InstanceType<jsPDFType>, x: number, y: number
 // Export to PDF
 export const exportToPDF = async (data: ExportData): Promise<void> => {
   const { hospitals, locale } = data;
-  
+
   // Dynamically load jsPDF and autoTable
   const { jsPDF, autoTable } = await loadPDFLibraries();
   const doc = new jsPDF('landscape'); // Use landscape orientation like the CSS (841.89px x 595.28px)
@@ -361,7 +366,7 @@ export const exportToCSV = async (data: ExportData): Promise<void> => {
   // Prepare CSV data with headers
   const headers = [
     translations['Hospital Name'] ?? 'Hospital Name',
-    translations['Status'] ?? 'Status', 
+    translations['Status'] ?? 'Status',
     translations['Address'] ?? 'Address',
     translations['Deployment Date'] ?? 'Deployment Date',
     translations['Website'] ?? 'Website',
@@ -386,28 +391,34 @@ export const exportToCSV = async (data: ExportData): Promise<void> => {
 
   // Combine headers and data
   const csvData = [headers, ...dataRows];
-  
+
   // Convert to CSV string
   const csvContent = arrayToCsv(csvData);
-  
+
   // Add metadata section
   const metadataSection = [
     [''],
     [translations['Export Information'] ?? 'Export Information'],
     [translations['Export Date'] ?? 'Export Date', formatDate(new Date().toISOString(), locale)],
     [translations['Total Hospitals'] ?? 'Total Hospitals', hospitals.length.toString()],
-    [translations['Deployed Hospitals'] ?? 'Deployed Hospitals', hospitals.filter(h => h.status === 'Deployed').length.toString()],
-    [translations['Signed Hospitals'] ?? 'Signed Hospitals', hospitals.filter(h => h.status === 'Signed').length.toString()],
+    [
+      translations['Deployed Hospitals'] ?? 'Deployed Hospitals',
+      hospitals.filter(h => h.status === 'Deployed').length.toString(),
+    ],
+    [
+      translations['Signed Hospitals'] ?? 'Signed Hospitals',
+      hospitals.filter(h => h.status === 'Signed').length.toString(),
+    ],
   ];
 
   const fullCsvContent = csvContent + '\n' + arrayToCsv(metadataSection);
 
   // Create and download CSV file (Excel compatible with UTF-8 BOM)
   const bom = '\uFEFF'; // UTF-8 BOM for Excel compatibility
-  const blob = new Blob([bom + fullCsvContent], { 
-    type: 'text/csv;charset=utf-8' 
+  const blob = new Blob([bom + fullCsvContent], {
+    type: 'text/csv;charset=utf-8',
   });
-  
+
   const filenamePrefix = locale === 'fr' ? 'galeon-hopitaux' : 'galeon-hospitals';
   const filename = `${filenamePrefix}-${new Date().toISOString().split('T')[0]}.csv`;
   saveAs(blob, filename);

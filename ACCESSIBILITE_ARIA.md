@@ -10,12 +10,12 @@
 
 ### Statut Avant/Après
 
-| Métrique | Avant | Après | Amélioration |
-|----------|-------|-------|--------------|
-| **Score Accessibilité** | 7.0/10 | 8.5/10 | **+1.5 points** |
-| **Composants avec ARIA** | 0% | 100% | **+100%** |
-| **Tests Passants** | 66/69 (95.7%) | 66/69 (95.7%) | ✅ Stable |
-| **Build Status** | ✅ Success | ✅ Success | ✅ Stable |
+| Métrique                 | Avant         | Après         | Amélioration    |
+| ------------------------ | ------------- | ------------- | --------------- |
+| **Score Accessibilité**  | 7.0/10        | 8.5/10        | **+1.5 points** |
+| **Composants avec ARIA** | 0%            | 100%          | **+100%**       |
+| **Tests Passants**       | 66/69 (95.7%) | 66/69 (95.7%) | ✅ Stable       |
+| **Build Status**         | ✅ Success    | ✅ Success    | ✅ Stable       |
 
 ---
 
@@ -24,6 +24,7 @@
 ### 1. **Map.tsx** - Composant Carte Interactive
 
 #### Labels ARIA ajoutés:
+
 ```typescript
 <div role="region" aria-label={_('Interactive hospital map')}>
   <div
@@ -34,6 +35,7 @@
 ```
 
 **Impact**:
+
 - ✅ Les lecteurs d'écran annoncent maintenant la région de la carte
 - ✅ L'application Mapbox est clairement identifiée
 - ✅ Support multilingue (FR/EN) via fonction `_()`
@@ -45,6 +47,7 @@
 #### Améliorations:
 
 **a) Toolbar Role & Label**:
+
 ```typescript
 <div
   role="toolbar"
@@ -53,6 +56,7 @@
 ```
 
 **b) Boutons avec Menu Déroulant**:
+
 ```typescript
 <button
   aria-label={_('Export')}
@@ -70,6 +74,7 @@
 ```
 
 **c) Menus Popup avec ID & Role**:
+
 ```typescript
 <div
   id="export-menu"
@@ -79,6 +84,7 @@
 ```
 
 **Impact**:
+
 - ✅ Navigation au clavier améliorée (Tab, Enter, Escape)
 - ✅ État des menus annoncé aux lecteurs d'écran
 - ✅ Association claire bouton ↔ menu via `aria-controls`
@@ -89,6 +95,7 @@
 ### 3. **TimelineControl.tsx** - Contrôle de Timeline
 
 #### Labels ARIA ajoutés:
+
 ```typescript
 <div
   role="region"
@@ -106,6 +113,7 @@
 ```
 
 **Impact**:
+
 - ✅ Timeline identifiée comme contrôle de curseur (slider)
 - ✅ Valeurs min/max/courantes annoncées
 - ✅ Date textuelle annoncée pour contexte
@@ -118,6 +126,7 @@
 #### Améliorations:
 
 **a) Article Role**:
+
 ```typescript
 <div
   role="article"
@@ -126,6 +135,7 @@
 ```
 
 **b) Image avec Label**:
+
 ```typescript
 <div
   role="img"
@@ -134,6 +144,7 @@
 ```
 
 **c) Liens et Boutons avec Labels Descriptifs**:
+
 ```typescript
 <a
   aria-label={_('Visit') + ' ' + hospitalName + ' ' + _('website')}
@@ -145,6 +156,7 @@
 ```
 
 **Impact**:
+
 - ✅ Contexte sémantique clair (article)
 - ✅ Images décrites pour lecteurs d'écran
 - ✅ Actions clairement décrites avec nom de l'hôpital
@@ -156,6 +168,7 @@
 #### Améliorations:
 
 **a) Region avec Label**:
+
 ```typescript
 <div
   role="region"
@@ -164,6 +177,7 @@
 ```
 
 **b) Tableau Accessible**:
+
 ```typescript
 <h2 id="hospitals-table-title">{_('Hospitals')}</h2>
 
@@ -180,6 +194,7 @@
 ```
 
 **c) Modal d'Export**:
+
 ```typescript
 <div
   role="dialog"
@@ -192,6 +207,7 @@
 ```
 
 **Impact**:
+
 - ✅ Tableau clairement étiqueté et lié au titre
 - ✅ Colonnes identifiées avec `scope="col"`
 - ✅ Modal d'export accessible avec focus trap
@@ -204,11 +220,13 @@
 ### 1. **ErrorBoundary.tsx** - TypeScript Strict Mode
 
 #### Problème:
+
 ```
 Type error: This member must have an 'override' modifier
 ```
 
 #### Solution:
+
 ```typescript
 override componentDidCatch(error: Error, errorInfo: ErrorInfo) { ... }
 override render() { ... }
@@ -221,11 +239,13 @@ override render() { ... }
 ### 2. **analytics.ts** - Migration web-vitals v5
 
 #### Problème:
+
 ```
 Module '"web-vitals"' has no exported member 'getCLS'
 ```
 
 #### Solution:
+
 ```typescript
 // AVANT (v3):
 import { getCLS, getFID, getFCP, getLCP, getTTFB } from 'web-vitals';
@@ -238,6 +258,7 @@ onINP(sendToAnalytics);
 ```
 
 **Impact**:
+
 - ✅ Compatibilité web-vitals v5
 - ✅ Métriques modernes (INP remplace FID)
 - ✅ API callback au lieu de promise
@@ -248,46 +269,50 @@ onINP(sendToAnalytics);
 
 ### Pour les Utilisateurs avec Handicaps
 
-| Handicap | Amélioration |
-|----------|--------------|
-| **Cécité** | Lecteurs d'écran annoncent correctement tous les éléments interactifs |
-| **Malvoyance** | Navigation au clavier améliorée avec états visuels clairs |
-| **Mobilité Réduite** | Support complet du clavier (Tab, Enter, Escape, Arrow keys) |
-| **Cognitif** | Labels descriptifs facilitent la compréhension |
+| Handicap             | Amélioration                                                          |
+| -------------------- | --------------------------------------------------------------------- |
+| **Cécité**           | Lecteurs d'écran annoncent correctement tous les éléments interactifs |
+| **Malvoyance**       | Navigation au clavier améliorée avec états visuels clairs             |
+| **Mobilité Réduite** | Support complet du clavier (Tab, Enter, Escape, Arrow keys)           |
+| **Cognitif**         | Labels descriptifs facilitent la compréhension                        |
 
 ### Conformité WCAG
 
-| Critère WCAG 2.1 | Niveau | Status |
-|------------------|--------|--------|
-| **1.3.1** Informations et relations | A | ✅ Conforme |
-| **2.1.1** Clavier | A | ✅ Conforme |
-| **2.4.4** Fonction du lien (contexte) | A | ✅ Conforme |
-| **3.2.2** À la saisie | A | ✅ Conforme |
-| **4.1.2** Nom, rôle et valeur | A | ✅ Conforme |
-| **4.1.3** Messages de statut | AA | ⚠️ Partiel |
+| Critère WCAG 2.1                      | Niveau | Status      |
+| ------------------------------------- | ------ | ----------- |
+| **1.3.1** Informations et relations   | A      | ✅ Conforme |
+| **2.1.1** Clavier                     | A      | ✅ Conforme |
+| **2.4.4** Fonction du lien (contexte) | A      | ✅ Conforme |
+| **3.2.2** À la saisie                 | A      | ✅ Conforme |
+| **4.1.2** Nom, rôle et valeur         | A      | ✅ Conforme |
+| **4.1.3** Messages de statut          | AA     | ⚠️ Partiel  |
 
 ---
 
 ## 🎯 Prochaines Étapes (Sprint 1 restant)
 
 ### Navigation au Clavier (1h)
+
 - [ ] Implémenter `onKeyDown` handlers pour timeline
 - [ ] Support flèches gauche/droite pour navigation temporelle
 - [ ] Focus indicators visuels améliorés
 - [ ] Shortcuts clavier (?, Esc, Space)
 
 ### Code Splitting (2h)
+
 - [ ] Dynamic imports pour composants lourds (Map, Mapbox)
 - [ ] Lazy loading des images d'hôpitaux
 - [ ] Route-based splitting avec Next.js
 
 ### Optimisation Images (1h)
+
 - [ ] Conversion WebP avec fallback
 - [ ] Responsive images (`srcset`)
 - [ ] Lazy loading avec Intersection Observer
 - [ ] Placeholder blurred
 
 ### SRI pour CDN (1h)
+
 - [ ] Subresource Integrity pour Mapbox CDN
 - [ ] Hashes SHA-384 pour scripts externes
 - [ ] Fallback si CDN fail
@@ -297,12 +322,14 @@ onINP(sendToAnalytics);
 ## 📚 Ressources & Références
 
 ### Documentation Consultée
+
 - [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
 - [ARIA Authoring Practices Guide (APG)](https://www.w3.org/WAI/ARIA/apg/)
 - [MDN: ARIA](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA)
 - [Next.js Accessibility](https://nextjs.org/docs/app/building-your-application/accessibility)
 
 ### Outils de Test Recommandés
+
 - **Automatisés**:
   - axe DevTools (Chrome Extension)
   - Lighthouse (Chrome DevTools)
@@ -319,6 +346,7 @@ onINP(sendToAnalytics);
 ## ✅ Checklist de Validation
 
 ### Tests Effectués
+
 - [x] Build production réussie
 - [x] Tests unitaires passants (66/69 - 95.7%)
 - [x] Navigation clavier (Tab, Enter, Escape)
@@ -328,6 +356,7 @@ onINP(sendToAnalytics);
 - [ ] Audit Lighthouse (à venir)
 
 ### Revue de Code
+
 - [x] TypeScript strict mode conforme
 - [x] ESLint warnings traités
 - [x] Props validation
@@ -339,6 +368,7 @@ onINP(sendToAnalytics);
 ## 📞 Support & Questions
 
 Pour toute question sur l'accessibilité:
+
 - 📧 Email: accessibility@galeon.community
 - 📚 Wiki: [Accessibility Guidelines](https://github.com/galeon/docs/wiki/accessibility)
 - 🐛 Issues: [GitHub Issues](https://github.com/galeon/hospital-map/issues)

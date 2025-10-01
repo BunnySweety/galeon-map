@@ -1,19 +1,15 @@
-const CACHE_NAME = 'galeon-hospitals-v1';
-const STATIC_CACHE_URLS = [
-  '/',
-  '/manifest.json',
-  '/favicon.ico',
-  '/logo-white.svg',
-  '/images/hospitals/',
-];
+const CACHE_VERSION = 'v1.1.0';
+const CACHE_NAME = `galeon-hospitals-${CACHE_VERSION}`;
+const DYNAMIC_CACHE_NAME = `galeon-dynamic-${CACHE_VERSION}`;
 
-const DYNAMIC_CACHE_NAME = 'galeon-dynamic-v1';
+const STATIC_CACHE_URLS = ['/', '/manifest.json', '/favicon.ico'];
 
 // Install event - cache static assets
-self.addEventListener('install', (event) => {
+self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
+    caches
+      .open(CACHE_NAME)
+      .then(cache => {
         return cache.addAll(STATIC_CACHE_URLS);
       })
       .then(() => {
@@ -23,12 +19,13 @@ self.addEventListener('install', (event) => {
 });
 
 // Activate event - clean up old caches
-self.addEventListener('activate', (event) => {
+self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys()
-      .then((cacheNames) => {
+    caches
+      .keys()
+      .then(cacheNames => {
         return Promise.all(
-          cacheNames.map((cacheName) => {
+          cacheNames.map(cacheName => {
             if (cacheName !== CACHE_NAME && cacheName !== DYNAMIC_CACHE_NAME) {
               return caches.delete(cacheName);
             }
@@ -42,7 +39,7 @@ self.addEventListener('activate', (event) => {
 });
 
 // Fetch event - serve from cache, fallback to network
-self.addEventListener('fetch', (event) => {
+self.addEventListener('fetch', event => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') {
     return;
@@ -54,46 +51,44 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version if available
-        if (response) {
-          return response;
-        }
+    caches.match(event.request).then(response => {
+      // Return cached version if available
+      if (response) {
+        return response;
+      }
 
-        // Clone the request because it's a stream
-        const fetchRequest = event.request.clone();
+      // Clone the request because it's a stream
+      const fetchRequest = event.request.clone();
 
-        return fetch(fetchRequest)
-          .then((response) => {
-            // Check if valid response
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-
-            // Clone the response because it's a stream
-            const responseToCache = response.clone();
-
-            // Cache dynamic content
-            caches.open(DYNAMIC_CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-
+      return fetch(fetchRequest)
+        .then(response => {
+          // Check if valid response
+          if (!response || response.status !== 200 || response.type !== 'basic') {
             return response;
-          })
-          .catch(() => {
-            // Return offline page for navigation requests
-            if (event.request.mode === 'navigate') {
-              return caches.match('/');
-            }
+          }
+
+          // Clone the response because it's a stream
+          const responseToCache = response.clone();
+
+          // Cache dynamic content
+          caches.open(DYNAMIC_CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache);
           });
-      })
+
+          return response;
+        })
+        .catch(() => {
+          // Return offline page for navigation requests
+          if (event.request.mode === 'navigate') {
+            return caches.match('/');
+          }
+        });
+    })
   );
 });
 
 // Background sync for offline actions
-self.addEventListener('sync', (event) => {
+self.addEventListener('sync', event => {
   if (event.tag === 'background-sync') {
     event.waitUntil(
       // Handle background sync tasks here
@@ -103,7 +98,7 @@ self.addEventListener('sync', (event) => {
 });
 
 // Push notifications (if needed in the future)
-self.addEventListener('push', (event) => {
+self.addEventListener('push', event => {
   if (event.data) {
     const data = event.data.json();
     const options = {
@@ -129,19 +124,15 @@ self.addEventListener('push', (event) => {
       ],
     };
 
-    event.waitUntil(
-      self.registration.showNotification(data.title, options)
-    );
+    event.waitUntil(self.registration.showNotification(data.title, options));
   }
 });
 
 // Notification click handler
-self.addEventListener('notificationclick', (event) => {
+self.addEventListener('notificationclick', event => {
   event.notification.close();
 
   if (event.action === 'explore') {
-    event.waitUntil(
-      clients.openWindow('/')
-    );
+    event.waitUntil(clients.openWindow('/'));
   }
-}); 
+});

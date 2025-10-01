@@ -29,11 +29,14 @@ const TimelinePoint: React.FC<TimelinePointProps> = ({
     onPointClick(date, index);
   }, [onPointClick, date, index]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      onPointClick(date, index);
-    }
-  }, [onPointClick, date, index]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        onPointClick(date, index);
+      }
+    },
+    [onPointClick, date, index]
+  );
 
   return (
     <div
@@ -55,18 +58,20 @@ const TimelinePoint: React.FC<TimelinePointProps> = ({
         tabIndex={0}
         onKeyDown={handleKeyDown}
       >
-        {(index <= currentDateIndex) && (
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            fontSize: '14px',
-            color: 'white',
-            fontWeight: 'bold',
-            textShadow: '0 0 4px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,0.8)',
-            zIndex: 10
-          }}>
+        {index <= currentDateIndex && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              fontSize: '14px',
+              color: 'white',
+              fontWeight: 'bold',
+              textShadow: '0 0 4px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,0.8)',
+              zIndex: 10,
+            }}
+          >
             ✓
           </div>
         )}

@@ -1,8 +1,8 @@
 // Utilitaires pour optimiser les performances de l'application
 
 import { useCallback, useRef } from 'react';
-import logger from './logger';
 import type { Metric } from 'web-vitals';
+import logger from './logger';
 
 /**
  * Hook pour débouncer les fonctions (éviter les appels trop fréquents)
@@ -181,10 +181,13 @@ const THRESHOLDS = {
 } as const;
 
 // Fonction pour déterminer le rating d'une métrique
-function getRating(metricName: keyof typeof THRESHOLDS, value: number): 'good' | 'needs-improvement' | 'poor' {
+function getRating(
+  metricName: keyof typeof THRESHOLDS,
+  value: number
+): 'good' | 'needs-improvement' | 'poor' {
   const threshold = THRESHOLDS[metricName];
   if (!threshold) return 'good';
-  
+
   if (value <= threshold.good) return 'good';
   if (value <= threshold.poor) return 'needs-improvement';
   return 'poor';
@@ -200,7 +203,7 @@ function sendToAnalytics(metric: WebVitalMetric) {
       id: metric.id,
     });
   }
-  
+
   // En production, vous pourriez envoyer vers Google Analytics, Vercel Analytics, etc.
   if (process.env.NODE_ENV === 'production' && typeof window !== 'undefined') {
     // Exemple pour Google Analytics 4
@@ -212,7 +215,7 @@ function sendToAnalytics(metric: WebVitalMetric) {
         custom_parameter_2: metric.id,
       });
     }
-    
+
     // Exemple pour Vercel Analytics
     if ('va' in window) {
       (window as any).va('track', 'Web Vital', {
@@ -229,54 +232,56 @@ export function measureWebVitals() {
   if (typeof window === 'undefined') return;
 
   // Dynamically import web-vitals pour éviter les erreurs SSR
-  import('web-vitals').then(({ onCLS, onFCP, onLCP, onTTFB, onINP }) => {
-    // Cumulative Layout Shift
-    onCLS((metric: Metric) => {
-      const webVitalMetric: WebVitalMetric = {
-        ...metric,
-        rating: getRating('CLS', metric.value),
-      };
-      sendToAnalytics(webVitalMetric);
-    });
+  import('web-vitals')
+    .then(({ onCLS, onFCP, onLCP, onTTFB, onINP }) => {
+      // Cumulative Layout Shift
+      onCLS((metric: Metric) => {
+        const webVitalMetric: WebVitalMetric = {
+          ...metric,
+          rating: getRating('CLS', metric.value),
+        };
+        sendToAnalytics(webVitalMetric);
+      });
 
-    // First Contentful Paint
-    onFCP((metric: Metric) => {
-      const webVitalMetric: WebVitalMetric = {
-        ...metric,
-        rating: getRating('FCP', metric.value),
-      };
-      sendToAnalytics(webVitalMetric);
-    });
+      // First Contentful Paint
+      onFCP((metric: Metric) => {
+        const webVitalMetric: WebVitalMetric = {
+          ...metric,
+          rating: getRating('FCP', metric.value),
+        };
+        sendToAnalytics(webVitalMetric);
+      });
 
-    // Largest Contentful Paint
-    onLCP((metric: Metric) => {
-      const webVitalMetric: WebVitalMetric = {
-        ...metric,
-        rating: getRating('LCP', metric.value),
-      };
-      sendToAnalytics(webVitalMetric);
-    });
+      // Largest Contentful Paint
+      onLCP((metric: Metric) => {
+        const webVitalMetric: WebVitalMetric = {
+          ...metric,
+          rating: getRating('LCP', metric.value),
+        };
+        sendToAnalytics(webVitalMetric);
+      });
 
-    // Time to First Byte
-    onTTFB((metric: Metric) => {
-      const webVitalMetric: WebVitalMetric = {
-        ...metric,
-        rating: getRating('TTFB', metric.value),
-      };
-      sendToAnalytics(webVitalMetric);
-    });
+      // Time to First Byte
+      onTTFB((metric: Metric) => {
+        const webVitalMetric: WebVitalMetric = {
+          ...metric,
+          rating: getRating('TTFB', metric.value),
+        };
+        sendToAnalytics(webVitalMetric);
+      });
 
-    // Interaction to Next Paint (remplace FID dans web-vitals v4)
-    onINP((metric: Metric) => {
-      const webVitalMetric: WebVitalMetric = {
-        ...metric,
-        rating: getRating('INP', metric.value),
-      };
-      sendToAnalytics(webVitalMetric);
+      // Interaction to Next Paint (remplace FID dans web-vitals v4)
+      onINP((metric: Metric) => {
+        const webVitalMetric: WebVitalMetric = {
+          ...metric,
+          rating: getRating('INP', metric.value),
+        };
+        sendToAnalytics(webVitalMetric);
+      });
+    })
+    .catch(error => {
+      logger.error('Failed to load web-vitals:', error);
     });
-  }).catch((error) => {
-    logger.error('Failed to load web-vitals:', error);
-  });
 }
 
 // Fonction pour mesurer les métriques personnalisées
@@ -286,14 +291,17 @@ export function measureCustomMetrics() {
   // Mesurer le temps de chargement de la page
   window.addEventListener('load', () => {
     const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
-    
+
     if (navigation) {
       const metrics = {
         'DNS Lookup': navigation.domainLookupEnd - navigation.domainLookupStart,
         'TCP Connection': navigation.connectEnd - navigation.connectStart,
-        'TLS Handshake': navigation.secureConnectionStart > 0 ? navigation.connectEnd - navigation.secureConnectionStart : 0,
-        'Request': navigation.responseStart - navigation.requestStart,
-        'Response': navigation.responseEnd - navigation.responseStart,
+        'TLS Handshake':
+          navigation.secureConnectionStart > 0
+            ? navigation.connectEnd - navigation.secureConnectionStart
+            : 0,
+        Request: navigation.responseStart - navigation.requestStart,
+        Response: navigation.responseEnd - navigation.responseStart,
         'DOM Processing': navigation.domContentLoadedEventStart - navigation.responseEnd,
         'Resource Loading': navigation.loadEventStart - navigation.domContentLoadedEventStart,
       };
@@ -305,9 +313,10 @@ export function measureCustomMetrics() {
   });
 
   // Mesurer les ressources lourdes
-  const observer = new PerformanceObserver((list) => {
+  const observer = new PerformanceObserver(list => {
     for (const entry of list.getEntries()) {
-      if (entry.duration > 100) { // Ressources qui prennent plus de 100ms
+      if (entry.duration > 100) {
+        // Ressources qui prennent plus de 100ms
         if (process.env.NODE_ENV === 'development') {
           logger.warn(`🐌 Slow resource: ${entry.name} (${Math.round(entry.duration)}ms)`);
         }
@@ -323,10 +332,10 @@ export function measureBundleMetrics() {
   if (typeof window === 'undefined') return;
 
   // Mesurer la taille des chunks JavaScript
-  const observer = new PerformanceObserver((list) => {
-    const jsResources = list.getEntries().filter(entry => 
-      entry.name.includes('.js') && entry.name.includes('_next/static')
-    );
+  const observer = new PerformanceObserver(list => {
+    const jsResources = list
+      .getEntries()
+      .filter(entry => entry.name.includes('.js') && entry.name.includes('_next/static'));
 
     let totalJSSize = 0;
     const chunkSizes: Record<string, number> = {};
@@ -343,8 +352,7 @@ export function measureBundleMetrics() {
       logger.info('📦 Bundle Metrics:', {
         totalJSSize: `${Math.round(totalJSSize / 1024)}KB`,
         chunkCount: Object.keys(chunkSizes).length,
-        largestChunk: Object.entries(chunkSizes)
-          .sort(([,a], [,b]) => b - a)[0]?.[0] ?? 'none',
+        largestChunk: Object.entries(chunkSizes).sort(([, a], [, b]) => b - a)[0]?.[0] ?? 'none',
       });
     }
   });
@@ -358,7 +366,7 @@ export function detectPerformanceIssues() {
 
   // Détecter les long tasks (> 50ms)
   if ('PerformanceObserver' in window) {
-    const longTaskObserver = new PerformanceObserver((list) => {
+    const longTaskObserver = new PerformanceObserver(list => {
       for (const entry of list.getEntries()) {
         if (process.env.NODE_ENV === 'development') {
           logger.warn(`⚠️ Long task detected: ${Math.round(entry.duration)}ms`);
@@ -375,9 +383,10 @@ export function detectPerformanceIssues() {
 
   // Détecter les layout shifts importants
   if ('PerformanceObserver' in window) {
-    const layoutShiftObserver = new PerformanceObserver((list) => {
+    const layoutShiftObserver = new PerformanceObserver(list => {
       for (const entry of list.getEntries()) {
-        if ((entry as any).value > 0.1) { // Shift important
+        if ((entry as any).value > 0.1) {
+          // Shift important
           if (process.env.NODE_ENV === 'development') {
             logger.warn(`📐 Large layout shift: ${(entry as any).value.toFixed(4)}`);
           }
@@ -413,22 +422,29 @@ export function getPerformanceReport(): Record<string, any> {
 
   const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
   const paint = performance.getEntriesByType('paint');
-  
+
   return {
-    navigation: navigation ? {
-      domContentLoaded: Math.round(navigation.domContentLoadedEventEnd - navigation.fetchStart),
-      loadComplete: Math.round(navigation.loadEventEnd - navigation.fetchStart),
-      firstByte: Math.round(navigation.responseStart - navigation.fetchStart),
-    } : null,
-    paint: paint.reduce((acc, entry) => {
-      acc[entry.name] = Math.round(entry.startTime);
-      return acc;
-    }, {} as Record<string, number>),
-    memory: (performance as any).memory ? {
-      used: Math.round((performance as any).memory.usedJSHeapSize / 1024 / 1024),
-      total: Math.round((performance as any).memory.totalJSHeapSize / 1024 / 1024),
-      limit: Math.round((performance as any).memory.jsHeapSizeLimit / 1024 / 1024),
-    } : null,
+    navigation: navigation
+      ? {
+          domContentLoaded: Math.round(navigation.domContentLoadedEventEnd - navigation.fetchStart),
+          loadComplete: Math.round(navigation.loadEventEnd - navigation.fetchStart),
+          firstByte: Math.round(navigation.responseStart - navigation.fetchStart),
+        }
+      : null,
+    paint: paint.reduce(
+      (acc, entry) => {
+        acc[entry.name] = Math.round(entry.startTime);
+        return acc;
+      },
+      {} as Record<string, number>
+    ),
+    memory: (performance as any).memory
+      ? {
+          used: Math.round((performance as any).memory.usedJSHeapSize / 1024 / 1024),
+          total: Math.round((performance as any).memory.totalJSHeapSize / 1024 / 1024),
+          limit: Math.round((performance as any).memory.jsHeapSizeLimit / 1024 / 1024),
+        }
+      : null,
   };
 }
 

@@ -23,8 +23,23 @@ describe('useGeolocation', () => {
       altitudeAccuracy: null,
       heading: null,
       speed: null,
+      toJSON: () => ({
+        latitude: 48.8566,
+        longitude: 2.3522,
+        accuracy: 100,
+        altitude: null,
+        altitudeAccuracy: null,
+        heading: null,
+        speed: null,
+      }),
     },
     timestamp: Date.now(),
+    toJSON: function () {
+      return {
+        coords: this.coords,
+        timestamp: this.timestamp,
+      };
+    },
   };
 
   const mockError: GeolocationPositionError = {
@@ -40,7 +55,7 @@ describe('useGeolocation', () => {
 
     // Reset geolocation mock using vi.stubGlobal
     const mockGeolocation = {
-      getCurrentPosition: vi.fn((success) => {
+      getCurrentPosition: vi.fn((success: PositionCallback) => {
         success(mockPosition);
       }),
       watchPosition: vi.fn(),
@@ -105,7 +120,7 @@ describe('useGeolocation', () => {
     });
 
     it('should use high accuracy by default', async () => {
-      const mockGetCurrentPosition = vi.fn((success) => {
+      const mockGetCurrentPosition = vi.fn((success: PositionCallback) => {
         success(mockPosition);
       });
 
@@ -136,7 +151,7 @@ describe('useGeolocation', () => {
 
   describe('Error Handling', () => {
     it('should handle permission denied error', async () => {
-      const mockGetCurrentPosition = vi.fn((_, error) => {
+      const mockGetCurrentPosition = vi.fn((_: PositionCallback, error: PositionErrorCallback) => {
         error(mockError);
       });
 
@@ -174,7 +189,7 @@ describe('useGeolocation', () => {
         TIMEOUT: 3,
       };
 
-      const mockGetCurrentPosition = vi.fn((_, error) => {
+      const mockGetCurrentPosition = vi.fn((_: PositionCallback, error: PositionErrorCallback) => {
         error(unavailableError);
       });
 
@@ -209,7 +224,7 @@ describe('useGeolocation', () => {
         TIMEOUT: 3,
       };
 
-      const mockGetCurrentPosition = vi.fn((_, error) => {
+      const mockGetCurrentPosition = vi.fn((_: PositionCallback, error: PositionErrorCallback) => {
         error(timeoutError);
       });
 
@@ -258,7 +273,7 @@ describe('useGeolocation', () => {
 
   describe('Options', () => {
     it('should accept custom timeout', async () => {
-      const mockGetCurrentPosition = vi.fn((success) => {
+      const mockGetCurrentPosition = vi.fn((success: PositionCallback) => {
         success(mockPosition);
       });
 
@@ -287,7 +302,7 @@ describe('useGeolocation', () => {
     });
 
     it('should accept custom maximumAge', async () => {
-      const mockGetCurrentPosition = vi.fn((success) => {
+      const mockGetCurrentPosition = vi.fn((success: PositionCallback) => {
         success(mockPosition);
       });
 
@@ -316,7 +331,7 @@ describe('useGeolocation', () => {
     });
 
     it('should allow disabling high accuracy', async () => {
-      const mockGetCurrentPosition = vi.fn((success) => {
+      const mockGetCurrentPosition = vi.fn((success: PositionCallback) => {
         success(mockPosition);
       });
 
@@ -377,7 +392,7 @@ describe('useGeolocation', () => {
 
     it('should clear previous error on successful fetch', async () => {
       // First call fails
-      const mockGetCurrentPosition = vi.fn((_, error) => {
+      const mockGetCurrentPosition = vi.fn((_: PositionCallback, error: PositionErrorCallback) => {
         error(mockError);
       });
 
@@ -403,7 +418,7 @@ describe('useGeolocation', () => {
       expect(result.current.error).toBeTruthy();
 
       // Second call succeeds
-      const successMock = vi.fn((success) => {
+      const successMock = vi.fn((success: PositionCallback) => {
         success(mockPosition);
       });
 
@@ -455,11 +470,26 @@ describe('useGeolocation', () => {
           altitudeAccuracy: null,
           heading: null,
           speed: null,
+          toJSON: () => ({
+            latitude: 48.856614,
+            longitude: 2.352222,
+            accuracy: 10,
+            altitude: null,
+            altitudeAccuracy: null,
+            heading: null,
+            speed: null,
+          }),
         },
         timestamp: Date.now(),
+        toJSON: function () {
+          return {
+            coords: this.coords,
+            timestamp: this.timestamp,
+          };
+        },
       };
 
-      const mockGetCurrentPosition = vi.fn((success) => {
+      const mockGetCurrentPosition = vi.fn((success: PositionCallback) => {
         success(precisePosition);
       });
 

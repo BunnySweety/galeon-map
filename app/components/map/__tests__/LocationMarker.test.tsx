@@ -96,16 +96,16 @@ describe('useLocationMarker', () => {
 
     // Check that Marker was called with an element that has the right structure
     const call = mockMapboxgl.Marker.mock.calls[0];
-    const markerElement = call[0].element;
-    
+    const markerElement = call?.[0]?.element;
+
     expect(markerElement.className).toBe('location-marker');
     expect(markerElement.style.width).toBe('40px');
     expect(markerElement.style.height).toBe('40px');
-    
+
     // Check for pulse rings
     const pulseRings = markerElement.querySelectorAll('.pulse-ring');
     expect(pulseRings).toHaveLength(2);
-    
+
     // Check for center dot
     const centerDot = markerElement.querySelector('.center-dot');
     expect(centerDot).toBeTruthy();

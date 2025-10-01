@@ -14,7 +14,7 @@ const HospitalTable = dynamic(() => import('./HospitalTable'), {
           <div className="h-6 bg-gray-200 rounded w-32"></div>
           <div className="h-10 bg-gray-200 rounded w-32"></div>
         </div>
-        
+
         {/* Table skeleton */}
         <div className="hidden md:block">
           {/* Table headers */}
@@ -23,7 +23,7 @@ const HospitalTable = dynamic(() => import('./HospitalTable'), {
               <div key={i} className="h-4 bg-gray-200 rounded"></div>
             ))}
           </div>
-          
+
           {/* Table rows */}
           {[...Array(5)].map((_, i) => (
             <div key={i} className="grid grid-cols-4 gap-4 mb-3">
@@ -33,7 +33,7 @@ const HospitalTable = dynamic(() => import('./HospitalTable'), {
             </div>
           ))}
         </div>
-        
+
         {/* Mobile cards skeleton */}
         <div className="md:hidden space-y-4">
           {[...Array(3)].map((_, i) => (
@@ -70,4 +70,4 @@ export default function HospitalTableWrapper({ className }: HospitalTableWrapper
       <HospitalTable className={className ?? ''} />
     </Suspense>
   );
-} 
+}

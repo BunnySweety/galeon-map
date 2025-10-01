@@ -67,9 +67,8 @@ const MapControls: React.FC<MapControlsProps> = ({
   onFullscreenToggle,
   getLocationTooltip,
   getFullscreenTooltip,
-  mapRootContainer
+  mapRootContainer,
 }) => {
-  
   const handleFullscreenToggle = useCallback(() => {
     if (screenfull.isEnabled && mapRootContainer.current) {
       screenfull.toggle(mapRootContainer.current);

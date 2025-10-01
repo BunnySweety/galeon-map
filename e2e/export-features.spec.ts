@@ -135,9 +135,7 @@ test.describe('Export Features', () => {
     await pdfButton.click();
 
     // Look for success toast/notification
-    const successMessage = page.locator(
-      'text=/export.*success/i, [role="status"]:has-text("PDF")'
-    );
+    const successMessage = page.locator('text=/export.*success/i, [role="status"]:has-text("PDF")');
 
     // Should show within 3 seconds
     await expect(successMessage).toBeVisible({ timeout: 3000 });

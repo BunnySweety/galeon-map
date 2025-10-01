@@ -39,19 +39,20 @@
 
 ## 📊 Métriques d'Impact
 
-| Métrique | Avant | Après | Amélioration |
-|----------|-------|-------|--------------|
+| Métrique                | Avant  | Après      | Amélioration    |
+| ----------------------- | ------ | ---------- | --------------- |
 | **Score Accessibilité** | 7.0/10 | **8.5/10** | **+1.5 points** |
-| **Composants ARIA** | 0% | **100%** | **+100%** |
-| **Build Status** | ✅ | ✅ | Stable |
-| **Tests** | 66/69 | 66/69 | Stable |
-| **Conformité WCAG** | ~ 60% | ~ 85% | **+25%** |
+| **Composants ARIA**     | 0%     | **100%**   | **+100%**       |
+| **Build Status**        | ✅     | ✅         | Stable          |
+| **Tests**               | 66/69  | 66/69      | Stable          |
+| **Conformité WCAG**     | ~ 60%  | ~ 85%      | **+25%**        |
 
 ---
 
 ## 🔧 Changements Techniques Détaillés
 
 ### 1. Map.tsx
+
 ```typescript
 // AVANT:
 <div className="relative flex-grow">
@@ -70,6 +71,7 @@
 ```
 
 **Impact**:
+
 - Lecteurs d'écran identifient la zone de carte
 - Application Mapbox clairement annoncée
 
@@ -78,6 +80,7 @@
 ### 2. ActionBar.tsx
 
 **a) Toolbar avec menus contrôlés**:
+
 ```typescript
 // AVANT:
 <div className="action-bar-container">
@@ -106,6 +109,7 @@
 ```
 
 **b) Menus avec rôles et IDs**:
+
 ```typescript
 // AVANT:
 const PopupMenu = ({ title, children, isVisible, anchorRef }) => {
@@ -130,6 +134,7 @@ const PopupMenu = ({ title, children, isVisible, anchorRef, id }) => {
 ```
 
 **Impact**:
+
 - Navigation clavier améliorée (Tab, Enter, Escape)
 - État des menus annoncé (ouvert/fermé)
 - Association bouton ↔ menu claire
@@ -159,6 +164,7 @@ const PopupMenu = ({ title, children, isVisible, anchorRef, id }) => {
 ```
 
 **Impact**:
+
 - Timeline identifiée comme contrôle slider
 - Valeurs min/max/courante annoncées
 - Date textuelle pour contexte
@@ -201,6 +207,7 @@ const PopupMenu = ({ title, children, isVisible, anchorRef, id }) => {
 ```
 
 **Impact**:
+
 - Contexte sémantique (article)
 - Images décrites
 - Actions clairement labellisées avec nom hôpital
@@ -249,6 +256,7 @@ const PopupMenu = ({ title, children, isVisible, anchorRef, id }) => {
 ```
 
 **Impact**:
+
 - Tableau accessible avec titre lié
 - Colonnes identifiées (`scope="col"`)
 - Modal avec focus trap et label
@@ -260,12 +268,14 @@ const PopupMenu = ({ title, children, isVisible, anchorRef, id }) => {
 ### ErrorBoundary.tsx - TypeScript Strict Mode
 
 **Erreur**:
+
 ```
 Type error: This member must have an 'override' modifier because
 it overrides a member in the base class 'Component<Props, State, any>'.
 ```
 
 **Solution**:
+
 ```typescript
 // AVANT:
 componentDidCatch(error: Error, errorInfo: ErrorInfo) { ... }
@@ -281,11 +291,13 @@ override render() { ... }
 ### analytics.ts - web-vitals v5 Migration
 
 **Erreur**:
+
 ```
 Module '"web-vitals"' has no exported member 'getCLS'
 ```
 
 **Solution**:
+
 ```typescript
 // AVANT (web-vitals v3):
 import { getCLS, getFID, getFCP, getLCP, getTTFB, Metric } from 'web-vitals';
@@ -302,15 +314,16 @@ export function initWebVitals() {
 import { onCLS, onFCP, onINP, onLCP, onTTFB, type Metric } from 'web-vitals';
 
 export function initWebVitals() {
-  onCLS(sendToAnalytics);  // Cumulative Layout Shift
-  onINP(sendToAnalytics);  // Interaction to Next Paint (replaces FID)
-  onLCP(sendToAnalytics);  // Largest Contentful Paint
-  onFCP(sendToAnalytics);  // First Contentful Paint
+  onCLS(sendToAnalytics); // Cumulative Layout Shift
+  onINP(sendToAnalytics); // Interaction to Next Paint (replaces FID)
+  onLCP(sendToAnalytics); // Largest Contentful Paint
+  onFCP(sendToAnalytics); // First Contentful Paint
   onTTFB(sendToAnalytics); // Time to First Byte
 }
 ```
 
 **Changements clés**:
+
 - `getCLS` → `onCLS` (callback API)
 - `getFID` → `onINP` (nouvelle métrique, plus précise)
 - `type Metric` (type import)
@@ -321,45 +334,49 @@ export function initWebVitals() {
 
 ### Critères Level A - ✅ Conformes
 
-| Critère | Nom | Status |
-|---------|-----|--------|
-| 1.3.1 | Info et relations | ✅ |
-| 2.1.1 | Clavier | ✅ |
-| 2.4.4 | Fonction du lien | ✅ |
-| 3.2.2 | À la saisie | ✅ |
-| 4.1.2 | Nom, rôle, valeur | ✅ |
+| Critère | Nom               | Status |
+| ------- | ----------------- | ------ |
+| 1.3.1   | Info et relations | ✅     |
+| 2.1.1   | Clavier           | ✅     |
+| 2.4.4   | Fonction du lien  | ✅     |
+| 3.2.2   | À la saisie       | ✅     |
+| 4.1.2   | Nom, rôle, valeur | ✅     |
 
 ### Critères Level AA - ⚠️ Partiels
 
-| Critère | Nom | Status | Notes |
-|---------|-----|--------|-------|
-| 1.4.3 | Contraste | ✅ | Vérifié visuellement |
-| 2.4.6 | En-têtes et étiquettes | ✅ | Labels ARIA ajoutés |
-| 2.4.7 | Focus visible | ⚠️ | À améliorer (prochaine étape) |
-| 3.2.4 | Identification cohérente | ✅ | Composants réutilisables |
-| 4.1.3 | Messages de statut | ⚠️ | Toast messages (à vérifier) |
+| Critère | Nom                      | Status | Notes                         |
+| ------- | ------------------------ | ------ | ----------------------------- |
+| 1.4.3   | Contraste                | ✅     | Vérifié visuellement          |
+| 2.4.6   | En-têtes et étiquettes   | ✅     | Labels ARIA ajoutés           |
+| 2.4.7   | Focus visible            | ⚠️     | À améliorer (prochaine étape) |
+| 3.2.4   | Identification cohérente | ✅     | Composants réutilisables      |
+| 4.1.3   | Messages de statut       | ⚠️     | Toast messages (à vérifier)   |
 
 ---
 
 ## 🚀 Prochaines Étapes (Sprint 1 restant)
 
 ### Navigation Clavier (1h) - PRIORITÉ HAUTE
+
 - [ ] `onKeyDown` handlers pour timeline (flèches gauche/droite)
 - [ ] Focus indicators CSS améliorés (`:focus-visible`)
 - [ ] Shortcuts globaux (? pour aide, Esc pour fermer)
 - [ ] Skip links pour navigation rapide
 
 ### Code Splitting (2h)
+
 - [ ] Dynamic imports pour Map/Mapbox
 - [ ] Route-based code splitting
 - [ ] Lazy loading des images
 
 ### Optimisation Images (1h)
+
 - [ ] Conversion WebP avec fallback
 - [ ] Responsive images (`srcset`)
 - [ ] Lazy loading natif
 
 ### SRI CDN (1h)
+
 - [ ] Subresource Integrity pour Mapbox
 - [ ] Hashes SHA-384
 - [ ] Fallback si CDN fail
@@ -369,12 +386,14 @@ export function initWebVitals() {
 ## 📝 Actions Utilisateur Requises
 
 ### Configuration Git (URGENT)
+
 ```bash
 git config --global user.email "votre.email@galeon.community"
 git config --global user.name "Votre Nom"
 ```
 
 ### Commit des Changements
+
 ```bash
 git status  # Vérifier 143 fichiers modifiés
 git commit  # Message déjà préparé
@@ -382,6 +401,7 @@ git push origin main
 ```
 
 ### Tests Manuels Recommandés
+
 1. **Lecteur d'écran** (NVDA/JAWS):
    - Ouvrir la carte
    - Naviguer avec Tab
@@ -393,6 +413,7 @@ git push origin main
    - Escape pour fermer menus
 
 3. **Audit Lighthouse**:
+
    ```bash
    npm run build
    npm run start
@@ -409,6 +430,7 @@ git push origin main
 ## 📊 Tests & Validation
 
 ### Build Production
+
 ```
 ✓ Compiled successfully in 1000ms
 ✓ Generating static pages (23/23)
@@ -416,6 +438,7 @@ git push origin main
 ```
 
 ### Tests Unitaires
+
 ```
 Test Files  5 passed (9)
 Tests       66 passed (69)
@@ -423,6 +446,7 @@ Duration    2.10s
 ```
 
 **3 tests échouants** (useMapStore filter tests):
+
 - Tests de filtres complexes
 - Déjà identifiés avant cette session
 - Impact minimal (logique métier, pas accessibilité)
@@ -432,18 +456,21 @@ Duration    2.10s
 ## 💡 Leçons Apprises
 
 ### Ce Qui a Bien Fonctionné
+
 1. **Approche méthodique**: Composant par composant
 2. **Tests réguliers**: Build + tests après chaque modification
 3. **Documentation parallèle**: Rapport ARIA créé en continu
 4. **Focus sur l'impact**: Labels où ils comptent vraiment
 
 ### Défis Rencontrés
+
 1. **TypeScript strict**: Nécessité `override` modifiers
 2. **web-vitals v5**: API breaking changes
 3. **Hoisting mocks**: Tests map composants (pas résolu, hors scope)
 4. **Git config**: Identité non configurée (user action required)
 
 ### Recommandations
+
 1. **Audit Lighthouse régulier**: Intégrer au CI/CD
 2. **Tests E2E accessibilité**: Ajouter au pipeline
 3. **Formation équipe**: WCAG 2.1 basics
@@ -454,11 +481,13 @@ Duration    2.10s
 ## 🎓 Ressources Utiles
 
 ### Documentation
+
 - [WCAG 2.1 Quick Reference](https://www.w3.org/WAI/WCAG21/quickref/)
 - [ARIA Authoring Practices](https://www.w3.org/WAI/ARIA/apg/)
 - [MDN Accessibility](https://developer.mozilla.org/en-US/docs/Web/Accessibility)
 
 ### Outils de Test
+
 - **Automatisés**: axe DevTools, Lighthouse, WAVE
 - **Lecteurs d'écran**: NVDA (Windows), JAWS (Windows), VoiceOver (macOS)
 - **Extensions Chrome**:
@@ -466,6 +495,7 @@ Duration    2.10s
   - [WAVE](https://chrome.google.com/webstore/detail/wave-evaluation-tool/jbbplnpkjmmeebjpijfedlgcdilocofh)
 
 ### Formation
+
 - [WebAIM Screenreader Survey](https://webaim.org/projects/screenreadersurvey9/)
 - [A11y Project Checklist](https://www.a11yproject.com/checklist/)
 - [Deque University](https://dequeuniversity.com/)
@@ -475,6 +505,7 @@ Duration    2.10s
 ## ✅ Checklist Finale
 
 ### Complété Aujourd'hui
+
 - [x] ARIA labels sur 5 composants critiques
 - [x] Build production réussie
 - [x] Tests unitaires stables (66/69)
@@ -484,6 +515,7 @@ Duration    2.10s
 - [x] SESSION_ACCESSIBILITE_RESUME.md
 
 ### À Faire par l'Utilisateur
+
 - [ ] Configurer identité Git
 - [ ] Commit + push des changements
 - [ ] Tests manuels (lecteur d'écran, clavier)
@@ -491,6 +523,7 @@ Duration    2.10s
 - [ ] Planifier Sprint 1 restant (4h)
 
 ### Prochaine Session (Sprint 1 suite)
+
 - [ ] Navigation clavier (1h)
 - [ ] Code splitting (2h)
 - [ ] Optimisation images (1h)
@@ -502,6 +535,7 @@ Duration    2.10s
 ## 📈 Progression Vers Excellence
 
 ### Roadmap Globale
+
 ```
 ┌──────────────┬──────────┬──────────┬──────────┐
 │   Phase      │  Score   │ Durée    │  Status  │
@@ -519,6 +553,7 @@ Restant: 22h (92%)
 ```
 
 ### Score Détaillé Actuel (8.5/10)
+
 - **Sécurité**: 9.0/10 ✅
 - **Tests**: 8.5/10 ✅
 - **Accessibilité**: 8.5/10 ✅ (+1.5 aujourd'hui)
@@ -535,6 +570,7 @@ Merci d'avoir fait confiance à Claude pour cette amélioration d'accessibilité
 L'application Galeon Hospital Map est maintenant beaucoup plus accessible aux utilisateurs avec handicaps.
 
 **Questions ou feedback ?**
+
 - 📧 accessibility@galeon.community
 - 🐛 [GitHub Issues](https://github.com/galeon/hospital-map/issues)
 - 📚 [Documentation Wiki](https://github.com/galeon/docs/wiki)

@@ -56,9 +56,10 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
     "@eslint/eslintrc": "^3.0.1",
     "@lingui/cli": "^5.2.0",
-    "@next/bundle-analyzer": "^15.4.0-canary.51",
+    "@next/bundle-analyzer": "^15.5.4",
     "@playwright/test": "^1.50.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.7.0",
@@ -84,6 +85,8 @@
     "rimraf": "^5.0.10",
     "tailwindcss": "^4.1.12",
     "typescript": "^5",
-    "vitest": "^3.0.7"
+    "vitest": "^3.0.7",
+    "workbox-webpack-plugin": "^7.3.0",
+    "workbox-window": "^7.3.0"
   }
 }

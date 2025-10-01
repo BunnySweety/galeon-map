@@ -1,11 +1,11 @@
-import type { Config } from 'tailwindcss'
+import type { Config } from 'tailwindcss';
 
 const config: Config = {
   content: [
     './app/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}', // Garde si des composants externes
   ],
-  
+
   theme: {
     extend: {
       // ===== COULEURS UNIFIÉES =====
@@ -28,35 +28,35 @@ const config: Config = {
           500: '#3b82f6',
         },
       },
-      
+
       // ===== TYPOGRAPHIE OPTIMISÉE =====
       fontFamily: {
         sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
         serif: ['var(--font-minion)', 'MinionPro', 'Georgia', 'serif'],
       },
-      
+
       // ===== EFFETS GLASSMORPHISM =====
       backdropBlur: {
         '17.5': '17.5px',
       },
-      
+
       // ===== ANIMATIONS COHÉRENTES =====
       animation: {
         'pulse-hospital': 'pulse-hospital 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'fade-in': 'fadeIn 0.3s ease-out',
         'slide-in': 'slideIn 0.3s ease-out',
       },
-      
+
       keyframes: {
         'pulse-hospital': {
-          '0%': { 
-            boxShadow: '0 0 0 0 rgba(59, 130, 246, 0.7)' 
+          '0%': {
+            boxShadow: '0 0 0 0 rgba(59, 130, 246, 0.7)',
           },
-          '70%': { 
-            boxShadow: '0 0 0 6px rgba(59, 130, 246, 0)' 
+          '70%': {
+            boxShadow: '0 0 0 6px rgba(59, 130, 246, 0)',
           },
-          '100%': { 
-            boxShadow: '0 0 0 0 rgba(59, 130, 246, 0)' 
+          '100%': {
+            boxShadow: '0 0 0 0 rgba(59, 130, 246, 0)',
           },
         },
         fadeIn: {
@@ -68,37 +68,37 @@ const config: Config = {
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
       },
-      
+
       // ===== ESPACEMENTS COHÉRENTS =====
       spacing: {
-        'standard': 'var(--standard-spacing)',
+        standard: 'var(--standard-spacing)',
       },
-      
+
       // ===== BREAKPOINTS PERSONNALISÉS =====
       screens: {
-        'xs': '375px',
-        'sm': '640px', 
-        'md': '768px',
-        'lg': '1024px',
-        'xl': '1280px',
+        xs: '375px',
+        sm: '640px',
+        md: '768px',
+        lg: '1024px',
+        xl: '1280px',
         '2xl': '1536px',
       },
-      
+
       // ===== Z-INDEX HIERARCHY =====
       zIndex: {
-        'timeline': '20',
-        'sidebar': '10',
-        'actionbar': '30',
-        'modal': '50',
-        'tooltip': '60',
-        'max': '9999',
+        timeline: '20',
+        sidebar: '10',
+        actionbar: '30',
+        modal: '50',
+        tooltip: '60',
+        max: '9999',
       },
     },
   },
-  
+
   // ===== PLUGINS OPTIMISÉS =====
   plugins: [],
-  
+
   // ===== OPTIMISATION DE PRODUCTION =====
   ...(process.env.NODE_ENV === 'production' && {
     content: [
@@ -106,6 +106,6 @@ const config: Config = {
       // Scan plus ciblé en production
     ],
   }),
-}
+};
 
-export default config
+export default config;

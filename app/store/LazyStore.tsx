@@ -37,11 +37,7 @@ export function LazyStoreProvider({ children }: LazyStoreProviderProps) {
     );
   }
 
-  return (
-    <LazyStoreContext.Provider value={store}>
-      {children}
-    </LazyStoreContext.Provider>
-  );
+  return <LazyStoreContext.Provider value={store}>{children}</LazyStoreContext.Provider>;
 }
 
 // Hook pour utiliser le store lazy
@@ -76,4 +72,4 @@ export function useConditionalStore(condition: boolean = true) {
   }, [condition]);
 
   return { store: store ? store() : null, isLoaded };
-} 
+}

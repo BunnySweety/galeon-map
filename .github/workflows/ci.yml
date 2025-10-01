@@ -327,18 +327,11 @@ jobs:
         with:
           fail-on-severity: moderate
 
-# Workflow Summary
+  # Workflow Summary
   status-summary:
     name: Status Summary
     runs-on: ubuntu-latest
-    needs:
-      [
-        lint-and-typecheck,
-        unit-tests,
-        e2e-tests,
-        security-audit,
-        build-production,
-      ]
+    needs: [lint-and-typecheck, unit-tests, e2e-tests, security-audit, build-production]
     if: always()
     timeout-minutes: 5
 

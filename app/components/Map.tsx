@@ -66,10 +66,10 @@ const MapComponent: React.FC<MapProps> = ({ className = '' }) => {
   } = useMapStore();
 
   // Custom hooks for modular functionality
-  const locationMarker = useLocationMarker({ 
-    mapRef, 
-    mapboxgl, 
-    translate: _ 
+  const locationMarker = useLocationMarker({
+    mapRef,
+    mapboxgl,
+    translate: _,
   });
 
   const geolocationHandler = useGeolocationHandler({
@@ -219,8 +219,8 @@ const MapComponent: React.FC<MapProps> = ({ className = '' }) => {
             <div className="text-red-500 mb-4">⚠️</div>
             <h2 className="text-xl font-semibold text-white mb-2">Map Loading Failed</h2>
             <p className="text-gray-300">{mapboxError}</p>
-            <button 
-              onClick={handleRetry} 
+            <button
+              onClick={handleRetry}
               className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
               Retry

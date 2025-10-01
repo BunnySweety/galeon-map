@@ -21,12 +21,12 @@ Ce plan d'action détaillé découle de l'audit complet de l'application et prop
 
 ### Vue d'Ensemble des Phases
 
-| Phase | Durée | Focus Principal | Actions | Effort |
-|-------|-------|-----------------|---------|--------|
-| **Phase 1** | Semaine 1-2 | 🔴 Critique | 12 actions | 40h |
-| **Phase 2** | Semaine 3-6 | 🟡 Important | 18 actions | 80h |
-| **Phase 3** | Semaine 7-12 | 🟢 Amélioration | 12 actions | 60h |
-| **Total** | 3 mois | | **42 actions** | **180h** |
+| Phase       | Durée        | Focus Principal | Actions        | Effort   |
+| ----------- | ------------ | --------------- | -------------- | -------- |
+| **Phase 1** | Semaine 1-2  | 🔴 Critique     | 12 actions     | 40h      |
+| **Phase 2** | Semaine 3-6  | 🟡 Important    | 18 actions     | 80h      |
+| **Phase 3** | Semaine 7-12 | 🟢 Amélioration | 12 actions     | 60h      |
+| **Total**   | 3 mois       |                 | **42 actions** | **180h** |
 
 ---
 
@@ -37,12 +37,14 @@ Ce plan d'action détaillé découle de l'audit complet de l'application et prop
 ### 1.1 Sécurité Critique (Priorité MAX)
 
 #### Action 1.1.1: Retirer le Token Mapbox Exposé
+
 **Fichier:** `app/hooks/useMapbox.ts`
 **Priorité:** 🔴 CRITIQUE
 **Durée:** 30 minutes
 **Effort:** ⚡ Facile
 
 **Étapes:**
+
 ```bash
 # 1. Retirer le token hardcodé
 # Dans app/hooks/useMapbox.ts, ligne 40, remplacer par:
@@ -50,13 +52,15 @@ Ce plan d'action détaillé découle de l'audit complet de l'application et prop
 
 ```typescript
 // AVANT (VULNÉRABLE):
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ??
+mapboxgl.accessToken =
+  process.env.NEXT_PUBLIC_MAPBOX_TOKEN ??
   'pk.eyJ1IjoiamVhbmJvbjkxIiwiYSI6ImNtNDlhMHMzNTA3YnkycXM2dmYxc281MHkifQ.taYYM3jxELZ5CZuOH9_3SQ';
 
 // APRÈS (SÉCURISÉ):
 const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 if (!token) {
-  const errorMsg = 'Mapbox token is required. Set NEXT_PUBLIC_MAPBOX_TOKEN in environment variables.';
+  const errorMsg =
+    'Mapbox token is required. Set NEXT_PUBLIC_MAPBOX_TOKEN in environment variables.';
   logger.error(errorMsg);
   setError(errorMsg);
   setIsLoading(false);
@@ -66,6 +70,7 @@ mapboxgl.accessToken = token;
 ```
 
 **Actions complémentaires:**
+
 ```bash
 # 2. Régénérer le token Mapbox
 # - Se connecter sur https://account.mapbox.com/access-tokens/
@@ -85,6 +90,7 @@ echo "NEXT_PUBLIC_MAPBOX_TOKEN=your_mapbox_token_here" >> .env.example
 ```
 
 **Validation:**
+
 - [ ] Token hardcodé supprimé du code
 - [ ] Ancien token révoqué sur Mapbox
 - [ ] Nouveau token créé avec restrictions
@@ -93,6 +99,7 @@ echo "NEXT_PUBLIC_MAPBOX_TOKEN=your_mapbox_token_here" >> .env.example
 - [ ] Map s'affiche correctement
 
 **Critères de succès:**
+
 - Aucun token visible dans le code source
 - Application fonctionne en dev et prod
 - Pas d'erreur console liée à Mapbox
@@ -100,6 +107,7 @@ echo "NEXT_PUBLIC_MAPBOX_TOKEN=your_mapbox_token_here" >> .env.example
 ---
 
 #### Action 1.1.2: Renforcer la Content Security Policy
+
 **Fichiers:** `public/_headers`, `next.config.mjs`
 **Priorité:** 🔴 CRITIQUE
 **Durée:** 2 heures
@@ -125,7 +133,9 @@ export function middleware(request: NextRequest) {
     frame-ancestors 'self';
     base-uri 'self';
     form-action 'self';
-  `.replace(/\s{2,}/g, ' ').trim();
+  `
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-nonce', nonce);
@@ -147,9 +157,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
 ```
 
@@ -176,6 +184,7 @@ export default function RootLayout({ children }) {
 ```
 
 **Validation:**
+
 - [ ] CSP header sans unsafe-inline/unsafe-eval (sauf style temporairement)
 - [ ] Nonce généré pour chaque requête
 - [ ] Scripts inline fonctionnent avec nonce
@@ -185,11 +194,13 @@ export default function RootLayout({ children }) {
 ---
 
 #### Action 1.1.3: Audit de Sécurité des Dépendances
+
 **Priorité:** 🔴 CRITIQUE
 **Durée:** 1 heure
 **Effort:** ⚡ Facile
 
 **Étapes:**
+
 ```bash
 # 1. Audit npm
 npm audit --production
@@ -216,6 +227,7 @@ snyk monitor
 ```
 
 **Validation:**
+
 - [ ] Aucune vulnérabilité critique
 - [ ] Vulnérabilités high corrigées ou documentées
 - [ ] Rapport d'audit généré
@@ -226,6 +238,7 @@ snyk monitor
 ### 1.2 Infrastructure de Tests (Priorité HAUTE)
 
 #### Action 1.2.1: Configurer l'Environnement de Tests Complet
+
 **Priorité:** 🔴 CRITIQUE
 **Durée:** 3 heures
 **Effort:** ⚡⚡ Moyen
@@ -278,7 +291,7 @@ vi.mock('mapbox-gl', () => ({
 
 // Mock Geolocation API
 const mockGeolocation = {
-  getCurrentPosition: vi.fn((success) =>
+  getCurrentPosition: vi.fn(success =>
     success({
       coords: {
         latitude: 48.8566,
@@ -378,6 +391,7 @@ export { customRender as render };
 ```
 
 **Validation:**
+
 - [ ] Tous les mocks fonctionnent
 - [ ] Tests peuvent s'exécuter sans erreur
 - [ ] Coverage configuré
@@ -386,6 +400,7 @@ export { customRender as render };
 ---
 
 #### Action 1.2.2: Tests du Store Zustand
+
 **Fichier:** `app/store/__tests__/useMapStore.test.ts`
 **Priorité:** 🔴 CRITIQUE
 **Durée:** 4 heures
@@ -519,9 +534,7 @@ describe('useMapStore', () => {
       });
 
       // Seulement les hôpitaux "Deployed" devraient être visibles
-      const deployedOnly = result.current.filteredHospitals.filter(
-        h => h.status === 'Deployed'
-      );
+      const deployedOnly = result.current.filteredHospitals.filter(h => h.status === 'Deployed');
       expect(deployedOnly).toHaveLength(1);
     });
 
@@ -592,6 +605,7 @@ describe('useMapStore', () => {
 ```
 
 **Validation:**
+
 - [ ] Au moins 15 tests unitaires passent
 - [ ] Couverture du store > 80%
 - [ ] Tous les edge cases testés
@@ -600,6 +614,7 @@ describe('useMapStore', () => {
 ---
 
 #### Action 1.2.3: Tests des Hooks Critiques
+
 **Fichiers:** `app/hooks/__tests__/useMapbox.test.ts`, `app/hooks/__tests__/useGeolocation.test.ts`
 **Priorité:** 🔴 HAUTE
 **Durée:** 4 heures
@@ -642,7 +657,7 @@ describe('useMapbox', () => {
     // Dans un contexte d'erreur, error devrait être défini
   });
 
-  it('devrait définir le token d\'accès Mapbox', async () => {
+  it("devrait définir le token d'accès Mapbox", async () => {
     process.env.NEXT_PUBLIC_MAPBOX_TOKEN = 'test_token';
 
     const { result } = renderHook(() => useMapbox());
@@ -667,7 +682,7 @@ describe('useGeolocation', () => {
     vi.clearAllMocks();
   });
 
-  it('devrait obtenir la position de l\'utilisateur', async () => {
+  it("devrait obtenir la position de l'utilisateur", async () => {
     const mockPosition = {
       coords: {
         latitude: 48.8566,
@@ -676,9 +691,7 @@ describe('useGeolocation', () => {
       },
     };
 
-    navigator.geolocation.getCurrentPosition = vi.fn((success) =>
-      success(mockPosition as any)
-    );
+    navigator.geolocation.getCurrentPosition = vi.fn(success => success(mockPosition as any));
 
     const { result } = renderHook(() => useGeolocation());
 
@@ -710,6 +723,7 @@ describe('useGeolocation', () => {
 ```
 
 **Validation:**
+
 - [ ] Tests useMapbox: 3+ tests passent
 - [ ] Tests useGeolocation: 3+ tests passent
 - [ ] Mocks Mapbox fonctionnent correctement
@@ -720,6 +734,7 @@ describe('useGeolocation', () => {
 ### 1.3 Documentation Critique
 
 #### Action 1.3.1: Documenter le Processus de Sécurité
+
 **Fichier:** `SECURITY.md`
 **Priorité:** 🔴 HAUTE
 **Durée:** 2 heures
@@ -735,12 +750,14 @@ describe('useGeolocation', () => {
 Si vous découvrez une vulnérabilité de sécurité, **ne créez PAS d'issue publique**.
 
 Contactez-nous directement:
+
 - **Email:** security@galeon.community
 - **PGP Key:** [Lien vers clé publique]
 
 ## Vulnérabilités Supportées
 
 Nous prenons en charge activement la sécurité pour:
+
 - Version actuelle (0.2.x)
 - Version précédente (0.1.x) - corrections critiques uniquement
 
@@ -778,6 +795,7 @@ Nous prenons en charge activement la sécurité pour:
 ### Headers HTTP
 
 Tous les headers de sécurité doivent être configurés:
+
 - X-Frame-Options
 - X-Content-Type-Options
 - X-XSS-Protection
@@ -805,6 +823,7 @@ Tous les headers de sécurité doivent être configurés:
 ```
 
 **Validation:**
+
 - [ ] Fichier SECURITY.md créé
 - [ ] Process de signalement clair
 - [ ] Engagement de réponse défini
@@ -815,6 +834,7 @@ Tous les headers de sécurité doivent être configurés:
 ### Récapitulatif Phase 1
 
 **Résultats attendus:**
+
 - ✅ Toutes les vulnérabilités critiques corrigées
 - ✅ Infrastructure de tests opérationnelle
 - ✅ 20+ tests unitaires créés
@@ -822,8 +842,9 @@ Tous les headers de sécurité doivent être configurés:
 - ✅ Score sécurité: 6.5 → 8.5/10
 
 **Checklist de validation Phase 1:**
+
 - [ ] Token Mapbox sécurisé et révoqué
-- [ ] CSP renforcée sans unsafe-*
+- [ ] CSP renforcée sans unsafe-\*
 - [ ] Audit npm sans vulnérabilités critiques
 - [ ] Setup tests complet fonctionnel
 - [ ] Tests store (15+ tests) passent
@@ -841,24 +862,28 @@ Tous les headers de sécurité doivent être configurés:
 ### 2.1 Tests des Composants UI (Semaine 3)
 
 #### Action 2.1.1: Tests du Composant Map
+
 **Fichier:** `app/components/__tests__/Map.test.tsx`
 **Priorité:** 🟡 HAUTE
 **Durée:** 6 heures
 **Effort:** ⚡⚡⚡ Complexe
 
 #### Action 2.1.2: Tests HospitalDetail
+
 **Fichier:** `app/components/__tests__/HospitalDetail.test.tsx`
 **Priorité:** 🟡 HAUTE
 **Durée:** 4 heures
 **Effort:** ⚡⚡ Moyen
 
 #### Action 2.1.3: Tests ActionBar
+
 **Fichier:** `app/components/__tests__/ActionBar.test.tsx`
 **Priorité:** 🟡 MOYENNE
 **Durée:** 3 heures
 **Effort:** ⚡⚡ Moyen
 
 #### Action 2.1.4: Tests TimelineControl
+
 **Fichier:** `app/components/__tests__/TimelineControl.test.tsx`
 **Priorité:** 🟡 MOYENNE
 **Durée:** 4 heures
@@ -871,6 +896,7 @@ Tous les headers de sécurité doivent être configurés:
 ### 2.2 Tests E2E Complets (Semaine 4)
 
 #### Action 2.2.1: Tests d'Export (PDF, Excel, JSON)
+
 **Fichier:** `e2e/export-features.spec.ts`
 **Priorité:** 🟡 HAUTE
 **Durée:** 5 heures
@@ -925,27 +951,28 @@ test.describe('Export Features', () => {
     expect(download.suggestedFilename()).toContain('.json');
 
     // Vérifier que c'est un JSON valide
-    const content = await download.path().then(p =>
-      require('fs').readFileSync(p, 'utf-8')
-    );
+    const content = await download.path().then(p => require('fs').readFileSync(p, 'utf-8'));
     expect(() => JSON.parse(content)).not.toThrow();
   });
 });
 ```
 
 #### Action 2.2.2: Tests de Timeline
+
 **Fichier:** `e2e/timeline.spec.ts`
 **Priorité:** 🟡 HAUTE
 **Durée:** 4 heures
 **Effort:** ⚡⚡⚡ Complexe
 
 #### Action 2.2.3: Tests de Partage Social
+
 **Fichier:** `e2e/share-features.spec.ts`
 **Priorité:** 🟡 MOYENNE
 **Durée:** 3 heures
 **Effort:** ⚡⚡ Moyen
 
 #### Action 2.2.4: Tests Multi-Navigateurs
+
 **Configuration:** `playwright.config.ts`
 **Priorité:** 🟡 MOYENNE
 **Durée:** 2 heures
@@ -984,6 +1011,7 @@ projects: [
 ### 2.3 Qualité du Code (Semaine 5)
 
 #### Action 2.3.1: Créer des Constantes pour Magic Numbers
+
 **Fichier:** `app/utils/constants.ts`
 **Priorité:** 🟡 MOYENNE
 **Durée:** 2 heures
@@ -1027,6 +1055,7 @@ export const Z_INDEX = {
 **Ensuite:** Remplacer tous les magic numbers dans les composants
 
 **Validation:**
+
 - [ ] Fichier constants.ts créé
 - [ ] Au moins 20+ constantes définies
 - [ ] Tous les composants mis à jour
@@ -1035,6 +1064,7 @@ export const Z_INDEX = {
 ---
 
 #### Action 2.3.2: Typer les Traductions
+
 **Fichier:** `app/types/translations.ts`
 **Priorité:** 🟡 MOYENNE
 **Durée:** 3 heures
@@ -1082,6 +1112,7 @@ export function translate(key: TranslationKey, i18n: any): string {
 ```
 
 **Validation:**
+
 - [ ] Tous les textes UI typés
 - [ ] Aucune string hardcodée non typée
 - [ ] IDE autocomplete fonctionne
@@ -1090,6 +1121,7 @@ export function translate(key: TranslationKey, i18n: any): string {
 ---
 
 #### Action 2.3.3: Implémenter Error Boundaries
+
 **Fichier:** `app/components/ErrorBoundary.tsx`
 **Priorité:** 🟡 HAUTE
 **Durée:** 3 heures
@@ -1202,9 +1234,7 @@ export default function RootLayout({ children }) {
   return (
     <html>
       <body>
-        <ErrorBoundary>
-          {children}
-        </ErrorBoundary>
+        <ErrorBoundary>{children}</ErrorBoundary>
       </body>
     </html>
   );
@@ -1213,10 +1243,11 @@ export default function RootLayout({ children }) {
 // Pour une feature spécifique:
 <ErrorBoundary fallback={FeatureErrorFallback}>
   <Map />
-</ErrorBoundary>
+</ErrorBoundary>;
 ```
 
 **Validation:**
+
 - [ ] ErrorBoundary implémenté
 - [ ] Fallback UI testé
 - [ ] Logs d'erreur fonctionnent
@@ -1225,6 +1256,7 @@ export default function RootLayout({ children }) {
 ---
 
 #### Action 2.3.4: Nettoyer useQueryHooks.ts
+
 **Fichier:** `app/store/useQueryHooks.ts`
 **Priorité:** 🟡 BASSE
 **Durée:** 30 minutes
@@ -1233,12 +1265,14 @@ export default function RootLayout({ children }) {
 **Options:**
 
 **Option A: Supprimer** (recommandé si non utilisé)
+
 ```bash
 rm app/store/useQueryHooks.ts
 # Vérifier qu'aucune import ne référence ce fichier
 ```
 
 **Option B: Intégrer avec Zustand**
+
 ```typescript
 // Utiliser React Query pour la synchro serveur future
 // Garder Zustand pour l'état local
@@ -1246,6 +1280,7 @@ rm app/store/useQueryHooks.ts
 ```
 
 **Validation:**
+
 - [ ] Décision prise et documentée
 - [ ] Fichier supprimé OU intégré
 - [ ] Aucune import cassée
@@ -1256,6 +1291,7 @@ rm app/store/useQueryHooks.ts
 ### 2.4 Performance et Monitoring (Semaine 6)
 
 #### Action 2.4.1: Implémenter Web Vitals Monitoring
+
 **Fichier:** `app/utils/analytics.ts`
 **Priorité:** 🟡 HAUTE
 **Durée:** 4 heures
@@ -1360,6 +1396,7 @@ export async function onRequestPost(context) {
 ```
 
 **Validation:**
+
 - [ ] Web Vitals collectés
 - [ ] Métriques envoyées à l'API
 - [ ] Dashboard Cloudflare configuré
@@ -1368,6 +1405,7 @@ export async function onRequestPost(context) {
 ---
 
 #### Action 2.4.2: Service Worker pour Offline
+
 **Fichier:** `public/sw.js` (déjà existant, à activer)
 **Priorité:** 🟡 MOYENNE
 **Durée:** 3 heures
@@ -1385,7 +1423,7 @@ export default function ServiceWorker() {
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
       navigator.serviceWorker
         .register('/sw.js')
-        .then((registration) => {
+        .then(registration => {
           logger.info('Service Worker registered:', registration.scope);
 
           // Vérifier les mises à jour
@@ -1406,7 +1444,7 @@ export default function ServiceWorker() {
             }
           });
         })
-        .catch((error) => {
+        .catch(error => {
           logger.error('Service Worker registration failed:', error);
         });
     }
@@ -1422,37 +1460,32 @@ const CACHE_NAME = 'galeon-hospitals-v1';
 const RUNTIME_CACHE = 'galeon-runtime';
 
 // Ressources à précacher
-const PRECACHE_URLS = [
-  '/',
-  '/offline.html',
-  '/logo-white.svg',
-  '/manifest.json',
-];
+const PRECACHE_URLS = ['/', '/offline.html', '/logo-white.svg', '/manifest.json'];
 
 // Installation - Précacher les ressources
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
-  );
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE_URLS)));
   self.skipWaiting();
 });
 
 // Activation - Nettoyer les anciens caches
-self.addEventListener('activate', (event) => {
+self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then((cacheNames) =>
-      Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME && name !== RUNTIME_CACHE)
-          .map((name) => caches.delete(name))
+    caches
+      .keys()
+      .then(cacheNames =>
+        Promise.all(
+          cacheNames
+            .filter(name => name !== CACHE_NAME && name !== RUNTIME_CACHE)
+            .map(name => caches.delete(name))
+        )
       )
-    )
   );
   self.clients.claim();
 });
 
 // Fetch - Stratégie Network First avec fallback Cache
-self.addEventListener('fetch', (event) => {
+self.addEventListener('fetch', event => {
   const { request } = event;
 
   // Skip non-GET requests
@@ -1463,13 +1496,13 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     fetch(request)
-      .then((response) => {
+      .then(response => {
         // Clone response before caching
         const responseClone = response.clone();
 
         // Cache successful responses
         if (response.status === 200) {
-          caches.open(RUNTIME_CACHE).then((cache) => {
+          caches.open(RUNTIME_CACHE).then(cache => {
             cache.put(request, responseClone);
           });
         }
@@ -1478,7 +1511,7 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(() => {
         // Network failed, try cache
-        return caches.match(request).then((cachedResponse) => {
+        return caches.match(request).then(cachedResponse => {
           if (cachedResponse) {
             return cachedResponse;
           }
@@ -1496,6 +1529,7 @@ self.addEventListener('fetch', (event) => {
 ```
 
 **Validation:**
+
 - [ ] Service Worker enregistré
 - [ ] Ressources critiques précachées
 - [ ] Mode offline fonctionne
@@ -1504,6 +1538,7 @@ self.addEventListener('fetch', (event) => {
 ---
 
 #### Action 2.4.3: Activer Bundle Analyzer
+
 **Configuration:** `next.config.mjs`
 **Priorité:** 🟡 MOYENNE
 **Durée:** 1 heure
@@ -1520,11 +1555,13 @@ ANALYZE=true npm run build
 ```
 
 **Actions après analyse:**
+
 - Identifier les packages trop lourds
 - Vérifier le tree-shaking
 - Optimiser les chunks
 
 **Validation:**
+
 - [ ] Bundle analyzer exécuté
 - [ ] Rapport généré et examiné
 - [ ] Actions d'optimisation identifiées
@@ -1535,6 +1572,7 @@ ANALYZE=true npm run build
 ### Récapitulatif Phase 2
 
 **Résultats attendus:**
+
 - ✅ 50+ tests totaux (unitaires + E2E + intégration)
 - ✅ Couverture globale > 60%
 - ✅ Code quality améliorée (constants, types, error boundaries)
@@ -1543,6 +1581,7 @@ ANALYZE=true npm run build
 - ✅ Score qualité: 8.0 → 9.0/10
 
 **Checklist de validation Phase 2:**
+
 - [ ] 30+ tests composants UI passent
 - [ ] 15+ tests E2E passent sur tous les navigateurs
 - [ ] Magic numbers tous remplacés par constantes
@@ -1561,18 +1600,22 @@ ANALYZE=true npm run build
 ### 3.1 Optimisations Avancées
 
 #### Action 3.1.1: Implémenter Feature Flags
+
 **Fichier:** `app/config/features.ts`
 **Durée:** 2 heures
 
 #### Action 3.1.2: Ajouter Preload pour Polices
+
 **Fichiers:** `app/layout.tsx`, `next.config.mjs`
 **Durée:** 1 heure
 
 #### Action 3.1.3: Optimiser Images avec Sharp
+
 **Configuration:** `next.config.mjs`
 **Durée:** 2 heures
 
 #### Action 3.1.4: Implémenter Code Splitting Avancé
+
 **Fichiers:** Tous les composants lourds
 **Durée:** 4 heures
 
@@ -1581,6 +1624,7 @@ ANALYZE=true npm run build
 ### 3.2 CI/CD et Automatisation
 
 #### Action 3.2.1: GitHub Actions pour Tests
+
 **Fichier:** `.github/workflows/ci.yml`
 **Priorité:** 🟢 HAUTE
 **Durée:** 4 heures
@@ -1700,6 +1744,7 @@ jobs:
 ```
 
 **Validation:**
+
 - [ ] Workflow CI créé
 - [ ] Tests automatiques fonctionnent
 - [ ] Coverage uploadé vers Codecov
@@ -1708,31 +1753,33 @@ jobs:
 ---
 
 #### Action 3.2.2: Dependabot Configuration
+
 **Fichier:** `.github/dependabot.yml`
 **Durée:** 30 minutes
 
 ```yaml
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: 'weekly'
+      day: 'monday'
     open-pull-requests-limit: 10
     reviewers:
-      - "tech-team"
+      - 'tech-team'
     labels:
-      - "dependencies"
-    versioning-strategy: "increase-if-necessary"
+      - 'dependencies'
+    versioning-strategy: 'increase-if-necessary'
     ignore:
-      - dependency-name: "next"
-        update-types: ["version-update:semver-major"]
+      - dependency-name: 'next'
+        update-types: ['version-update:semver-major']
 ```
 
 ---
 
 #### Action 3.2.3: Pre-commit Hooks avec Husky
+
 **Fichier:** `.husky/pre-commit`
 **Durée:** 1 heure
 
@@ -1771,6 +1818,7 @@ echo "✅ All pre-commit checks passed!"
 ### 3.3 Documentation Complète
 
 #### Action 3.3.1: Architecture Decision Records (ADR)
+
 **Dossier:** `docs/adr/`
 **Durée:** 6 heures
 
@@ -1778,21 +1826,26 @@ echo "✅ All pre-commit checks passed!"
 # ADR 001: Utilisation de Zustand pour la Gestion d'État
 
 ## Statut
+
 Accepté
 
 ## Contexte
+
 L'application nécessite une gestion d'état globale pour:
+
 - La liste des hôpitaux
 - Les filtres actifs
 - La date courante de la timeline
 - La langue de l'interface
 
 ## Décision
+
 Utiliser Zustand au lieu de Redux ou Context API.
 
 ## Conséquences
 
 ### Positives
+
 - API simple et minimaliste
 - Performance excellente
 - Pas de boilerplate
@@ -1800,16 +1853,19 @@ Utiliser Zustand au lieu de Redux ou Context API.
 - Persist middleware facile
 
 ### Négatives
+
 - Moins de middlewares disponibles que Redux
 - Communauté plus petite
 
 ## Alternatives Considérées
+
 1. **Redux Toolkit**: Trop de boilerplate pour nos besoins
 2. **Context API**: Performance insuffisante avec de nombreux re-renders
 3. **Jotai**: Moins mature que Zustand
 ```
 
 Créer des ADR pour:
+
 - Choix de Next.js 15
 - Export statique vs SSR
 - Mapbox vs Google Maps
@@ -1820,10 +1876,12 @@ Créer des ADR pour:
 ---
 
 #### Action 3.3.2: Guide de Contribution
+
 **Fichier:** `CONTRIBUTING.md`
 **Durée:** 3 heures
 
 #### Action 3.3.3: API Documentation
+
 **Fichier:** `docs/API.md`
 **Durée:** 2 heures
 
@@ -1832,18 +1890,22 @@ Créer des ADR pour:
 ### 3.4 Accessibilité Complète
 
 #### Action 3.4.1: Audit WCAG 2.1
+
 **Outil:** axe DevTools
 **Durée:** 4 heures
 
 #### Action 3.4.2: Skip Links
+
 **Fichiers:** Composants de layout
 **Durée:** 1 heure
 
 #### Action 3.4.3: ARIA Live Regions
+
 **Fichiers:** Composants avec updates dynamiques
 **Durée:** 2 heures
 
 #### Action 3.4.4: Focus Management
+
 **Fichiers:** Tous les composants interactifs
 **Durée:** 3 heures
 
@@ -1852,6 +1914,7 @@ Créer des ADR pour:
 ### 3.5 Monitoring Production
 
 #### Action 3.5.1: Sentry pour Error Tracking
+
 **Configuration:** Sentry SDK
 **Durée:** 3 heures
 
@@ -1861,10 +1924,12 @@ npx @sentry/wizard -i nextjs
 ```
 
 #### Action 3.5.2: Cloudflare Analytics
+
 **Configuration:** Dashboard Cloudflare
 **Durée:** 1 heure
 
 #### Action 3.5.3: Real User Monitoring (RUM)
+
 **Configuration:** Cloudflare RUM
 **Durée:** 2 heures
 
@@ -1873,6 +1938,7 @@ npx @sentry/wizard -i nextjs
 ### Récapitulatif Phase 3
 
 **Résultats attendus:**
+
 - ✅ CI/CD complet avec GitHub Actions
 - ✅ Documentation exhaustive (ADR, CONTRIBUTING, API)
 - ✅ Accessibilité WCAG 2.1 AA compliant
@@ -1885,33 +1951,33 @@ npx @sentry/wizard -i nextjs
 
 ### KPIs Techniques
 
-| Métrique | Actuel | Cible | Méthode de Mesure |
-|----------|--------|-------|-------------------|
-| **Tests Coverage** | 20% | 70%+ | Vitest coverage report |
-| **Lighthouse Performance** | >90 | >95 | Chrome DevTools |
-| **Lighthouse Accessibility** | ~85 | >95 | Chrome DevTools |
-| **Lighthouse SEO** | ~90 | >95 | Chrome DevTools |
-| **Bundle Size (JS)** | ~250KB | <200KB | Bundle analyzer |
-| **Bundle Size (CSS)** | ~50KB | <30KB | Bundle analyzer |
-| **Time to Interactive** | ~3s | <2.5s | Web Vitals |
-| **Largest Contentful Paint** | ~2.8s | <2.5s | Web Vitals |
-| **First Input Delay** | ~100ms | <100ms | Web Vitals |
-| **Cumulative Layout Shift** | <0.1 | <0.1 | Web Vitals |
-| **Build Time** | ~7s | <5s | CI logs |
-| **Vulnérabilités npm** | 5 | 0 | npm audit |
+| Métrique                     | Actuel | Cible  | Méthode de Mesure      |
+| ---------------------------- | ------ | ------ | ---------------------- |
+| **Tests Coverage**           | 20%    | 70%+   | Vitest coverage report |
+| **Lighthouse Performance**   | >90    | >95    | Chrome DevTools        |
+| **Lighthouse Accessibility** | ~85    | >95    | Chrome DevTools        |
+| **Lighthouse SEO**           | ~90    | >95    | Chrome DevTools        |
+| **Bundle Size (JS)**         | ~250KB | <200KB | Bundle analyzer        |
+| **Bundle Size (CSS)**        | ~50KB  | <30KB  | Bundle analyzer        |
+| **Time to Interactive**      | ~3s    | <2.5s  | Web Vitals             |
+| **Largest Contentful Paint** | ~2.8s  | <2.5s  | Web Vitals             |
+| **First Input Delay**        | ~100ms | <100ms | Web Vitals             |
+| **Cumulative Layout Shift**  | <0.1   | <0.1   | Web Vitals             |
+| **Build Time**               | ~7s    | <5s    | CI logs                |
+| **Vulnérabilités npm**       | 5      | 0      | npm audit              |
 
 ### KPIs Qualité
 
-| Métrique | Actuel | Cible | Méthode |
-|----------|--------|-------|---------|
-| **Score Sécurité** | 6.5/10 | 9/10 | Audit manuel |
-| **Score Performance** | 8.5/10 | 9/10 | Audit manuel |
-| **Score Qualité Code** | 8/10 | 9/10 | Audit manuel |
-| **Score Architecture** | 9/10 | 9/10 | Audit manuel |
-| **Score Tests** | 4/10 | 8/10 | Audit manuel |
-| **Score Accessibilité** | 7/10 | 9/10 | Audit manuel |
-| **TypeScript Strictness** | 8/10 | 9/10 | tsconfig analysis |
-| **Documentation Coverage** | 30% | 80% | Manuel |
+| Métrique                   | Actuel | Cible | Méthode           |
+| -------------------------- | ------ | ----- | ----------------- |
+| **Score Sécurité**         | 6.5/10 | 9/10  | Audit manuel      |
+| **Score Performance**      | 8.5/10 | 9/10  | Audit manuel      |
+| **Score Qualité Code**     | 8/10   | 9/10  | Audit manuel      |
+| **Score Architecture**     | 9/10   | 9/10  | Audit manuel      |
+| **Score Tests**            | 4/10   | 8/10  | Audit manuel      |
+| **Score Accessibilité**    | 7/10   | 9/10  | Audit manuel      |
+| **TypeScript Strictness**  | 8/10   | 9/10  | tsconfig analysis |
+| **Documentation Coverage** | 30%    | 80%   | Manuel            |
 
 ### Rapports Hebdomadaires
 
@@ -1921,19 +1987,23 @@ npx @sentry/wizard -i nextjs
 # Rapport Hebdomadaire - Semaine X
 
 ## Actions Complétées
+
 - [ ] Action 1.1.1: Token Mapbox sécurisé ✅
 - [ ] Action 1.1.2: CSP renforcée ✅
 - ...
 
 ## Métriques Actuelles
+
 - Tests Coverage: 35% (+15%)
 - Lighthouse Score: 92 (+2)
 - Vulnérabilités: 2 (-3)
 
 ## Blocages
+
 - Aucun
 
 ## Plan Semaine Prochaine
+
 - Action 2.1.1: Tests Map component
 - Action 2.1.2: Tests HospitalDetail
 - ...
@@ -1944,30 +2014,37 @@ npx @sentry/wizard -i nextjs
 ## 🗓️ CALENDRIER DÉTAILLÉ
 
 ### Semaine 1 (Critique)
+
 **Lun-Mar:** Actions 1.1.1 à 1.1.3 (Sécurité)
 **Mer-Jeu:** Action 1.2.1 (Setup tests)
 **Ven:** Action 1.2.2 (Tests store)
 
 ### Semaine 2 (Critique)
+
 **Lun-Mar:** Action 1.2.3 (Tests hooks)
 **Mer-Jeu:** Action 1.3.1 (Doc sécurité)
 **Ven:** Review Phase 1 + Validation
 
 ### Semaine 3 (Important)
+
 **Lun-Ven:** Actions 2.1.1 à 2.1.4 (Tests composants UI)
 
 ### Semaine 4 (Important)
+
 **Lun-Ven:** Actions 2.2.1 à 2.2.4 (Tests E2E complets)
 
 ### Semaine 5 (Important)
+
 **Lun-Mer:** Actions 2.3.1 à 2.3.4 (Qualité code)
 **Jeu-Ven:** Actions 2.4.1 à 2.4.2 (Performance)
 
 ### Semaine 6 (Important)
+
 **Lun-Mar:** Action 2.4.3 (Bundle analyzer)
 **Mer-Ven:** Review Phase 2 + Validation
 
 ### Semaines 7-12 (Amélioration)
+
 **Semaine 7:** Optimisations avancées (3.1.x)
 **Semaine 8:** CI/CD (3.2.x)
 **Semaine 9:** Documentation (3.3.x)
@@ -1981,24 +2058,26 @@ npx @sentry/wizard -i nextjs
 
 ### Effort Total par Phase
 
-| Phase | Heures Dev | Heures QA | Total | Coût Estimé* |
-|-------|------------|-----------|-------|--------------|
-| Phase 1 | 32h | 8h | 40h | 4000€ |
-| Phase 2 | 64h | 16h | 80h | 8000€ |
-| Phase 3 | 48h | 12h | 60h | 6000€ |
-| **Total** | **144h** | **36h** | **180h** | **18000€** |
+| Phase     | Heures Dev | Heures QA | Total    | Coût Estimé\* |
+| --------- | ---------- | --------- | -------- | ------------- |
+| Phase 1   | 32h        | 8h        | 40h      | 4000€         |
+| Phase 2   | 64h        | 16h       | 80h      | 8000€         |
+| Phase 3   | 48h        | 12h       | 60h      | 6000€         |
+| **Total** | **144h**   | **36h**   | **180h** | **18000€**    |
 
-*Basé sur un taux de 100€/h (développeur senior)
+\*Basé sur un taux de 100€/h (développeur senior)
 
 ### Ressources Nécessaires
 
 **Équipe recommandée:**
+
 - 1 Développeur Senior (lead technique)
 - 1 Développeur Intermédiaire (implémentation)
 - 0.5 QA Engineer (tests, validation)
 - 0.25 DevOps (CI/CD, déploiement)
 
 **Outils requis:**
+
 - GitHub Actions (gratuit pour projets publics)
 - Codecov (gratuit pour projets open source)
 - Sentry (plan Free ou Business ~26€/mois)
@@ -2010,26 +2089,29 @@ npx @sentry/wizard -i nextjs
 
 ### Risques Identifiés
 
-| Risque | Impact | Probabilité | Mitigation |
-|--------|--------|-------------|------------|
-| Breaking changes Mapbox | Élevé | Faible | Version pinning, tests E2E |
-| Tests flaky | Moyen | Moyenne | Retry logic, mocks stables |
-| Régression performance | Élevé | Faible | Web Vitals monitoring, alertes |
-| Dépendances obsolètes | Moyen | Moyenne | Dependabot, audits réguliers |
-| Dépassement délais | Moyen | Moyenne | Buffer 20%, priorisation stricte |
-| Manque de ressources | Élevé | Faible | Plan B avec scope réduit |
+| Risque                  | Impact | Probabilité | Mitigation                       |
+| ----------------------- | ------ | ----------- | -------------------------------- |
+| Breaking changes Mapbox | Élevé  | Faible      | Version pinning, tests E2E       |
+| Tests flaky             | Moyen  | Moyenne     | Retry logic, mocks stables       |
+| Régression performance  | Élevé  | Faible      | Web Vitals monitoring, alertes   |
+| Dépendances obsolètes   | Moyen  | Moyenne     | Dependabot, audits réguliers     |
+| Dépassement délais      | Moyen  | Moyenne     | Buffer 20%, priorisation stricte |
+| Manque de ressources    | Élevé  | Faible      | Plan B avec scope réduit         |
 
 ### Plan de Contingence
 
 **Si dépassement de délai Phase 1:**
+
 - Reporter tests hooks (1.2.3) à Phase 2
 - Garder seulement sécurité critique
 
 **Si dépassement de délai Phase 2:**
+
 - Reporter tests E2E multi-navigateurs
 - Focus sur tests unitaires uniquement
 
 **Si dépassement de délai Phase 3:**
+
 - Phase 3 est optionnelle (amélioration)
 - Prioriser CI/CD et monitoring uniquement
 
@@ -2040,14 +2122,16 @@ npx @sentry/wizard -i nextjs
 ### Avant Production
 
 **Sécurité:**
+
 - [ ] Aucune vulnérabilité critique ou haute
 - [ ] Tous les secrets externalisés (.env)
-- [ ] CSP stricte sans unsafe-*
+- [ ] CSP stricte sans unsafe-\*
 - [ ] Headers de sécurité configurés
 - [ ] HTTPS forcé partout
 - [ ] Rate limiting actif
 
 **Tests:**
+
 - [ ] Coverage > 70%
 - [ ] Tous les tests CI passent
 - [ ] Tests E2E sur 3+ navigateurs
@@ -2055,6 +2139,7 @@ npx @sentry/wizard -i nextjs
 - [ ] Tests de charge effectués
 
 **Performance:**
+
 - [ ] Lighthouse Performance > 95
 - [ ] LCP < 2.5s
 - [ ] FID < 100ms
@@ -2063,6 +2148,7 @@ npx @sentry/wizard -i nextjs
 - [ ] Service Worker actif
 
 **Qualité:**
+
 - [ ] TypeScript compile sans erreur
 - [ ] ESLint passe sans warning
 - [ ] Prettier appliqué partout
@@ -2070,6 +2156,7 @@ npx @sentry/wizard -i nextjs
 - [ ] Error Boundaries implémentés
 
 **Documentation:**
+
 - [ ] README à jour
 - [ ] SECURITY.md publié
 - [ ] CONTRIBUTING.md créé
@@ -2077,6 +2164,7 @@ npx @sentry/wizard -i nextjs
 - [ ] API documentée
 
 **Monitoring:**
+
 - [ ] Sentry configuré
 - [ ] Web Vitals collectés
 - [ ] Cloudflare Analytics actif
@@ -2084,6 +2172,7 @@ npx @sentry/wizard -i nextjs
 - [ ] Dashboard opérationnel
 
 **Accessibilité:**
+
 - [ ] WCAG 2.1 AA compliant
 - [ ] Screen reader testé
 - [ ] Navigation clavier OK
@@ -2096,28 +2185,34 @@ npx @sentry/wizard -i nextjs
 ### Équipe Projet
 
 **Product Owner:** [Nom]
+
 - Validation des priorités
 - Décisions fonctionnelles
 
 **Tech Lead:** [Nom]
+
 - Architecture technique
 - Review de code
 - Décisions techniques critiques
 
 **Développeur Senior:** [Nom]
+
 - Implémentation Phase 1-2
 - Mentorat développeur junior
 
 **Développeur Intermédiaire:** [Nom]
+
 - Implémentation Phase 2-3
 - Tests
 
 **QA Engineer:** [Nom]
+
 - Validation tests
 - Tests manuels
 - Rapports de bugs
 
 **DevOps:** [Nom]
+
 - CI/CD
 - Déploiement
 - Monitoring
@@ -2125,12 +2220,14 @@ npx @sentry/wizard -i nextjs
 ### Communication
 
 **Réunions:**
+
 - **Daily Standup:** Lun-Ven 9h00 (15min)
 - **Sprint Planning:** Début de chaque phase (2h)
 - **Retrospective:** Fin de chaque phase (1h)
 - **Demo:** Fin de phase 1 et 2 (1h)
 
 **Canaux:**
+
 - **Urgent:** Téléphone / SMS
 - **Questions techniques:** Slack #dev-galeon
 - **Bugs:** GitHub Issues
@@ -2143,12 +2240,14 @@ npx @sentry/wizard -i nextjs
 Ce plan d'action de 180 heures sur 3 mois transformera l'application Galeon Hospital Map d'un score de **7.2/10** à **9.0/10**.
 
 **Priorités absolues:**
+
 1. 🔴 Sécuriser le token Mapbox (30 min)
 2. 🔴 Renforcer la CSP (2h)
 3. 🔴 Créer 30+ tests unitaires (20h)
 4. 🔴 Créer 15+ tests E2E (15h)
 
 **Succès final mesurable:**
+
 - ✅ Zéro vulnérabilité critique
 - ✅ 70%+ de couverture de tests
 - ✅ Lighthouse > 95 sur tous les scores
@@ -2163,4 +2262,4 @@ Commencer par l'Action 1.1.1 (retrait token Mapbox) - **AUJOURD'HUI**.
 **Prochaine révision:** Fin de chaque phase
 **Version:** 1.0
 
-*Pour toute question sur ce plan d'action, contacter le Tech Lead.*
+_Pour toute question sur ce plan d'action, contacter le Tech Lead._

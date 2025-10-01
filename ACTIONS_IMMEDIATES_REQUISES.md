@@ -42,6 +42,7 @@ Un token Mapbox exposé a été détecté et supprimé du code source. Des actio
 #### 2.2 Configurer les restrictions (OBLIGATOIRE)
 
 **URL Restrictions** (critical):
+
 ```
 # Pour la production:
 https://map.galeon.community/*
@@ -54,6 +55,7 @@ https://map-dev.galeon.community/*
 ```
 
 **Scopes** (principe du moindre privilège):
+
 - ✅ `styles:read` - Lecture des styles de carte
 - ✅ `fonts:read` - Lecture des polices
 - ✅ `tiles:read` - Lecture des tuiles de carte
@@ -111,17 +113,18 @@ NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ...VOTRE_NOUVEAU_TOKEN_PRODUCTION
 
 #### 4.2 Ajouter les secrets requis
 
-| Nom du Secret | Valeur | Obligatoire | Description |
-|---------------|--------|-------------|-------------|
-| `NEXT_PUBLIC_MAPBOX_TOKEN` | Votre nouveau token Mapbox | ✅ OUI | Token pour build et déploiement |
-| `CLOUDFLARE_API_TOKEN` | Token Cloudflare Pages | ✅ OUI | Pour déploiements automatiques |
-| `CLOUDFLARE_ACCOUNT_ID` | ID compte Cloudflare | ✅ OUI | Identifiant du compte |
-| `CODECOV_TOKEN` | Token Codecov | ⚠️ Recommandé | Coverage reporting |
-| `SNYK_TOKEN` | Token Snyk | ⚠️ Recommandé | Security scanning |
+| Nom du Secret              | Valeur                     | Obligatoire   | Description                     |
+| -------------------------- | -------------------------- | ------------- | ------------------------------- |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | Votre nouveau token Mapbox | ✅ OUI        | Token pour build et déploiement |
+| `CLOUDFLARE_API_TOKEN`     | Token Cloudflare Pages     | ✅ OUI        | Pour déploiements automatiques  |
+| `CLOUDFLARE_ACCOUNT_ID`    | ID compte Cloudflare       | ✅ OUI        | Identifiant du compte           |
+| `CODECOV_TOKEN`            | Token Codecov              | ⚠️ Recommandé | Coverage reporting              |
+| `SNYK_TOKEN`               | Token Snyk                 | ⚠️ Recommandé | Security scanning               |
 
 #### 4.3 Obtenir les tokens Cloudflare
 
 **API Token**:
+
 1. [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens)
 2. "Create Token" > "Edit Cloudflare Workers" template
 3. Permissions requises:
@@ -129,6 +132,7 @@ NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ...VOTRE_NOUVEAU_TOKEN_PRODUCTION
    - Zone > Zone > Read
 
 **Account ID**:
+
 1. [Cloudflare Dashboard](https://dash.cloudflare.com/)
 2. Sélectionner votre site
 3. Copier l'Account ID depuis la sidebar
@@ -225,12 +229,14 @@ Avant de considérer ces actions comme complètes, vérifiez:
 Une fois toutes les actions ci-dessus complétées:
 
 1. **Test du build production**:
+
    ```bash
    npm run build
    npx wrangler pages dev .next
    ```
 
 2. **Premier déploiement**:
+
    ```bash
    git add .
    git commit -m "Security: Remove exposed Mapbox token, update configuration"
@@ -251,15 +257,18 @@ Une fois toutes les actions ci-dessus complétées:
 ### En cas de problème
 
 **Erreur "Mapbox token is required"**:
+
 - Vérifier que `NEXT_PUBLIC_MAPBOX_TOKEN` est bien défini dans .env.local
 - Redémarrer le serveur dev après modification des .env
 
 **Token ne fonctionne pas**:
+
 - Vérifier les restrictions d'URL (doit inclure localhost:3000)
 - Vérifier les scopes (minimum: styles:read, fonts:read, tiles:read)
 - Attendre 1-2 minutes après création du token
 
 **CI/CD échoue**:
+
 - Vérifier que les secrets GitHub sont bien configurés
 - Vérifier les logs de la GitHub Action
 - Vérifier les permissions du token Cloudflare
@@ -281,8 +290,8 @@ Une fois toutes les actions complétées, vous pouvez marquer ce document comme 
 mv ACTIONS_IMMEDIATES_REQUISES.md ACTIONS_IMMEDIATES_COMPLETEES_$(date +%Y%m%d).md
 ```
 
-**Date de complétion**: ___________________
-**Validé par**: ___________________
+**Date de complétion**: **\*\*\*\***\_\_\_**\*\*\*\***
+**Validé par**: **\*\*\*\***\_\_\_**\*\*\*\***
 
 ---
 

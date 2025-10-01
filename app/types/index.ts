@@ -4,14 +4,8 @@
 // ===================================================
 
 // Re-export des types Hospital depuis la source autoritaire (Zod)
-import type { 
-  Hospital as BaseHospital, 
-  Hospitals as BaseHospitals 
-} from '../api/hospitals/data';
-export { 
-  HospitalSchema, 
-  HospitalsSchema 
-} from '../api/hospitals/data';
+import type { Hospital as BaseHospital, Hospitals as BaseHospitals } from '../api/hospitals/data';
+export { HospitalSchema, HospitalsSchema } from '../api/hospitals/data';
 
 // Réexport des types pour usage local
 export type Hospital = BaseHospital;
@@ -20,7 +14,7 @@ export type Hospitals = BaseHospitals;
 // Re-export des types Mapbox
 export type {
   MapboxMap,
-  MapboxGLInstance, 
+  MapboxGLInstance,
   MapboxMarker,
   MapboxPopup,
   MapboxGeoJSONSource,
@@ -28,7 +22,7 @@ export type {
   GeolocationPosition,
   GeolocationError,
   MapboxLayer,
-  MapboxStyle
+  MapboxStyle,
 } from './mapbox';
 
 // Type pour le status des hôpitaux (extrait du schema Zod)

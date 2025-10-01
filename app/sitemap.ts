@@ -6,7 +6,7 @@ export const revalidate = false;
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://galeon-community-map.pages.dev';
-  
+
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
     {
@@ -18,7 +18,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
 
   // Dynamic hospital pages
-  const hospitalPages: MetadataRoute.Sitemap = hospitals.map((hospital) => ({
+  const hospitalPages: MetadataRoute.Sitemap = hospitals.map(hospital => ({
     url: `${baseUrl}/hospitals/${hospital.id}`,
     lastModified: new Date(hospital.deploymentDate),
     changeFrequency: 'monthly' as const,
@@ -26,4 +26,4 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }));
 
   return [...staticPages, ...hospitalPages];
-} 
+}

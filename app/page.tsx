@@ -3,7 +3,6 @@
 
 import { Suspense, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-
 import { useMapStore } from './store/useMapStore';
 import { initPerformanceMonitoring } from './utils/performance';
 import logger from './utils/logger';
@@ -35,7 +34,7 @@ const AppWithInitialization = () => {
         // Only initialize essential performance monitoring
         if (typeof window !== 'undefined') {
           initPerformanceMonitoring();
-          
+
           if (process.env.NODE_ENV === 'development') {
             logger.info('🚀 Essential optimizations initialized');
             logger.info('📊 Performance monitoring active');
@@ -48,7 +47,7 @@ const AppWithInitialization = () => {
 
     // Initialize optimizations
     initializeOptimizations();
-    
+
     // Use setTimeout to avoid rendering issues
     const timer = setTimeout(async () => {
       try {
@@ -83,9 +82,9 @@ const AppWithInitialization = () => {
     return () => clearTimeout(timer);
   }, [initialize]);
 
-      if (!initialized) {
-      return <SimpleLoader />;
-    }
+  if (!initialized) {
+    return <SimpleLoader />;
+  }
 
   return <Layout />;
 };

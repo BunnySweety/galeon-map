@@ -17,16 +17,19 @@ export function useMapbox() {
 
         // Dynamic import of mapbox-gl
         const mapboxModule = await import('mapbox-gl');
-        
+
         if (!isMounted) return;
 
-        // Load CSS dynamically
+        // Load CSS dynamically with SRI
         if (typeof document !== 'undefined') {
           const existingLink = document.querySelector('link[href*="mapbox-gl.css"]');
           if (!existingLink) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             link.href = 'https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css';
+            link.integrity =
+              'sha384-GTsgKcJXGSkBp0M68qpxkz9XovzVH0PwSrjYONvkn3tXtySOSq+a14bG2gVJHwQG';
+            link.crossOrigin = 'anonymous';
             document.head.appendChild(link);
           }
         }
@@ -36,7 +39,8 @@ export function useMapbox() {
         // Setup MapBox token - MUST be configured in environment variables
         const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
         if (!token) {
-          const errorMsg = 'Mapbox token is required. Set NEXT_PUBLIC_MAPBOX_TOKEN in environment variables.';
+          const errorMsg =
+            'Mapbox token is required. Set NEXT_PUBLIC_MAPBOX_TOKEN in environment variables.';
           logger.error(errorMsg);
           if (isMounted) {
             setError(errorMsg);
@@ -67,4 +71,4 @@ export function useMapbox() {
   }, []);
 
   return { mapboxgl, isLoading, error };
-} 
+}

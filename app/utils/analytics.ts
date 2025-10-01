@@ -87,7 +87,7 @@ function sendToAnalytics(metric: Metric) {
         body: JSON.stringify(body),
         headers: { 'Content-Type': 'application/json' },
         keepalive: true,
-      }).catch((error) => {
+      }).catch(error => {
         logger.error('Failed to send analytics:', error);
       });
     }
@@ -145,7 +145,7 @@ export function trackEvent(
         body: JSON.stringify(body),
         headers: { 'Content-Type': 'application/json' },
         keepalive: true,
-      }).catch((error) => {
+      }).catch(error => {
         logger.error('Failed to track event:', error);
       });
     }
@@ -205,7 +205,7 @@ export function trackError(error: Error, context?: Record<string, unknown>) {
       body: JSON.stringify(body),
       headers: { 'Content-Type': 'application/json' },
       keepalive: true,
-    }).catch((err) => {
+    }).catch(err => {
       logger.error('Failed to track error:', err);
     });
   }
@@ -214,12 +214,7 @@ export function trackError(error: Error, context?: Record<string, unknown>) {
 /**
  * Track user interaction
  */
-export function trackInteraction(
-  element: string,
-  action: string,
-  label?: string,
-  value?: number
-) {
+export function trackInteraction(element: string, action: string, label?: string, value?: number) {
   trackEvent('user_interaction', {
     element,
     action,
@@ -292,7 +287,7 @@ export function trackTimelineInteraction(action: string, date?: string) {
  * Get performance metrics summary
  */
 export function getPerformanceSummary() {
-  if (typeof window === 'undefined' || !window.performance) {
+  if (!window?.performance) {
     return null;
   }
 
@@ -310,7 +305,7 @@ export function getPerformanceSummary() {
     loadComplete: navigation ? Math.round(navigation.loadEventEnd - navigation.fetchStart) : 0,
 
     // Paint timing
-    fcp: paint.find((p) => p.name === 'first-contentful-paint')?.startTime || 0,
+    fcp: paint.find(p => p.name === 'first-contentful-paint')?.startTime || 0,
     lcp: 0, // Will be updated by getLCP
 
     // Resource timing

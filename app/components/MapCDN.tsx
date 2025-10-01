@@ -17,11 +17,7 @@ function MapContent({ mapboxgl, className }: { mapboxgl: any; className: string 
   const markersRef = useRef<any[]>([]);
   const [isMapReady, setIsMapReady] = useState(false);
 
-  const {
-    filteredHospitals,
-    selectedHospital,
-    selectHospital,
-  } = useMapStore();
+  const { filteredHospitals, selectedHospital, selectHospital } = useMapStore();
 
   // Initialize map with CDN Mapbox
   const initializeMap = useCallback(() => {
@@ -29,7 +25,9 @@ function MapContent({ mapboxgl, className }: { mapboxgl: any; className: string 
 
     try {
       // Set access token
-      mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? 'pk.eyJ1IjoiamVhbmJvbjkxIiwiYSI6ImNtNDlhMHMzNTA3YnkycXM2dmYxc281MHkifQ.taYYM3jxELZ5CZuOH9_3SQ';
+      mapboxgl.accessToken =
+        process.env.NEXT_PUBLIC_MAPBOX_TOKEN ??
+        'pk.eyJ1IjoiamVhbmJvbjkxIiwiYSI6ImNtNDlhMHMzNTA3YnkycXM2dmYxc281MHkifQ.taYYM3jxELZ5CZuOH9_3SQ';
 
       // Create map
       map.current = new mapboxgl.Map({
@@ -53,7 +51,6 @@ function MapContent({ mapboxgl, className }: { mapboxgl: any; className: string 
       map.current.on('error', (e: any) => {
         logger.error('Map error:', e);
       });
-
     } catch (error) {
       logger.error('Failed to initialize map:', error);
     }
@@ -130,10 +127,7 @@ function MapContent({ mapboxgl, className }: { mapboxgl: any; className: string 
 
   return (
     <div className={`relative h-full ${className}`}>
-      <div
-        ref={mapContainer}
-        className="h-full w-full"
-      />
+      <div ref={mapContainer} className="h-full w-full" />
 
       {/* Hospital detail overlay */}
       {selectedHospital && (
@@ -158,7 +152,7 @@ export default function MapCDN({ className = '' }: MapCDNProps) {
         </div>
       }
     >
-      {(mapboxgl) => <MapContent mapboxgl={mapboxgl} className={className} />}
+      {mapboxgl => <MapContent mapboxgl={mapboxgl} className={className} />}
     </MapboxCDN>
   );
-} 
+}

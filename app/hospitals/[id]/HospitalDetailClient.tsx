@@ -216,7 +216,10 @@ export default function HospitalDetailClient({ hospitalId }: HospitalDetailClien
                       {_('Deployment Date')}
                     </dt>
                     <dd className="mt-1 text-sm md:text-base text-gray-900">
-                      {formatDateForDisplay(new Date(hospitalDetails.deploymentDate), (i18n.locale as 'en' | 'fr') ?? 'en')}
+                      {formatDateForDisplay(
+                        new Date(hospitalDetails.deploymentDate),
+                        (i18n.locale as 'en' | 'fr') ?? 'en'
+                      )}
                     </dd>
                   </div>
                   <div>

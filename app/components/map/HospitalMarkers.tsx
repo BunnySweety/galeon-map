@@ -33,7 +33,6 @@ export const useHospitalMarkers = ({
   timelineIndex,
   timelineLength,
 }: Omit<HospitalMarkersProps, 'selectHospital' | 'i18n'>) => {
-  
   // Update displayed hospitals based on current date and filters
   useEffect(() => {
     if (!mapRef.current || !filteredHospitals || !mapLoaded) {
@@ -100,7 +99,10 @@ export const useHospitalInteractions = ({
   selectHospital,
   i18n,
   mapboxgl,
-}: Pick<HospitalMarkersProps, 'mapRef' | 'mapLoaded' | 'filteredHospitals' | 'selectHospital' | 'i18n'> & { mapboxgl: any }) => {
+}: Pick<
+  HospitalMarkersProps,
+  'mapRef' | 'mapLoaded' | 'filteredHospitals' | 'selectHospital' | 'i18n'
+> & { mapboxgl: any }) => {
   const popupRef = useRef<any>(null);
 
   // Add click handler for hospital points
@@ -113,7 +115,10 @@ export const useHospitalInteractions = ({
       const feature = e.features[0];
       if (!feature) return;
 
-      const coordinates = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
+      const coordinates = (feature.geometry as GeoJSON.Point).coordinates.slice() as [
+        number,
+        number,
+      ];
       const hospital = filteredHospitals.find(h => h.id === feature.properties?.id);
 
       if (hospital) {
@@ -178,7 +183,7 @@ export const useHospitalInteractions = ({
 // Combined hook for hospital markers functionality
 export const useHospitalMarkersComplete = (props: HospitalMarkersProps) => {
   useHospitalMarkers(props);
-  
+
   const interactions = useHospitalInteractions({
     mapRef: props.mapRef,
     mapLoaded: props.mapLoaded,

@@ -48,4 +48,4 @@ export function formatDateForDisplay(
   locale: SupportedLocale = 'en'
 ): string {
   return formatDateWithLocale(date, 'PPP', locale);
-} 
+}

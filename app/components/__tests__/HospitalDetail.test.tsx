@@ -33,11 +33,7 @@ const mockHospital: Hospital = {
 };
 
 const renderWithI18n = (component: React.ReactElement) => {
-  return render(
-    <I18nProvider i18n={i18n}>
-      {component}
-    </I18nProvider>
-  );
+  return render(<I18nProvider i18n={i18n}>{component}</I18nProvider>);
 };
 
 describe('HospitalDetail', () => {
@@ -69,7 +65,7 @@ describe('HospitalDetail', () => {
 
   it('should display website link when available', () => {
     renderWithI18n(<HospitalDetail hospital={mockHospital} />);
-    
+
     const websiteLink = screen.getByRole('link', { name: /website/i });
     expect(websiteLink).toHaveAttribute('href', 'https://test-hospital.com');
   });
@@ -101,7 +97,7 @@ describe('HospitalDetail', () => {
     const { container } = renderWithI18n(
       <HospitalDetail hospital={mockHospital} className="custom-class" />
     );
-    
+
     expect(container.firstChild).toHaveClass('custom-class');
   });
 });

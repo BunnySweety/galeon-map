@@ -3,11 +3,9 @@
 
 import { useRef, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
-
-
 import type { MapboxMarker } from '../../types/mapbox';
 
-// Props interface  
+// Props interface
 import type { MapboxMap, MapboxGLInstance } from '../../types/mapbox';
 
 interface LocationMarkerProps {
@@ -109,7 +107,7 @@ export const useLocationMarker = ({ mapRef, mapboxgl, translate }: LocationMarke
           filter: drop-shadow(0 0 8px rgba(66, 133, 244, 0.6));
         }
       `;
-      
+
       // Only add style if it doesn't exist
       if (!document.querySelector('#location-marker-styles')) {
         style.id = 'location-marker-styles';

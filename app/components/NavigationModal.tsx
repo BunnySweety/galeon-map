@@ -69,27 +69,39 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ isOpen, onClose, opti
 
   const availableServices = mapServices.filter(service => service.condition);
 
-  const handleServiceClick = useCallback((service: MapService) => {
-    window.open(service.url, '_blank');
-    onClose();
-  }, [onClose]);
+  const handleServiceClick = useCallback(
+    (service: MapService) => {
+      window.open(service.url, '_blank');
+      onClose();
+    },
+    [onClose]
+  );
 
   // Factory pour créer un handler de service optimisé
-  const createServiceClickHandler = useCallback((service: MapService) => {
-    return () => handleServiceClick(service);
-  }, [handleServiceClick]);
+  const createServiceClickHandler = useCallback(
+    (service: MapService) => {
+      return () => handleServiceClick(service);
+    },
+    [handleServiceClick]
+  );
 
-  const handleOverlayClick = useCallback((e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  }, [onClose]);
+  const handleOverlayClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.target === e.currentTarget) {
+        onClose();
+      }
+    },
+    [onClose]
+  );
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      onClose();
-    }
-  }, [onClose]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    },
+    [onClose]
+  );
 
   if (!isOpen) return null;
 

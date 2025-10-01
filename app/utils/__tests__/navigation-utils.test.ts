@@ -71,7 +71,7 @@ describe('Navigation Utils', () => {
   describe('shareLocation', () => {
     it('should use native share API when available', async () => {
       mockShare.mockResolvedValue(undefined);
-      
+
       const coordinates: [number, number] = [2.3522, 48.8566];
       const hospitalName = 'Test Hospital';
       const url = 'https://example.com/hospital/1';
@@ -111,14 +111,14 @@ describe('Navigation Utils', () => {
 
     it('should handle coordinates without hospital name', async () => {
       mockShare.mockResolvedValue(undefined);
-      
+
       const coordinates: [number, number] = [2.3522, 48.8566];
       const url = 'https://example.com/hospital/1';
 
       await shareLocation(coordinates, undefined, url);
 
       expect(mockShare).toHaveBeenCalledWith({
-        title: 'Localisation d\'hôpital',
+        title: "Localisation d'hôpital",
         text: 'Localisation: 48.8566, 2.3522',
         url: url,
       });
@@ -127,16 +127,32 @@ describe('Navigation Utils', () => {
 
   describe('getCurrentPosition', () => {
     it('should return user position when geolocation succeeds', async () => {
-      const mockPosition = {
+      const mockPosition: GeolocationPosition = {
         coords: {
           latitude: 48.8566,
           longitude: 2.3522,
           accuracy: 10,
+          altitude: null,
+          altitudeAccuracy: null,
+          heading: null,
+          speed: null,
+          toJSON: () => ({
+            latitude: 48.8566,
+            longitude: 2.3522,
+            accuracy: 10,
+            altitude: null,
+            altitudeAccuracy: null,
+            heading: null,
+            speed: null,
+          }),
         },
         timestamp: Date.now(),
+        toJSON: function () {
+          return { coords: this.coords, timestamp: this.timestamp };
+        },
       };
 
-      mockGetCurrentPosition.mockImplementation((success) => {
+      mockGetCurrentPosition.mockImplementation((success: PositionCallback) => {
         success(mockPosition);
       });
 
@@ -150,14 +166,19 @@ describe('Navigation Utils', () => {
     });
 
     it('should reject when geolocation fails', async () => {
-      const mockError = {
+      const mockError: GeolocationPositionError = {
         code: 1,
         message: 'User denied geolocation',
+        PERMISSION_DENIED: 1,
+        POSITION_UNAVAILABLE: 2,
+        TIMEOUT: 3,
       };
 
-      mockGetCurrentPosition.mockImplementation((_, error) => {
-        error(mockError);
-      });
+      mockGetCurrentPosition.mockImplementation(
+        (_: PositionCallback, error: PositionErrorCallback) => {
+          error(mockError);
+        }
+      );
 
       await expect(getCurrentPosition()).rejects.toEqual(mockError);
     });
@@ -173,12 +194,32 @@ describe('Navigation Utils', () => {
     });
 
     it('should use high accuracy by default', async () => {
-      const mockPosition = {
-        coords: { latitude: 48.8566, longitude: 2.3522, accuracy: 10 },
+      const mockPosition: GeolocationPosition = {
+        coords: {
+          latitude: 48.8566,
+          longitude: 2.3522,
+          accuracy: 10,
+          altitude: null,
+          altitudeAccuracy: null,
+          heading: null,
+          speed: null,
+          toJSON: () => ({
+            latitude: 48.8566,
+            longitude: 2.3522,
+            accuracy: 10,
+            altitude: null,
+            altitudeAccuracy: null,
+            heading: null,
+            speed: null,
+          }),
+        },
         timestamp: Date.now(),
+        toJSON: function () {
+          return { coords: this.coords, timestamp: this.timestamp };
+        },
       };
 
-      mockGetCurrentPosition.mockImplementation((success) => {
+      mockGetCurrentPosition.mockImplementation((success: PositionCallback) => {
         success(mockPosition);
       });
 

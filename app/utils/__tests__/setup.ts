@@ -15,7 +15,7 @@ afterEach(() => {
 // Mock window.matchMedia (used by some components)
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn().mockImplementation((query: string) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -42,22 +42,26 @@ global.ResizeObserver = vi.fn().mockImplementation(() => ({
 }));
 
 // Mock localStorage
-const localStorageMock = {
+const localStorageMock: Storage = {
   getItem: vi.fn(),
   setItem: vi.fn(),
   removeItem: vi.fn(),
   clear: vi.fn(),
+  length: 0,
+  key: vi.fn(),
 };
-global.localStorage = localStorageMock;
+global.localStorage = localStorageMock as Storage;
 
 // Mock sessionStorage
-const sessionStorageMock = {
+const sessionStorageMock: Storage = {
   getItem: vi.fn(),
   setItem: vi.fn(),
   removeItem: vi.fn(),
   clear: vi.fn(),
+  length: 0,
+  key: vi.fn(),
 };
-global.sessionStorage = sessionStorageMock;
+global.sessionStorage = sessionStorageMock as Storage;
 
 // Mock fetch
 global.fetch = vi.fn();
@@ -116,9 +120,9 @@ const mockCanvas = {
 };
 
 // Mock HTMLCanvasElement
-global.HTMLCanvasElement.prototype.getContext = mockCanvas.getContext;
-global.HTMLCanvasElement.prototype.toDataURL = mockCanvas.toDataURL;
-global.HTMLCanvasElement.prototype.getBoundingClientRect = mockCanvas.getBoundingClientRect;
+global.HTMLCanvasElement.prototype.getContext = mockCanvas.getContext as any;
+global.HTMLCanvasElement.prototype.toDataURL = mockCanvas.toDataURL as any;
+global.HTMLCanvasElement.prototype.getBoundingClientRect = mockCanvas.getBoundingClientRect as any;
 
 // Mock URL.createObjectURL
 global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
@@ -126,16 +130,17 @@ global.URL.revokeObjectURL = vi.fn();
 
 // Mock Image constructor
 global.Image = class {
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  src = '';
+  width = 100;
+  height = 100;
+
   constructor() {
     setTimeout(() => {
       if (this.onload) this.onload();
     }, 100);
   }
-  onload = null;
-  onerror = null;
-  src = '';
-  width = 100;
-  height = 100;
 } as any;
 
 // Suppress console errors in tests unless they're intentional
@@ -181,7 +186,7 @@ vi.mock('next/image', () => ({
     // Return a simple mock object instead of JSX in .ts file
     return {
       type: 'img',
-      props: { src, alt, ...props }
+      props: { src, alt, ...props },
     };
   },
 }));
@@ -192,7 +197,7 @@ vi.mock('next/dynamic', () => ({
     const Component = ({ children, ...props }: any) => {
       return {
         type: 'div',
-        props: { ...props, children }
+        props: { ...props, children },
       };
     };
     Component.displayName = 'DynamicComponent';

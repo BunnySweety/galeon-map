@@ -20,9 +20,9 @@ interface QueryProviderWrapperProps {
   enableQuery?: boolean;
 }
 
-export default function QueryProviderWrapper({ 
-  children, 
-  enableQuery = false 
+export default function QueryProviderWrapper({
+  children,
+  enableQuery = false,
 }: QueryProviderWrapperProps) {
   const [queryClient, setQueryClient] = useState<any>(null);
   const [isLoaded, setIsLoaded] = useState(!enableQuery);
@@ -67,9 +67,7 @@ export default function QueryProviderWrapper({
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      {process.env.NODE_ENV === 'development' && (
-        <ReactQueryDevtools initialIsOpen={false} />
-      )}
+      {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   );
-} 
+}

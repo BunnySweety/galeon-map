@@ -27,23 +27,28 @@ export default function MapboxCDN({ children, fallback }: MapboxCDNProps) {
       return;
     }
 
-    // Load Mapbox CSS
+    // Load Mapbox CSS with SRI
     const loadCSS = () => {
       return new Promise<void>((resolve, reject) => {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = 'https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css';
+        link.integrity = 'sha384-GTsgKcJXGSkBp0M68qpxkz9XovzVH0PwSrjYONvkn3tXtySOSq+a14bG2gVJHwQG';
+        link.crossOrigin = 'anonymous';
         link.onload = () => resolve();
         link.onerror = () => reject(new Error('Failed to load Mapbox CSS'));
         document.head.appendChild(link);
       });
     };
 
-    // Load Mapbox JS
+    // Load Mapbox JS with SRI
     const loadJS = () => {
       return new Promise<void>((resolve, reject) => {
         const script = document.createElement('script');
         script.src = 'https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js';
+        script.integrity =
+          'sha384-Nr734UYVoj50WWhwYw3yKjZVsdkxrPLbrH22vzJjP1f38zrOcQ7JPolbHsQ3Yc+G';
+        script.crossOrigin = 'anonymous';
         script.onload = () => {
           if (window.mapboxgl) {
             resolve();
@@ -60,12 +65,14 @@ export default function MapboxCDN({ children, fallback }: MapboxCDNProps) {
     const loadMapbox = async () => {
       try {
         await Promise.all([loadCSS(), loadJS()]);
-        
+
         // Configure Mapbox token
         if (window.mapboxgl) {
-          window.mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? 'pk.eyJ1IjoiamVhbmJvbjkxIiwiYSI6ImNtNDlhMHMzNTA3YnkycXM2dmYxc281MHkifQ.taYYM3jxELZ5CZuOH9_3SQ';
+          window.mapboxgl.accessToken =
+            process.env.NEXT_PUBLIC_MAPBOX_TOKEN ??
+            'pk.eyJ1IjoiamVhbmJvbjkxIiwiYSI6ImNtNDlhMHMzNTA3YnkycXM2dmYxc281MHkifQ.taYYM3jxELZ5CZuOH9_3SQ';
         }
-        
+
         setMapboxgl(window.mapboxgl);
         setIsLoading(false);
       } catch (err) {
@@ -115,4 +122,4 @@ export default function MapboxCDN({ children, fallback }: MapboxCDNProps) {
   }
 
   return <>{children(mapboxgl)}</>;
-} 
+}

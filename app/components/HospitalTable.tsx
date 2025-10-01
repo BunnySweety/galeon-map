@@ -2,7 +2,7 @@
 'use client';
 
 import { useLingui } from '@lingui/react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { saveAs } from 'file-saver';
 import { format } from 'date-fns';
 import { useMapStore } from '../store/useMapStore';
@@ -31,54 +31,78 @@ const HospitalTable: React.FC<HospitalTableProps> = ({ className = '' }) => {
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
 
-  // Function to select a hospital
-  const handleSelectHospital = useCallback((hospital: Hospital) => {
-    setSelectedHospital(hospital);
-    selectHospital(hospital);
-  }, [selectHospital]);
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' || event.key === 'Esc') {
+        setShowExportModal(false);
+      }
+    };
 
-  // Export data in different formats
-  const exportData = useCallback((exportType: 'pdf' | 'csv' | 'json') => {
-    // Extract only the data we want to export
-    const data = filteredHospitals.map((hospital: Hospital) => {
-      const deploymentDate = format(
-        new Date(hospital.deploymentDate),
-        exportType === 'csv' ? 'yyyy-MM-dd' : 'dd/MM/yyyy'
-      );
-
-      return {
-        name: hospital.name,
-        status: hospital.status,
-        deploymentDate,
-        website: hospital.website,
-        address: hospital.address,
+    if (showExportModal) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
       };
-    });
-
-    const currentDate = format(new Date(), 'yyyy-MM-dd');
-
-    if (exportType === 'json') {
-      // JSON export
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: 'application/json',
-      });
-      saveAs(blob, `hospitals-data-${currentDate}.json`);
-    } else if (exportType === 'csv') {
-      // CSV export
-      if (data.length === 0) return;
-      const headers = Object.keys(data[0]!).join(',');
-      const rows = data.map(item => Object.values(item).join(',')).join('\n');
-      const csv = `${headers}\n${rows}`;
-      const blob = new Blob([csv], { type: 'text/csv' });
-      saveAs(blob, `hospitals-data-${currentDate}.csv`);
-    } else if (exportType === 'pdf') {
-      // In a real app, this would use a library like jsPDF
-      // For this demo, we'll just show an alert
-      alert('PDF export would be implemented with a library like jsPDF');
     }
 
-    setShowExportModal(false);
-  }, [filteredHospitals]);
+    return undefined;
+  }, [showExportModal]);
+
+  // Function to select a hospital
+  const handleSelectHospital = useCallback(
+    (hospital: Hospital) => {
+      setSelectedHospital(hospital);
+      selectHospital(hospital);
+    },
+    [selectHospital]
+  );
+
+  // Export data in different formats
+  const exportData = useCallback(
+    (exportType: 'pdf' | 'csv' | 'json') => {
+      // Extract only the data we want to export
+      const data = filteredHospitals.map((hospital: Hospital) => {
+        const deploymentDate = format(
+          new Date(hospital.deploymentDate),
+          exportType === 'csv' ? 'yyyy-MM-dd' : 'dd/MM/yyyy'
+        );
+
+        return {
+          name: hospital.name,
+          status: hospital.status,
+          deploymentDate,
+          website: hospital.website,
+          address: hospital.address,
+        };
+      });
+
+      const currentDate = format(new Date(), 'yyyy-MM-dd');
+
+      if (exportType === 'json') {
+        // JSON export
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
+          type: 'application/json',
+        });
+        saveAs(blob, `hospitals-data-${currentDate}.json`);
+      } else if (exportType === 'csv') {
+        // CSV export
+        if (data.length === 0) return;
+        const headers = Object.keys(data[0]!).join(',');
+        const rows = data.map(item => Object.values(item).join(',')).join('\n');
+        const csv = `${headers}\n${rows}`;
+        const blob = new Blob([csv], { type: 'text/csv' });
+        saveAs(blob, `hospitals-data-${currentDate}.csv`);
+      } else if (exportType === 'pdf') {
+        // In a real app, this would use a library like jsPDF
+        // For this demo, we'll just show an alert
+        alert('PDF export would be implemented with a library like jsPDF');
+      }
+
+      setShowExportModal(false);
+    },
+    [filteredHospitals]
+  );
 
   // Handlers optimisés pour les boutons d'export
   const handleShowExportModal = useCallback(() => {
@@ -107,14 +131,23 @@ const HospitalTable: React.FC<HospitalTableProps> = ({ className = '' }) => {
   }, []);
 
   // Handler optimisé pour la sélection d'hôpital (avec closure)
-  const createHospitalSelectHandler = useCallback((hospital: Hospital) => {
-    return () => handleSelectHospital(hospital);
-  }, [handleSelectHospital]);
+  const createHospitalSelectHandler = useCallback(
+    (hospital: Hospital) => {
+      return () => handleSelectHospital(hospital);
+    },
+    [handleSelectHospital]
+  );
 
   return (
-    <div className={`bg-white p-4 md:p-6 rounded-lg shadow-md overflow-auto ${className}`} role="region" aria-label={_('Hospitals list')}>
+    <div
+      className={`bg-white p-4 md:p-6 rounded-lg shadow-md overflow-auto ${className}`}
+      role="region"
+      aria-label={_('Hospitals list')}
+    >
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-        <h2 className="text-lg md:text-xl font-semibold" id="hospitals-table-title">{_('Hospitals')}</h2>
+        <h2 className="text-lg md:text-xl font-semibold" id="hospitals-table-title">
+          {_('Hospitals')}
+        </h2>
         <button
           className="w-full md:w-auto px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center justify-center gap-2"
           onClick={handleShowExportModal}
@@ -137,12 +170,18 @@ const HospitalTable: React.FC<HospitalTableProps> = ({ className = '' }) => {
         <table className="w-full border-collapse" aria-labelledby="hospitals-table-title">
           <thead>
             <tr className="border-b bg-gray-50">
-              <th className="text-left py-3 px-4 font-semibold text-gray-600" scope="col">{_('NAME')}</th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-600" scope="col">{_('STATUS')}</th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-600" scope="col">
+                {_('NAME')}
+              </th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-600" scope="col">
+                {_('STATUS')}
+              </th>
               <th className="text-left py-3 px-4 font-semibold text-gray-600" scope="col">
                 {_('DEPLOYMENT DATE')}
               </th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-600" scope="col">{_('WEBSITE')}</th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-600" scope="col">
+                {_('WEBSITE')}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -230,10 +269,17 @@ const HospitalTable: React.FC<HospitalTableProps> = ({ className = '' }) => {
 
       {/* Export Modal */}
       {showExportModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="export-modal-title">
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="export-modal-title"
+        >
           <div className="bg-white rounded-lg p-6 max-w-sm w-full">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold" id="export-modal-title">{_('Export data')}</h3>
+              <h3 className="text-lg font-semibold" id="export-modal-title">
+                {_('Export data')}
+              </h3>
               <button
                 onClick={handleCloseExportModal}
                 className="text-gray-400 hover:text-gray-600"
@@ -251,10 +297,7 @@ const HospitalTable: React.FC<HospitalTableProps> = ({ className = '' }) => {
             </div>
 
             <div className="modal-export-grid">
-              <button
-                onClick={handleExportPdf}
-                className="modal-export-option"
-              >
+              <button onClick={handleExportPdf} className="modal-export-option">
                 <svg className="w-8 h-8 mb-2" fill="currentColor" viewBox="0 0 20 20">
                   <path
                     fillRule="evenodd"

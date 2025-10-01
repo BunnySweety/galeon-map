@@ -21,7 +21,7 @@ describe('Types Centralisés', () => {
 
       const result = HospitalSchema.safeParse(validHospital);
       expect(result.success).toBe(true);
-      
+
       if (result.success) {
         expect(result.data).toEqual(validHospital);
       }
@@ -86,20 +86,20 @@ describe('Types Centralisés', () => {
     it('should have correct HospitalStatus values', () => {
       const deployed: HospitalStatus = 'Deployed';
       const signed: HospitalStatus = 'Signed';
-      
+
       expect(deployed).toBe('Deployed');
       expect(signed).toBe('Signed');
-      
+
       // TypeScript compilation s'assure que seules ces valeurs sont acceptées
     });
 
     it('should have correct LocaleType values', () => {
       const english: LocaleType = 'en';
       const french: LocaleType = 'fr';
-      
+
       expect(english).toBe('en');
       expect(french).toBe('fr');
-      
+
       // TypeScript compilation s'assure que seules ces valeurs sont acceptées
     });
 

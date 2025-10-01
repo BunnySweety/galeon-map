@@ -32,6 +32,7 @@ Avant de commencer cette checklist, les actions suivantes **DOIVENT** être comp
 - [ ] GitHub Secret `CLOUDFLARE_ACCOUNT_ID` configuré
 
 **Validation**:
+
 ```bash
 # Vérifier qu'aucun .env n'est tracké
 git status | grep -E "\.env\.(local|production|development)"
@@ -45,6 +46,7 @@ grep "\.env" .gitignore
 ### 1.2 Audit de Sécurité
 
 - [ ] Aucune vulnérabilité npm critique ou haute
+
   ```bash
   npm audit --production
   # Résultat attendu: 0 vulnerabilities
@@ -77,6 +79,7 @@ grep "\.env" .gitignore
 ### 2.1 Tests Unitaires
 
 - [ ] Tous les tests unitaires passent
+
   ```bash
   npm test -- --run
   # Résultat attendu: All tests pass
@@ -91,11 +94,13 @@ grep "\.env" .gitignore
 ### 2.2 Tests E2E
 
 - [ ] Installation des dépendances Playwright
+
   ```bash
   npx playwright install
   ```
 
 - [ ] Tests E2E passent
+
   ```bash
   npm run test:e2e
   # Résultat attendu: All E2E tests pass
@@ -113,12 +118,14 @@ grep "\.env" .gitignore
 ### 2.3 Validation Qualité Code
 
 - [ ] Linting passe sans erreurs
+
   ```bash
   npm run lint
   # Résultat attendu: No errors
   ```
 
 - [ ] Type-checking passe
+
   ```bash
   npm run type-check
   # ou: npx tsc --noEmit
@@ -138,12 +145,14 @@ grep "\.env" .gitignore
 ### 3.1 Build Local
 
 - [ ] Build réussit sans erreurs
+
   ```bash
   npm run build
   # Résultat attendu: Build successful
   ```
 
 - [ ] Vérifier la taille des bundles
+
   ```bash
   # Après npm run build
   # Vérifier que First Load JS < 200kB pour les pages principales
@@ -156,6 +165,7 @@ grep "\.env" .gitignore
 ### 3.2 Test Build Local
 
 - [ ] Tester le build localement avec Wrangler
+
   ```bash
   npx wrangler pages dev .next
   # Ouvrir http://localhost:8788
@@ -186,6 +196,7 @@ grep "\.env" .gitignore
 - [ ] Branche de production configurée (`main`)
 
 **Build Settings**:
+
 ```
 Framework preset: Next.js
 Build command: npm run build
@@ -200,6 +211,7 @@ Node version: 20.x
 Via Cloudflare Dashboard > Pages > Settings > Environment Variables:
 
 **Production**:
+
 - [ ] `NEXT_PUBLIC_MAPBOX_TOKEN` = nouveau token
 - [ ] `NEXT_PUBLIC_CLOUDFLARE_BASE_URL` = https://map.galeon.community
 - [ ] `NEXT_PUBLIC_API_URL` = https://api.galeon.community
@@ -208,6 +220,7 @@ Via Cloudflare Dashboard > Pages > Settings > Environment Variables:
 - [ ] `NEXT_TELEMETRY_DISABLED` = 1
 
 **Preview** (optionnel mais recommandé):
+
 - [ ] Même configuration que Production avec URLs de staging
 
 ### 4.3 Configuration DNS
@@ -234,11 +247,13 @@ Via Cloudflare Dashboard > Pages > Settings > Environment Variables:
 ### 5.1 Déploiement Preview (Test)
 
 - [ ] Créer une branche de test
+
   ```bash
   git checkout -b deploy-test
   ```
 
 - [ ] Push la branche
+
   ```bash
   git push origin deploy-test
   ```
@@ -259,17 +274,20 @@ Via Cloudflare Dashboard > Pages > Settings > Environment Variables:
 **⚠️ ATTENTION**: Ne procédez que si TOUS les points précédents sont cochés
 
 - [ ] Merger la branche de test dans main
+
   ```bash
   git checkout main
   git merge deploy-test
   ```
 
 - [ ] Tag la version
+
   ```bash
   git tag -a v1.0.0 -m "Release v1.0.0 - Production ready"
   ```
 
 - [ ] Push vers production
+
   ```bash
   git push origin main
   git push origin v1.0.0
@@ -391,6 +409,7 @@ Vérifier sur https://map.galeon.community:
 ### 9.1 Préparation Rollback
 
 - [ ] Savoir comment revenir à la version précédente
+
   ```bash
   # Via Cloudflare Dashboard > Deployments > Rollback
   # ou via Git:
@@ -404,6 +423,7 @@ Vérifier sur https://map.galeon.community:
 ### 9.2 Critères de Rollback
 
 Effectuer un rollback SI:
+
 - [ ] Erreurs critiques > 5% des requêtes
 - [ ] Performance dégradée > 50%
 - [ ] Fonctionnalité critique cassée
@@ -418,13 +438,15 @@ Effectuer un rollback SI:
 Cocher tous les items suivants avant de considérer le déploiement comme réussi:
 
 **Sécurité** (10/10):
+
 - [ ] Aucun secret dans le code
 - [ ] Headers de sécurité configurés
-- [ ] CSP strict sans unsafe-*
+- [ ] CSP strict sans unsafe-\*
 - [ ] HTTPS partout
 - [ ] Token Mapbox avec restrictions
 
 **Fonctionnalité** (8/8):
+
 - [ ] Carte affichée
 - [ ] Liste d'hôpitaux
 - [ ] Détails d'hôpitaux
@@ -435,6 +457,7 @@ Cocher tous les items suivants avant de considérer le déploiement comme réuss
 - [ ] i18n (FR/EN)
 
 **Performance** (5/5):
+
 - [ ] LCP < 2.5s
 - [ ] FID < 100ms
 - [ ] CLS < 0.1
@@ -442,18 +465,21 @@ Cocher tous les items suivants avant de considérer le déploiement comme réuss
 - [ ] Bundle size raisonnable
 
 **Tests** (4/4):
+
 - [ ] Tests unitaires passent
 - [ ] Tests E2E passent
 - [ ] Lint passe
 - [ ] Type-check passe
 
 **DevOps** (4/4):
+
 - [ ] CI/CD fonctionnel
 - [ ] Déploiement automatique
 - [ ] Monitoring configuré
 - [ ] Rollback plan prêt
 
 **Documentation** (3/3):
+
 - [ ] README à jour
 - [ ] SECURITY.md présent
 - [ ] Procédures documentées

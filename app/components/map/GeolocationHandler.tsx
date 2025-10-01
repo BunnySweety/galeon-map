@@ -20,9 +20,8 @@ export const useGeolocationHandler = ({
   isLocating,
   setIsLocating,
   createLocationMarker,
-  translate
+  translate,
 }: GeolocationHandlerProps) => {
-  
   const geolocationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const progressToastRef = useRef<string | null>(null);
   const isTrackingRef = useRef<boolean>(false);
@@ -121,7 +120,9 @@ export const useGeolocationHandler = ({
 
     if (isCloudflare) {
       toast(
-        translate('Note: Precise geolocation may be limited on this platform. Using approximate location.'),
+        translate(
+          'Note: Precise geolocation may be limited on this platform. Using approximate location.'
+        ),
         {
           duration: 4000,
           position: 'bottom-center',
@@ -283,7 +284,7 @@ export const useGeolocationHandler = ({
       logger.error('Geolocation try-catch error:', error);
       isTrackingRef.current = false;
       setIsLocating(false);
-      
+
       if (progressToastRef.current) {
         toast.dismiss(progressToastRef.current);
         progressToastRef.current = null;
@@ -305,7 +306,7 @@ export const useGeolocationHandler = ({
     setIsLocating,
     createLocationMarker,
     translate,
-    createTestLocationClickHandler
+    createTestLocationClickHandler,
   ]);
 
   const cleanup = useCallback(() => {

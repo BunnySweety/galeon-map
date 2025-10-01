@@ -26,7 +26,7 @@ export class RateLimiter {
 
   constructor(config: RateLimitConfig) {
     this.config = {
-      keyGenerator: (id) => id,
+      keyGenerator: id => id,
       skipSuccessfulRequests: false,
       skipFailedRequests: false,
       ...config,
@@ -49,7 +49,7 @@ export class RateLimiter {
   isAllowed(identifier: string): { allowed: boolean; resetTime?: number; remaining?: number } {
     const key = this.config.keyGenerator!(identifier);
     const now = Date.now();
-    
+
     // Nettoyer les entrées expirées
     this.cleanup(now);
 
@@ -62,10 +62,10 @@ export class RateLimiter {
         resetTime: now + this.config.windowMs,
         firstRequest: now,
       });
-      return { 
-        allowed: true, 
+      return {
+        allowed: true,
         resetTime: now + this.config.windowMs,
-        remaining: this.config.maxRequests - 1 
+        remaining: this.config.maxRequests - 1,
       };
     }
 
@@ -75,28 +75,28 @@ export class RateLimiter {
       entry.count = 1;
       entry.resetTime = now + this.config.windowMs;
       entry.firstRequest = now;
-      return { 
-        allowed: true, 
+      return {
+        allowed: true,
         resetTime: entry.resetTime,
-        remaining: this.config.maxRequests - 1 
+        remaining: this.config.maxRequests - 1,
       };
     }
 
     // Vérifier si la limite est atteinte
     if (entry.count >= this.config.maxRequests) {
-      return { 
-        allowed: false, 
+      return {
+        allowed: false,
         resetTime: entry.resetTime,
-        remaining: 0 
+        remaining: 0,
       };
     }
 
     // Incrémenter le compteur
     entry.count++;
-    return { 
-      allowed: true, 
+    return {
+      allowed: true,
       resetTime: entry.resetTime,
-      remaining: this.config.maxRequests - entry.count 
+      remaining: this.config.maxRequests - entry.count,
     };
   }
 
@@ -132,12 +132,10 @@ export class RateLimiter {
   getStats(): { totalKeys: number; activeKeys: number } {
     const now = Date.now();
     this.cleanup(now);
-    
+
     return {
       totalKeys: this.requests.size,
-      activeKeys: Array.from(this.requests.values()).filter(
-        entry => now < entry.resetTime
-      ).length,
+      activeKeys: Array.from(this.requests.values()).filter(entry => now < entry.resetTime).length,
     };
   }
 
@@ -194,12 +192,10 @@ export function withRateLimit<T extends (...args: any[]) => any>(
 ): T {
   return ((...args: Parameters<T>) => {
     const result = limiter.isAllowed(identifier);
-    
+
     if (!result.allowed) {
       const resetDate = new Date(result.resetTime!);
-      throw new Error(
-        `Rate limit exceeded. Try again at ${resetDate.toLocaleTimeString()}`
-      );
+      throw new Error(`Rate limit exceeded. Try again at ${resetDate.toLocaleTimeString()}`);
     }
 
     return fn(...args);
@@ -209,20 +205,15 @@ export function withRateLimit<T extends (...args: any[]) => any>(
 /**
  * Hook React pour rate limiting
  */
-export function useRateLimit(
-  limiter: RateLimiter,
-  identifier: string = 'default'
-) {
+export function useRateLimit(limiter: RateLimiter, identifier: string = 'default') {
   const checkLimit = () => limiter.isAllowed(identifier);
-  
+
   const executeWithLimit = <T>(fn: () => T): T => {
     const result = limiter.isAllowed(identifier);
-    
+
     if (!result.allowed) {
       const resetDate = new Date(result.resetTime!);
-      throw new Error(
-        `Rate limit exceeded. Try again at ${resetDate.toLocaleTimeString()}`
-      );
+      throw new Error(`Rate limit exceeded. Try again at ${resetDate.toLocaleTimeString()}`);
     }
 
     return fn();
@@ -240,7 +231,7 @@ export function useRateLimit(
  */
 export function getClientIdentifier(): string {
   if (typeof window === 'undefined') return 'server';
-  
+
   // Utiliser une combinaison de facteurs pour identifier le client
   const factors = [
     navigator.userAgent,
@@ -249,16 +240,16 @@ export function getClientIdentifier(): string {
     navigator.language,
     Intl.DateTimeFormat().resolvedOptions().timeZone,
   ];
-  
+
   // Créer un hash simple
   let hash = 0;
   const str = factors.join('|');
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32-bit integer
   }
-  
+
   return `client_${Math.abs(hash)}`;
 }
 
@@ -269,13 +260,16 @@ export function initializeRateLimiting(): void {
   if (typeof window === 'undefined') return;
 
   // Nettoyer périodiquement les rate limiters
-  setInterval(() => {
-    Object.values(RateLimiters).forEach(limiter => {
-      limiter.getStats(); // Déclenche le cleanup
-    });
-  }, 5 * 60 * 1000); // Toutes les 5 minutes
+  setInterval(
+    () => {
+      Object.values(RateLimiters).forEach(limiter => {
+        limiter.getStats(); // Déclenche le cleanup
+      });
+    },
+    5 * 60 * 1000
+  ); // Toutes les 5 minutes
 
   if (process.env.NODE_ENV === 'development') {
     logger.info('🛡️ Rate limiting initialized');
   }
-} 
+}

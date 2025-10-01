@@ -10,23 +10,23 @@
 
 ### Scores par Catégorie
 
-| Catégorie | Score Initial | Après Phase 1-2 | Objectif | Gap | Priorité |
-|-----------|---------------|-----------------|----------|-----|----------|
-| **Sécurité** | 6.5/10 | **9.0/10** ✅ | 10/10 | -1.0 | HAUTE |
-| **Performance** | 8.5/10 | **8.0/10** | 10/10 | -2.0 | HAUTE |
-| **Qualité Code** | 8.0/10 | **8.5/10** | 10/10 | -1.5 | MOYENNE |
-| **Architecture** | 9.0/10 | **8.5/10** | 10/10 | -1.5 | BASSE |
-| **Tests** | 4.0/10 | **8.5/10** ✅ | 10/10 | -1.5 | MOYENNE |
-| **Accessibilité** | 7.0/10 | **7.0/10** | 10/10 | -3.0 | **HAUTE** |
-| **GLOBAL** | **7.2/10** | **8.5/10** | **10/10** | **-1.5** | - |
+| Catégorie         | Score Initial | Après Phase 1-2 | Objectif  | Gap      | Priorité  |
+| ----------------- | ------------- | --------------- | --------- | -------- | --------- |
+| **Sécurité**      | 6.5/10        | **9.0/10** ✅   | 10/10     | -1.0     | HAUTE     |
+| **Performance**   | 8.5/10        | **8.0/10**      | 10/10     | -2.0     | HAUTE     |
+| **Qualité Code**  | 8.0/10        | **8.5/10**      | 10/10     | -1.5     | MOYENNE   |
+| **Architecture**  | 9.0/10        | **8.5/10**      | 10/10     | -1.5     | BASSE     |
+| **Tests**         | 4.0/10        | **8.5/10** ✅   | 10/10     | -1.5     | MOYENNE   |
+| **Accessibilité** | 7.0/10        | **7.0/10**      | 10/10     | -3.0     | **HAUTE** |
+| **GLOBAL**        | **7.2/10**    | **8.5/10**      | **10/10** | **-1.5** | -         |
 
 ### Métriques de Tests
 
-| Métrique | Avant | Maintenant | Objectif | Statut |
-|----------|-------|------------|----------|--------|
-| **Tests Passants** | 19/49 (39%) | **66/69 (95.7%)** | 69/69 (100%) | 🟢 |
-| **Fichiers Tests OK** | 3/9 | **5/9** | 9/9 | 🟡 |
-| **Coverage** | ~20% | ~65% | 80%+ | 🟡 |
+| Métrique              | Avant       | Maintenant        | Objectif     | Statut |
+| --------------------- | ----------- | ----------------- | ------------ | ------ |
+| **Tests Passants**    | 19/49 (39%) | **66/69 (95.7%)** | 69/69 (100%) | 🟢     |
+| **Fichiers Tests OK** | 3/9         | **5/9**           | 9/9          | 🟡     |
+| **Coverage**          | ~20%        | ~65%              | 80%+         | 🟡     |
 
 **Amélioration Tests**: +47 tests passants (+242%) 🎉
 
@@ -152,7 +152,7 @@ const mockHospitals = [...]; // Redéfini pour usage dans tests
 
 2. **Security Headers avancés** (1h)
    - Permissions-Policy complète
-   - Cross-Origin-*-Policy
+   - Cross-Origin-\*-Policy
    - Report-URI pour CSP violations
 
 3. **Input Validation côté serveur** (2h)
@@ -374,15 +374,15 @@ const mockHospitals = [...]; // Redéfini pour usage dans tests
 
 ### KPIs Techniques
 
-| Métrique | Actuel | Sprint 1 | Sprint 2 | Sprint 3 |
-|----------|--------|----------|----------|----------|
-| **Score Global** | 8.5/10 | 9.0/10 | 9.5/10 | **10/10** |
-| **Lighthouse Perf** | 85 | 90 | 93 | 95+ |
-| **Lighthouse A11y** | 78 | 85 | 95 | 100 |
-| **Tests Coverage** | 65% | 70% | 75% | 80%+ |
-| **Tests Passants** | 95.7% | 100% | 100% | 100% |
-| **Bundle Size** | 180kB | 150kB | 130kB | 120kB |
-| **WCAG Errors** | ~15 | ~8 | 0 | 0 |
+| Métrique            | Actuel | Sprint 1 | Sprint 2 | Sprint 3  |
+| ------------------- | ------ | -------- | -------- | --------- |
+| **Score Global**    | 8.5/10 | 9.0/10   | 9.5/10   | **10/10** |
+| **Lighthouse Perf** | 85     | 90       | 93       | 95+       |
+| **Lighthouse A11y** | 78     | 85       | 95       | 100       |
+| **Tests Coverage**  | 65%    | 70%      | 75%      | 80%+      |
+| **Tests Passants**  | 95.7%  | 100%     | 100%     | 100%      |
+| **Bundle Size**     | 180kB  | 150kB    | 130kB    | 120kB     |
+| **WCAG Errors**     | ~15    | ~8       | 0        | 0         |
 
 ### KPIs Business
 

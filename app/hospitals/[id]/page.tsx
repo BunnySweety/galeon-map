@@ -10,15 +10,16 @@ interface HospitalPageProps {
 
 // Génération statique des paramètres
 export async function generateStaticParams() {
-  return hospitals.map((hospital) => ({
+  return hospitals.map(hospital => ({
     id: hospital.id,
   }));
 }
 
 // Métadonnées dynamiques
 export async function generateMetadata({ params }: HospitalPageProps) {
-  const hospital = hospitals.find(h => h.id === params.id);
-  
+  const resolvedParams = await params;
+  const hospital = hospitals.find(h => h.id === resolvedParams.id);
+
   if (!hospital) {
     return {
       title: 'Hospital Not Found - Galeon',
@@ -46,6 +47,7 @@ export async function generateMetadata({ params }: HospitalPageProps) {
   };
 }
 
-export default function HospitalPage({ params }: HospitalPageProps) {
-  return <HospitalPageClient hospitalId={params.id} />;
+export default async function HospitalPage({ params }: HospitalPageProps) {
+  const resolvedParams = await params;
+  return <HospitalPageClient hospitalId={resolvedParams.id} />;
 }

@@ -41,7 +41,7 @@ export default function MapWrapperCDN({ className = '' }: MapWrapperCDNProps) {
 
   useEffect(() => {
     setIsClient(true);
-    
+
     // Check if we should use CDN (can be controlled via env var)
     const shouldUseCDN = false;
     setUseCDN(shouldUseCDN);
@@ -98,4 +98,4 @@ export default function MapWrapperCDN({ className = '' }: MapWrapperCDNProps) {
       <MapFallback className={className} />
     </Suspense>
   );
-} 
+}

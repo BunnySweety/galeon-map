@@ -102,11 +102,7 @@ export class ErrorBoundary extends Component<Props, State> {
       case 'component':
       default:
         return (
-          <ComponentLevelFallback
-            error={error!}
-            errorInfo={errorInfo}
-            reset={this.resetError}
-          />
+          <ComponentLevelFallback error={error!} errorInfo={errorInfo} reset={this.resetError} />
         );
     }
   }
@@ -135,9 +131,7 @@ const AppLevelFallback = ({ error, reset }: { error: Error; reset: () => void })
           </svg>
         </div>
 
-        <h1 className="text-2xl font-bold text-white mb-4">
-          Oops! Something went wrong
-        </h1>
+        <h1 className="text-2xl font-bold text-white mb-4">Oops! Something went wrong</h1>
 
         <p className="text-gray-300 mb-6">
           We encountered an unexpected error. The development team has been notified.
@@ -145,9 +139,7 @@ const AppLevelFallback = ({ error, reset }: { error: Error; reset: () => void })
 
         {process.env.NODE_ENV === 'development' && (
           <div className="bg-red-900/20 border border-red-500 rounded p-4 mb-6 text-left">
-            <p className="text-red-300 font-mono text-sm break-words">
-              {error.message}
-            </p>
+            <p className="text-red-300 font-mono text-sm break-words">{error.message}</p>
           </div>
         )}
 
@@ -160,7 +152,7 @@ const AppLevelFallback = ({ error, reset }: { error: Error; reset: () => void })
           </button>
 
           <button
-            onClick={() => window.location.href = '/'}
+            onClick={() => (window.location.href = '/')}
             className="px-6 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium"
           >
             Go Home
@@ -201,9 +193,7 @@ const FeatureLevelFallback = ({ error, reset }: { error: Error; reset: () => voi
           </p>
 
           {process.env.NODE_ENV === 'development' && (
-            <p className="mt-2 text-xs font-mono text-red-600 break-words">
-              {error.message}
-            </p>
+            <p className="mt-2 text-xs font-mono text-red-600 break-words">{error.message}</p>
           )}
 
           <button
@@ -249,15 +239,10 @@ const ComponentLevelFallback = ({
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
             />
           </svg>
-          <span className="text-sm font-medium text-yellow-800">
-            Component Error
-          </span>
+          <span className="text-sm font-medium text-yellow-800">Component Error</span>
         </div>
 
-        <button
-          onClick={reset}
-          className="text-sm text-yellow-700 hover:text-yellow-600 underline"
-        >
+        <button onClick={reset} className="text-sm text-yellow-700 hover:text-yellow-600 underline">
           Retry
         </button>
       </div>
@@ -273,9 +258,7 @@ const ComponentLevelFallback = ({
 
           {showDetails && (
             <div className="mt-2 bg-yellow-100 rounded p-2">
-              <p className="text-xs font-mono text-yellow-900 break-words">
-                {error.message}
-              </p>
+              <p className="text-xs font-mono text-yellow-900 break-words">{error.message}</p>
               {errorInfo?.componentStack && (
                 <pre className="mt-2 text-xs text-yellow-800 overflow-x-auto">
                   {errorInfo.componentStack}

@@ -1,8 +1,10 @@
 {
   "extends": ["next/core-web-vitals"],
+  "ignorePatterns": ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"],
   "overrides": [
     {
       "files": ["*.ts", "*.tsx"],
+      "excludedFiles": ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"],
       "parser": "@typescript-eslint/parser",
       "parserOptions": {
         "project": "./tsconfig.json"

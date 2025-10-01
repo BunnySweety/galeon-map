@@ -47,13 +47,13 @@ npm run dev
 
 GitHub Repository → Settings → Secrets → Actions → New secret
 
-| Secret | Où le trouver | Obligatoire |
-|--------|---------------|-------------|
-| `NEXT_PUBLIC_MAPBOX_TOKEN` | Token créé à l'Étape 1 | ✅ OUI |
-| `CLOUDFLARE_API_TOKEN` | [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens) | ✅ OUI |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare > Workers & Pages | ✅ OUI |
-| `CODECOV_TOKEN` | [Codecov](https://codecov.io/) | ⚠️ Optionnel |
-| `SNYK_TOKEN` | [Snyk](https://snyk.io/) | ⚠️ Optionnel |
+| Secret                     | Où le trouver                                                          | Obligatoire  |
+| -------------------------- | ---------------------------------------------------------------------- | ------------ |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | Token créé à l'Étape 1                                                 | ✅ OUI       |
+| `CLOUDFLARE_API_TOKEN`     | [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens) | ✅ OUI       |
+| `CLOUDFLARE_ACCOUNT_ID`    | Cloudflare > Workers & Pages                                           | ✅ OUI       |
+| `CODECOV_TOKEN`            | [Codecov](https://codecov.io/)                                         | ⚠️ Optionnel |
+| `SNYK_TOKEN`               | [Snyk](https://snyk.io/)                                               | ⚠️ Optionnel |
 
 ### Token Cloudflare API
 
@@ -121,6 +121,7 @@ npx lighthouse https://map.galeon.community --view
 ```
 
 Objectifs:
+
 - Performance: >90
 - Accessibility: >90
 - Best Practices: >95
@@ -144,11 +145,13 @@ cat .env.local | grep MAPBOX
 ### Problème: Carte ne s'affiche pas
 
 **1. Vérifier les restrictions du token**
+
 - Sur https://account.mapbox.com/access-tokens/
 - Vérifier que `localhost:3000` est dans URL allowlist
 - Vérifier que les scopes incluent `styles:read`, `tiles:read`
 
 **2. Vérifier la console browser**
+
 ```
 Ouvrir DevTools (F12) → Console
 Si erreur CSP → Problème de configuration CSP
@@ -159,12 +162,14 @@ Si erreur 403 → Restrictions URL trop strictes
 ### Problème: CI/CD échoue
 
 **1. Vérifier les secrets GitHub**
+
 ```
 GitHub → Settings → Secrets → Actions
 Vérifier que tous les secrets obligatoires existent
 ```
 
 **2. Vérifier les logs**
+
 ```
 GitHub → Actions → Cliquer sur le workflow qui a échoué
 Lire les logs du job qui a échoué
@@ -191,32 +196,35 @@ npm run lint
 
 Pour plus de détails, consulter:
 
-| Document | Quand l'utiliser |
-|----------|------------------|
-| **ACTIONS_IMMEDIATES_REQUISES.md** | Actions urgentes post-audit (30 min) |
-| **CHECKLIST_DEPLOIEMENT.md** | Checklist complète avant production (2h) |
-| **RESUME_INTERVENTION.md** | Vue d'ensemble de tout le travail effectué |
-| **AUDIT_COMPLET_2025.md** | Comprendre l'analyse détaillée |
-| **PLAN_ACTION_2025.md** | Planifier les améliorations futures |
-| **SECURITY.md** | Politique de sécurité et bonnes pratiques |
+| Document                           | Quand l'utiliser                           |
+| ---------------------------------- | ------------------------------------------ |
+| **ACTIONS_IMMEDIATES_REQUISES.md** | Actions urgentes post-audit (30 min)       |
+| **CHECKLIST_DEPLOIEMENT.md**       | Checklist complète avant production (2h)   |
+| **RESUME_INTERVENTION.md**         | Vue d'ensemble de tout le travail effectué |
+| **AUDIT_COMPLET_2025.md**          | Comprendre l'analyse détaillée             |
+| **PLAN_ACTION_2025.md**            | Planifier les améliorations futures        |
+| **SECURITY.md**                    | Politique de sécurité et bonnes pratiques  |
 
 ---
 
 ## 📊 RÉSUMÉ DES AMÉLIORATIONS
 
 ### Avant
+
 - Score: **7.2/10**
 - Vulnérabilités: **2 critiques**
 - Tests: **20% coverage**
 - CI/CD: **Aucun**
 
 ### Après
+
 - Score: **8.3/10** ✅
 - Vulnérabilités: **0** ✅
 - Tests: **65%+ coverage** ✅
 - CI/CD: **Complet (10 jobs)** ✅
 
 ### Fichiers Livrés
+
 - **7500+ lignes** de code/tests/docs
 - **14 nouveaux fichiers**
 - **70+ tests** automatisés
@@ -227,17 +235,20 @@ Pour plus de détails, consulter:
 ## 🎯 PROCHAINES ÉTAPES
 
 ### Aujourd'hui
+
 1. ✅ Compléter les 3 étapes "Avant Toute Chose"
 2. ✅ Configurer les secrets GitHub
 3. ✅ Premier déploiement
 4. ✅ Validation post-déploiement
 
 ### Cette Semaine
+
 - Surveiller les logs (erreurs éventuelles)
 - Vérifier les métriques Cloudflare Analytics
 - Valider Web Vitals
 
 ### Ce Mois
+
 - Compléter Phase 2 du PLAN_ACTION_2025.md
 - Atteindre 80%+ test coverage
 - Activer Service Worker

@@ -9,7 +9,7 @@ import ServiceWorker from './components/ServiceWorker';
 // File: app/layout.tsx
 
 // Use only Inter as main font (modern, clean, good readability)
-const inter = Inter({ 
+const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
   weight: ['300', '400', '500', '600', '700'],
@@ -27,12 +27,15 @@ const minion = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://galeon-community-map.pages.dev'),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL ?? 'https://galeon-community-map.pages.dev'
+  ),
   title: {
     default: 'Galeon Hospitals Map - Interactive Healthcare Network',
-    template: '%s | Galeon Hospitals Map'
+    template: '%s | Galeon Hospitals Map',
   },
-  description: 'Explore the interactive map of Galeon community hospitals across France. Real-time deployment tracking, multilingual support, and comprehensive hospital information.',
+  description:
+    'Explore the interactive map of Galeon community hospitals across France. Real-time deployment tracking, multilingual support, and comprehensive hospital information.',
   keywords: [
     'Galeon',
     'hospitals',
@@ -42,7 +45,7 @@ export const metadata: Metadata = {
     'medical facilities',
     'hospital network',
     'healthcare technology',
-    'medical deployment'
+    'medical deployment',
   ],
   authors: [{ name: 'Galeon Community' }],
   creator: 'Galeon Community',
@@ -64,7 +67,8 @@ export const metadata: Metadata = {
     alternateLocale: ['fr_FR'],
     url: '/',
     title: 'Galeon Hospitals Map - Interactive Healthcare Network',
-    description: 'Explore the interactive map of Galeon community hospitals across France. Real-time deployment tracking and comprehensive hospital information.',
+    description:
+      'Explore the interactive map of Galeon community hospitals across France. Real-time deployment tracking and comprehensive hospital information.',
     siteName: 'Galeon Hospitals Map',
     images: [
       {
@@ -94,12 +98,8 @@ export const metadata: Metadata = {
       { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
       { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
     ],
-    apple: [
-      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
-    ],
-    other: [
-      { rel: 'mask-icon', url: '/safari-pinned-tab.svg', color: '#3b82f6' },
-    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    other: [{ rel: 'mask-icon', url: '/safari-pinned-tab.svg', color: '#3b82f6' }],
   },
   manifest: '/manifest.json',
   other: {
@@ -117,14 +117,17 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="icon" href="/favicon.ico" />
-        <link rel="canonical" href={process.env.NEXT_PUBLIC_APP_URL ?? 'https://galeon-community-map.pages.dev'} />
+        <link
+          rel="canonical"
+          href={process.env.NEXT_PUBLIC_APP_URL ?? 'https://galeon-community-map.pages.dev'}
+        />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Galeon Hospitals" />
-        
+
         {/* Structured Data */}
         <script
           type="application/ld+json"
@@ -159,22 +162,26 @@ export default function RootLayout({
             }),
           }}
         />
-        
+
         {/* Preconnect to external domains */}
         <link rel="preconnect" href="https://api.mapbox.com" />
         <link rel="preconnect" href="https://events.mapbox.com" />
         <link rel="dns-prefetch" href="https://api.mapbox.com" />
         <link rel="dns-prefetch" href="https://events.mapbox.com" />
-        
+
         {/* Preload critical resources */}
-        <link rel="preload" href="/fonts/MinionPro-Regular.otf" as="font" type="font/otf" crossOrigin="anonymous" />
+        <link
+          rel="preload"
+          href="/fonts/MinionPro-Regular.otf"
+          as="font"
+          type="font/otf"
+          crossOrigin="anonymous"
+        />
         <link rel="preload" href="/logo-white.svg" as="image" />
-        
+
         {/* Placeholder for future critical CSS if needed */}
       </head>
-      <body
-        className={`${inter.className} ${inter.variable} ${minion.variable} antialiased`}
-      >
+      <body className={`${inter.className} ${inter.variable} ${minion.variable} antialiased`}>
         <I18nProviderWrapper>
           {children}
           <Toaster />
