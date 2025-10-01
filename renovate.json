@@ -1,0 +1,74 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":automergeDigest",
+    ":automergeMinor",
+    "group:allNonMajor"
+  ],
+  "timezone": "Europe/Paris",
+  "schedule": ["before 6am on monday"],
+  "labels": ["dependencies", "renovate"],
+  "assignees": ["BunnySweety"],
+  "reviewers": ["BunnySweety"],
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "assignees": ["BunnySweety"]
+  },
+  "packageRules": [
+    {
+      "description": "Automerge non-major updates",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash"
+    },
+    {
+      "description": "Group Next.js and React updates",
+      "matchPackagePatterns": ["^next", "^react", "^react-dom"],
+      "groupName": "Next.js and React",
+      "automerge": false
+    },
+    {
+      "description": "Group testing dependencies",
+      "matchPackagePatterns": [
+        "^@testing-library",
+        "^vitest",
+        "^@vitest",
+        "^playwright",
+        "^@playwright"
+      ],
+      "groupName": "Testing dependencies",
+      "automerge": true
+    },
+    {
+      "description": "Group TypeScript and ESLint",
+      "matchPackagePatterns": ["^typescript", "^eslint", "^@typescript-eslint"],
+      "groupName": "TypeScript and ESLint",
+      "automerge": true
+    },
+    {
+      "description": "Pin dependencies for security",
+      "matchDepTypes": ["dependencies"],
+      "rangeStrategy": "pin"
+    },
+    {
+      "description": "Update devDependencies with range strategy",
+      "matchDepTypes": ["devDependencies"],
+      "rangeStrategy": "bump"
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true,
+    "schedule": ["before 6am on monday"]
+  },
+  "node": {
+    "supportPolicy": ["lts_active"]
+  },
+  "npm": {
+    "minimumReleaseAge": "3 days"
+  }
+}
