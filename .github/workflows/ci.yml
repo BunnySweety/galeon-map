@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, preview, develop]
   pull_request:
-    branches: [main, develop]
+    branches: [main, preview, develop]
 
 jobs:
   # Job 1: Lint and Type Check
@@ -214,7 +214,45 @@ jobs:
           directory: out
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
-  # Job 7: Deploy Production (main branch only)
+  # Job 7a: Deploy Preview (preview branch)
+  deploy-preview-branch:
+    name: Deploy Preview Branch
+    runs-on: ubuntu-latest
+    needs: [build-production, e2e-tests]
+    if: github.ref == 'refs/heads/preview' && github.event_name == 'push'
+    timeout-minutes: 10
+
+    environment:
+      name: preview
+      url: https://preview.galeon-community-map.pages.dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: out/
+
+      - name: Deploy to Cloudflare Pages (Preview)
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: galeon-community-map
+          directory: out
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          branch: preview
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "✅ Deployment to preview successful!"
+          echo "URL: https://preview.galeon-community-map.pages.dev"
+
+  # Job 7b: Deploy Production (main branch only)
   deploy-production:
     name: Deploy Production
     runs-on: ubuntu-latest
