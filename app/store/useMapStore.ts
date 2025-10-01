@@ -35,7 +35,10 @@ export const useMapStore = create<MapStore>()(
         timelineLength: 0,
 
         // Actions
-        setHospitals: hospitals => set({ hospitals }),
+        setHospitals: hospitals => {
+          set({ hospitals });
+          get().applyFilters();
+        },
         setFilteredHospitals: hospitals => set({ filteredHospitals: hospitals }),
         setCurrentDate: date => {
           set({ currentDate: date });
@@ -142,16 +145,16 @@ export const useMapStore = create<MapStore>()(
         applyFilters: () => {
           const { hospitals, selectedFilters, currentDate, searchTerm } = get();
 
-          // Filter by status first (more efficient if many hospitals)
-          const statusFiltered = hospitals.filter(hospital => {
-            if (hospital.status === 'Deployed' && selectedFilters.deployed) return true;
-            if (hospital.status === 'Signed' && selectedFilters.signed) return true;
-            return false;
-          });
-
-          // Filter by date, ignoring time component for robustness
-          const dateFiltered = statusFiltered.filter(hospital => {
+          // Filter by status and date together
+          const filtered = hospitals.filter(hospital => {
             try {
+              // Check status filter first
+              const matchesStatusFilter =
+                (hospital.status === 'Deployed' && selectedFilters.deployed) ||
+                (hospital.status === 'Signed' && selectedFilters.signed);
+
+              if (!matchesStatusFilter) return false;
+
               // Normalize current date from the store
               const current = new Date(currentDate);
               current.setUTCHours(0, 0, 0, 0); // Set to UTC midnight
@@ -161,14 +164,7 @@ export const useMapStore = create<MapStore>()(
               hospitalDate.setUTCHours(0, 0, 0, 0); // Set to UTC midnight
 
               // Compare dates (UTC midnight vs UTC midnight)
-              const isBeforeOrOnCurrentDate = hospitalDate <= current;
-
-              // Check if hospital matches current status filters (this part was likely fine)
-              const matchesStatusFilter =
-                (hospital.status === 'Deployed' && selectedFilters.deployed) ||
-                (hospital.status === 'Signed' && selectedFilters.signed);
-
-              return isBeforeOrOnCurrentDate && matchesStatusFilter;
+              return hospitalDate <= current;
             } catch (error) {
               logger.error(
                 `Error parsing date for hospital ${hospital.id} or current date ${currentDate}:`,
@@ -177,6 +173,8 @@ export const useMapStore = create<MapStore>()(
               return false; // Exclude if dates are invalid
             }
           });
+
+          const dateFiltered = filtered;
 
           // Filter by search term if provided
           const searchFiltered = searchTerm.trim()
