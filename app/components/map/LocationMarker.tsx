@@ -3,10 +3,7 @@
 
 import { useRef, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
-import type { MapboxMarker } from '../../types/mapbox';
-
-// Props interface
-import type { MapboxMap, MapboxGLInstance } from '../../types/mapbox';
+import type { MapboxMarker, MapboxMap, MapboxGLInstance } from '../../types/mapbox';
 
 interface LocationMarkerProps {
   mapRef: React.MutableRefObject<MapboxMap | null>;
