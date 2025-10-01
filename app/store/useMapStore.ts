@@ -4,7 +4,7 @@ import { devtools, persist } from 'zustand/middleware';
 import { formatDateDefault } from '../utils/date-utils';
 import { activateLocale } from '../i18n';
 import { hospitals as importedHospitals } from '../api/hospitals/data';
-import { Hospital, HospitalStatus, MapStore } from '../types';
+import { Hospital, MapStore } from '../types';
 import logger from '../utils/logger';
 
 // Utilisation directe du type Hospital unifié depuis types/index.ts

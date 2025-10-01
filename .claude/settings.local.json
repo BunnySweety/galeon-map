@@ -61,7 +61,10 @@
       "Bash(winget uninstall:*)",
       "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI\")",
       "Bash(npx @sentry/wizard@latest:*)",
-      "Bash(npm run type-check:*)"
+      "Bash(npm run type-check:*)",
+      "Bash(npm run lint)",
+      "Bash(awk:*)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []

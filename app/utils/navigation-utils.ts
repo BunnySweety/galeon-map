@@ -18,7 +18,7 @@ export function openDirections(coordinates: [number, number], hospitalName?: str
 
     if (process.env.NODE_ENV === 'development') {
       logger.debug(
-        `Opening directions to ${hospitalName || 'hospital'} at ${latitude},${longitude}`
+        `Opening directions to ${hospitalName ?? 'hospital'} at ${latitude},${longitude}`
       );
     }
 
@@ -38,7 +38,7 @@ export async function shareLocation(
 ): Promise<void> {
   try {
     const [longitude, latitude] = coordinates;
-    const title = hospitalName || "Localisation d'hôpital";
+    const title = hospitalName ?? "Localisation d'hôpital";
     const text = hospitalName
       ? `Localisation: ${hospitalName}`
       : `Localisation: ${latitude}, ${longitude}`;

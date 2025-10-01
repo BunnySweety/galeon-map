@@ -98,7 +98,7 @@ export const EASINGS = {
 
 // ===== API ENDPOINTS =====
 export const API = {
-  BASE_URL: process.env.NEXT_PUBLIC_API_URL || '',
+  BASE_URL: process.env.NEXT_PUBLIC_API_URL ?? '',
   HOSPITALS: '/api/hospitals',
   HOSPITAL_BY_ID: (id: string) => `/api/hospitals/${id}`,
   ANALYTICS: '/api/analytics',

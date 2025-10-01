@@ -7,7 +7,7 @@ import { useCallback } from 'react';
 import Image from 'next/image';
 import { openDirections } from '../utils/navigation-utils';
 // Types importés depuis le fichier centralisé
-import type { Hospital, HospitalDetailProps } from '../types';
+import type { HospitalDetailProps } from '../types';
 
 const HospitalDetail: React.FC<HospitalDetailProps> = ({ hospital, className = '' }) => {
   const { i18n } = useLingui();

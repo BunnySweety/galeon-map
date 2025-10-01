@@ -154,7 +154,7 @@ export function trackEvent(
   if (process.env.NODE_ENV === 'production') {
     const body = {
       event: eventName,
-      properties: properties || {},
+      properties: properties ?? {},
       timestamp: Date.now(),
       url: window.location.href,
     };
@@ -181,7 +181,7 @@ export function trackEvent(
 export function trackPageView(page: string) {
   trackEvent('page_view', {
     page,
-    referrer: document.referrer || 'direct',
+    referrer: document.referrer ?? 'direct',
   });
 }
 
@@ -217,7 +217,7 @@ export function trackError(error: Error, context?: Record<string, unknown>) {
         stack: error.stack,
         name: error.name,
       },
-      context: context || {},
+      context: context ?? {},
       timestamp: Date.now(),
       url: window.location.href,
       userAgent: navigator.userAgent,
@@ -328,14 +328,14 @@ export function getPerformanceSummary() {
     loadComplete: navigation ? Math.round(navigation.loadEventEnd - navigation.fetchStart) : 0,
 
     // Paint timing
-    fcp: paint.find(p => p.name === 'first-contentful-paint')?.startTime || 0,
+    fcp: paint.find(p => p.name === 'first-contentful-paint')?.startTime ?? 0,
     lcp: 0, // Will be updated by getLCP
 
     // Resource timing
     resourceCount: performance.getEntriesByType('resource').length,
     resourceSize: performance
       .getEntriesByType('resource')
-      .reduce((sum, r: any) => sum + (r.transferSize || 0), 0),
+      .reduce((sum, r: any) => sum + (r.transferSize ?? 0), 0),
   };
 }
 

@@ -20,7 +20,7 @@ export function trackAccessibilityIssue(issue: {
     tags: {
       type: 'accessibility',
       severity: issue.severity,
-      wcagCriteria: issue.wcagCriteria || 'unknown',
+      wcagCriteria: issue.wcagCriteria ?? 'unknown',
     },
     extra: {
       element: issue.element,
@@ -127,7 +127,7 @@ export function trackApiError(error: {
       type: 'api-error',
       endpoint: error.endpoint,
       method: error.method,
-      statusCode: error.statusCode?.toString() || 'unknown',
+      statusCode: error.statusCode?.toString() ?? 'unknown',
     },
     extra: {
       message: error.message,
@@ -174,7 +174,7 @@ export function reportErrorBoundary(error: Error, errorInfo: { componentStack?: 
       type: 'react-error-boundary',
     },
     extra: {
-      componentStack: errorInfo.componentStack || undefined,
+      componentStack: errorInfo.componentStack ?? undefined,
     },
   });
 }

@@ -4,7 +4,7 @@
 import { useRef, useCallback, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
 import logger from '../../utils/logger';
-import type { MapboxMap, MapboxGLInstance, MapboxMarker } from '../../types/mapbox';
+import type { MapboxMap, MapboxMarker } from '../../types/mapbox';
 
 // Props interface
 interface GeolocationHandlerProps {

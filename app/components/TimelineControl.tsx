@@ -1,7 +1,7 @@
 // File: app/components/TimelineControl.tsx
 'use client';
 
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useLingui } from '@lingui/react';
 import { useMapStore } from '../store/useMapStore';
 import TimelinePoint from './TimelinePoint';
@@ -124,7 +124,7 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
 
     const containerWidth = container.offsetWidth;
     const computedStyle = window.getComputedStyle(container);
-    const paddingRight = parseFloat(computedStyle.paddingRight) || 0;
+    const paddingRight = parseFloat(computedStyle.paddingRight) ?? 0;
     const visibleWidth = containerWidth - paddingRight;
     if (visibleWidth <= 0) return;
 
@@ -299,7 +299,7 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
             aria-valuemin={0}
             aria-valuemax={timelineDates.length - 1}
             aria-valuenow={currentDateIndex}
-            aria-valuetext={timelineDates[currentDateIndex] || ''}
+            aria-valuetext={timelineDates[currentDateIndex] ?? ''}
             tabIndex={0}
             onKeyDown={handleKeyDown}
             // Dragging disabled; we always center the active point
@@ -353,7 +353,7 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
                   const pointWidth = getPointWidth();
                   const scrollContainerWidth = scrollContainer.offsetWidth;
                   const computedStyle = window.getComputedStyle(scrollContainer);
-                  const paddingRight = parseFloat(computedStyle.paddingRight) || 0;
+                  const paddingRight = parseFloat(computedStyle.paddingRight) ?? 0;
                   const visibleWidth = scrollContainerWidth - paddingRight;
                   let anchor = visibleWidth / 2;
                   try {
@@ -373,9 +373,6 @@ const TimelineControl: React.FC<TimelineControlProps> = ({ className = '' }) => 
 
                   // Déterminer le premier index visible pour garder l'actif aligné avec l'ancre (séparateur)
                   // On aligne l'actif sur l'ancre et on découpe la barre à droite
-                  const actionBarEl = document.querySelector(
-                    '.action-bar-container'
-                  ) as HTMLElement | null;
                   const halfCount = Math.round(anchor / pointWidth);
                   const firstVisibleIndex = Math.max(0, currentDateIndex - halfCount);
 

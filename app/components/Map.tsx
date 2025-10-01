@@ -9,7 +9,7 @@ import { useMapStore } from '../store/useMapStore';
 import { setupConsoleFilter } from '../utils/console-filter';
 import logger from '../utils/logger';
 import { useMapbox } from '../hooks/useMapbox';
-import type { MapboxMap, MapboxGLInstance } from '../types/mapbox';
+import type { MapboxMap } from '../types/mapbox';
 // Import our modular components
 import MapControls from './map/MapControls';
 import { useLocationMarker } from './map/LocationMarker';
