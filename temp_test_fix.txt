@@ -1,0 +1,8 @@
+      act(() => {
+        // Set date and filters FIRST before setHospitals (which triggers applyFilters)
+        result.current.setCurrentDate('2023-12-31');
+        // Turn off 'signed' filter to only show 'Deployed'
+        result.current.toggleFilter('signed');
+        // Now set hospitals (this will apply filters with correct date and filters)
+        result.current.setHospitals(mockHospitals);
+      });

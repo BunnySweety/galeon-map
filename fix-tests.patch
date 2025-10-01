@@ -1,0 +1,44 @@
+--- a/app/store/__tests__/useMapStore.test.ts
++++ b/app/store/__tests__/useMapStore.test.ts
+@@ -260,9 +260,11 @@ describe('useMapStore', () => {
+     it('should filter by status correctly', () => {
+       const { result } = renderHook(() => useMapStore());
+ 
+       act(() => {
+-        result.current.setHospitals(mockHospitals);
++        // Set date and filters FIRST before setHospitals (which triggers applyFilters)
+         result.current.setCurrentDate('2023-12-31');
+         // Turn off 'signed' filter to only show 'Deployed'
+         result.current.toggleFilter('signed');
++        // Now set hospitals (this will apply filters with correct date and filters)
++        result.current.setHospitals(mockHospitals);
+       });
+ 
+@@ -274,8 +276,10 @@ describe('useMapStore', () => {
+     it('should filter by date correctly', () => {
+       const { result } = renderHook(() => useMapStore());
+ 
+       act(() => {
+-        result.current.setHospitals(mockHospitals);
++        // Set date FIRST before setHospitals (which triggers applyFilters)
+         result.current.setCurrentDate('2023-06-20'); // Between first and second hospital
++        // Now set hospitals (this will apply filters with correct date)
++        result.current.setHospitals(mockHospitals);
+       });
+ 
+       const filtered = result.current.filteredHospitals;
+@@ -286,10 +290,12 @@ describe('useMapStore', () => {
+     it('should filter by both status and date', () => {
+       const { result } = renderHook(() => useMapStore());
+ 
+       act(() => {
+-        result.current.setHospitals(mockHospitals);
++        // Set date and filters FIRST before setHospitals (which triggers applyFilters)
+         result.current.setCurrentDate('2023-07-15');
+         // Toggle 'deployed' to turn it off, keep only 'Signed'
+         result.current.toggleFilter('deployed');
++        // Now set hospitals (this will apply filters with correct date and filters)
++        result.current.setHospitals(mockHospitals);
+       });
+ 
+       const filtered = result.current.filteredHospitals;

@@ -103,26 +103,6 @@ describe('useMapStore', () => {
   beforeEach(() => {
     // Clear persisted state before each test
     localStorage.clear();
-
-    // Reset Zustand store to initial state
-    const { result } = renderHook(() => useMapStore());
-    act(() => {
-      result.current.setHospitals([]);
-      result.current.setFilteredHospitals([]);
-      result.current.setCurrentDate(new Date().toISOString().split('T')[0]!);
-      result.current.setError(null);
-      result.current.setLoading(false);
-      result.current.selectHospital(null);
-      result.current.setHydrated(false);
-      result.current.setTimelineState(0, 0);
-      // Reset filters to default (both true)
-      if (!result.current.selectedFilters.deployed) {
-        result.current.toggleFilter('deployed');
-      }
-      if (!result.current.selectedFilters.signed) {
-        result.current.toggleFilter('signed');
-      }
-    });
   });
 
   describe('Initial State', () => {
@@ -281,12 +261,10 @@ describe('useMapStore', () => {
       const { result } = renderHook(() => useMapStore());
 
       act(() => {
-        // Set date and filters FIRST before setHospitals (which triggers applyFilters)
+        result.current.setHospitals(mockHospitals);
         result.current.setCurrentDate('2023-12-31');
         // Turn off 'signed' filter to only show 'Deployed'
         result.current.toggleFilter('signed');
-        // Now set hospitals (this will apply filters with correct date and filters)
-        result.current.setHospitals(mockHospitals);
       });
 
       const filtered = result.current.filteredHospitals;
@@ -298,10 +276,8 @@ describe('useMapStore', () => {
       const { result } = renderHook(() => useMapStore());
 
       act(() => {
-        // Set date FIRST before setHospitals (which triggers applyFilters)
-        result.current.setCurrentDate('2023-06-20'); // Between first and second hospital
-        // Now set hospitals (this will apply filters with correct date)
         result.current.setHospitals(mockHospitals);
+        result.current.setCurrentDate('2023-06-20'); // Between first and second hospital
       });
 
       const filtered = result.current.filteredHospitals;
@@ -313,12 +289,10 @@ describe('useMapStore', () => {
       const { result } = renderHook(() => useMapStore());
 
       act(() => {
-        // Set date and filters FIRST before setHospitals (which triggers applyFilters)
+        result.current.setHospitals(mockHospitals);
         result.current.setCurrentDate('2023-07-15');
         // Toggle 'deployed' to turn it off, keep only 'Signed'
         result.current.toggleFilter('deployed');
-        // Now set hospitals (this will apply filters with correct date and filters)
-        result.current.setHospitals(mockHospitals);
       });
 
       const filtered = result.current.filteredHospitals;
@@ -366,8 +340,6 @@ describe('useMapStore', () => {
       const { result } = renderHook(() => useMapStore());
 
       act(() => {
-        // Set hospitals first so there's data to filter
-        result.current.setHospitals(mockHospitals);
         result.current.setCurrentDate('2023-07-15');
       });
 
