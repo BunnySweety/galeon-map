@@ -3,6 +3,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import logger from '../utils/logger';
+import { reportErrorBoundary } from '../utils/monitoring';
 
 interface Props {
   children: ReactNode;
@@ -62,10 +63,8 @@ export class ErrorBoundary extends Component<Props, State> {
       this.props.onError(error, errorInfo);
     }
 
-    // TODO: Send to error tracking service (Sentry, LogRocket, etc.)
-    // if (process.env.NODE_ENV === 'production') {
-    //   sendToErrorTracking(error, errorInfo);
-    // }
+    // Send to Sentry error tracking
+    reportErrorBoundary(error, errorInfo);
   }
 
   resetError = () => {

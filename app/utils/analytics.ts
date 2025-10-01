@@ -1,5 +1,6 @@
 // File: app/utils/analytics.ts
 import { onCLS, onFCP, onINP, onLCP, onTTFB, type Metric } from 'web-vitals';
+import * as Sentry from '@sentry/nextjs';
 import logger from './logger';
 import { PERFORMANCE } from './constants';
 
@@ -72,6 +73,28 @@ function sendToAnalytics(metric: Metric) {
       value: Math.round(metric.value),
       rating: body.rating,
     });
+  }
+
+  // Send to Sentry Performance Monitoring
+  // Note: metrics API might not be available in all SDK versions
+  try {
+    if ('metrics' in Sentry && typeof Sentry.metrics === 'object' && Sentry.metrics !== null) {
+      const metricsObj = Sentry.metrics as {
+        distribution?: (name: string, value: number, options?: Record<string, unknown>) => void;
+      };
+      if (typeof metricsObj.distribution === 'function') {
+        metricsObj.distribution(metric.name, metric.value, {
+          unit: 'millisecond',
+          tags: {
+            rating: body.rating,
+            navigationType: metric.navigationType,
+          },
+        });
+      }
+    }
+  } catch (error) {
+    // Silently fail if metrics API not available
+    logger.warn('Sentry metrics API not available:', error);
   }
 
   // Send to analytics in production
